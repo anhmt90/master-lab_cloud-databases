@@ -1,8 +1,8 @@
-package client;
+package client.api;
 
-import common.messages.KVMessage;
+import protocol.IMessage;
 
-public interface KVCommInterface {
+public interface IClient {
 
     /**
      * Establishes a connection to the KV Server.
@@ -17,7 +17,7 @@ public interface KVCommInterface {
     public void disconnect();
 
     /**
-     * Inserts a key-value pair into the KVServer.
+     * Inserts a key-value pair into the Server.
      *
      * @param key   the key that identifies the given value.
      * @param value the value that is indexed by the given key.
@@ -25,15 +25,15 @@ public interface KVCommInterface {
      * @throws Exception if put command cannot be executed (e.g. not connected to any
      *                   KV server).
      */
-    public KVMessage put(String key, String value) throws Exception;
+    public IMessage put(String key, String value) throws Exception;
 
     /**
-     * Retrieves the value for a given key from the KVServer.
+     * Retrieves the value for a given key from the Server.
      *
      * @param key the key that identifies the value.
      * @return the value, which is indexed by the given key.
      * @throws Exception if put command cannot be executed (e.g. not connected to any
      *                   KV server).
      */
-    public KVMessage get(String key) throws Exception;
+    public IMessage get(String key) throws Exception;
 }

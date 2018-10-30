@@ -1,7 +1,7 @@
-package app_kvServer;
+package server.app;
 
 
-public class KVServer {
+public class Server {
 
     /**
      * Start KV Server at given port
@@ -14,7 +14,7 @@ public class KVServer {
      *                  currently not contained in the cache. Options are "FIFO", "LRU",
      *                  and "LFU".
      */
-    public KVServer(int port, int cacheSize, String strategy) {
+    public Server(int port, int cacheSize, String strategy) {
 
     }
 }

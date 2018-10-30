@@ -1,17 +1,15 @@
 package testing;
 
-import app_kvServer.KVServer;
+import server.app.Server;
 import junit.framework.Test;
 import junit.framework.TestSuite;
-
-import java.io.IOException;
 
 
 public class AllTests {
 
     static {
         try {
-            new KVServer(50000, 10, "FIFO");
+            new Server(50000, 10, "FIFO");
         } catch (Exception e) {
             e.printStackTrace();
         }

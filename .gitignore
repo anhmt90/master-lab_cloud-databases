@@ -7,6 +7,9 @@ MANIFEST.mf
 *.MF
 *.csv
 logs
+doc
 commit*
 data
 *.dat
+/.metadata/
+/*.jar
