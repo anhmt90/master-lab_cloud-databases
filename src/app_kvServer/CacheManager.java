@@ -1,6 +1,8 @@
 package app_kvServer;
 
-public class CacheManager {
+import common.messages.KVMessage;
+
+public class CacheManager implements ICrud {
   private CacheStorage cache;
   private PersistentStorage disk;
   private ICacheDisplacementStrategy strategy;
@@ -15,6 +17,38 @@ public class CacheManager {
 
   private void setStrategy(ICacheDisplacementStrategy strategy) {
     this.strategy = strategy;
+    this.cache.setStrategy(strategy);
+  }
+
+  @Override
+  public KVMessage get(String key) {
+    KVMessage msg = this.cache.get(key);
+    if (msg == null) {
+      /*
+      If there is no key in cache, it can be found in persistent storage
+      Synchronize to avoid overwriting new value incoming in the same time for this key
+       */
+      synchronized (this.cache) {
+        msg = this.disk.get(key);
+        if (msg != null) {
+          this.put(msg.getKey(), msg.getValue());
+        }
+      }
+    }
+    return msg;
+  }
+
+  @Override
+  public KVMessage put(String key, String value) {
+    KVMessage msg;
+    synchronized (this.cache) {
+      if (this.cache.isFull()) {
+        KVMessage evictedMsg = this.cache.evict();
+        this.disk.put(evictedMsg.getKey(), evictedMsg.getValue());
+      }
+      msg = this.cache.put(key, value);
+    }
+    return msg;
   }
 
   public static class Builder {
