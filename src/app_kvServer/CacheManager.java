@@ -1,9 +1,5 @@
 package app_kvServer;
 
-import static app_kvServer.CacheDisplacementType.FIFO;
-import static app_kvServer.CacheDisplacementType.LFU;
-import static app_kvServer.CacheDisplacementType.LRU;
-
 public class CacheManager {
   private CacheStorage cache;
   private PersistentStorage disk;
@@ -22,9 +18,17 @@ public class CacheManager {
   }
 
   public static class Builder {
+    private static String DEFAULT_DISK_PATH = "./persistent";
+
     private CacheStorage cache;
     private PersistentStorage disk;
     private ICacheDisplacementStrategy strategy;
+
+    public Builder() {
+      this.setCacheSize(100);
+      this.setDiskStoragePath(DEFAULT_DISK_PATH);
+      this.setStrategy(CacheDisplacementType.FIFO);
+    }
 
     public Builder setCacheSize(int size) {
       this.cache = new CacheStorage(size);
@@ -50,6 +54,10 @@ public class CacheManager {
       }
 
       return this;
+    }
+
+    public CacheManager build() {
+      return new CacheManager(this);
     }
   }
 
