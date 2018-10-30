@@ -1,18 +1,18 @@
 package testing;
 
-import client.KVStore;
-import common.messages.KVMessage;
-import common.messages.KVMessage.StatusType;
+import client.api.Client;
+import protocol.IMessage;
+import protocol.IMessage.StatusType;
 import junit.framework.TestCase;
 import org.junit.Test;
 
 
 public class InteractionTest extends TestCase {
 
-    private KVStore kvClient;
+    private Client kvClient;
 
     public void setUp() {
-        kvClient = new KVStore("localhost", 50000);
+        kvClient = new Client("localhost", 50000);
         try {
             kvClient.connect();
         } catch (Exception e) {
@@ -28,7 +28,7 @@ public class InteractionTest extends TestCase {
     public void testPut() {
         String key = "foo";
         String value = "bar";
-        KVMessage response = null;
+        IMessage response = null;
         Exception ex = null;
 
         try {
@@ -62,7 +62,7 @@ public class InteractionTest extends TestCase {
         String initialValue = "initial";
         String updatedValue = "updated";
 
-        KVMessage response = null;
+        IMessage response = null;
         Exception ex = null;
 
         try {
@@ -82,7 +82,7 @@ public class InteractionTest extends TestCase {
         String key = "deleteTestValue";
         String value = "toDelete";
 
-        KVMessage response = null;
+        IMessage response = null;
         Exception ex = null;
 
         try {
@@ -100,7 +100,7 @@ public class InteractionTest extends TestCase {
     public void testGet() {
         String key = "foo";
         String value = "bar";
-        KVMessage response = null;
+        IMessage response = null;
         Exception ex = null;
 
         try {
@@ -116,7 +116,7 @@ public class InteractionTest extends TestCase {
     @Test
     public void testGetUnsetValue() {
         String key = "an unset value";
-        KVMessage response = null;
+        IMessage response = null;
         Exception ex = null;
 
         try {

@@ -1,6 +1,6 @@
-package common.messages;
+package protocol;
 
-public interface KVMessage {
+public interface IMessage {
 
     public enum StatusType {
         GET, 			/* Get - request */
