@@ -1,6 +1,6 @@
-package app_kvServer;
+package server.app;
 
-import common.messages.KVMessage;
+import protocol.Message;
 
 public class CacheManager implements ICrud {
   private CacheStorage cache;
@@ -21,8 +21,8 @@ public class CacheManager implements ICrud {
   }
 
   @Override
-  public KVMessage get(String key) {
-    KVMessage msg = this.cache.get(key);
+  public Message get(String key) {
+    Message msg = this.cache.get(key);
     if (msg == null) {
       /*
       If there is no key in cache, it can be found in persistent storage
@@ -39,11 +39,11 @@ public class CacheManager implements ICrud {
   }
 
   @Override
-  public KVMessage put(String key, String value) {
-    KVMessage msg;
+  public Message put(String key, String value) {
+    Message msg;
     synchronized (this.cache) {
       if (this.cache.isFull()) {
-        KVMessage evictedMsg = this.cache.evict();
+        Message evictedMsg = this.cache.evict();
         this.disk.put(evictedMsg.getKey(), evictedMsg.getValue());
       }
       msg = this.cache.put(key, value);

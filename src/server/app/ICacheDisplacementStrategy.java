@@ -1,4 +1,4 @@
-package app_kvServer;
+package server.app;
 
 public interface ICacheDisplacementStrategy {
 }

@@ -1,22 +1,22 @@
-package app_kvServer;
+package server.app;
 
-import common.messages.KVMessage;
+import protocol.Message;
 
 public class CacheStorage implements ICrud {
   public CacheStorage(int size) {
   }
 
   @Override
-  public KVMessage get(String key) {
+  public Message get(String key) {
     return null;
   }
 
   @Override
-  public KVMessage put(String key, String value) {
+  public Message put(String key, String value) {
     return null;
   }
 
-  public KVMessage evict() {
+  public Message evict() {
     return null;
   }
 

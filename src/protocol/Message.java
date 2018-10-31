@@ -1,37 +1,44 @@
 package protocol;
 
-public class Message implements IMessage{
+public class Message implements IMessage {
+    Status status;
+    K key;
+    V value;
 
-    private class Content {
-        String key;
-        String value;
+    public Message(Status status) {
+        this.status = status;
+    }
 
-        public Content(String key, String value) {
-            this.key = key;
-            this.value = value;
-        }
+    public Message(Status status, K key) {
+        this.status = status;
+        this.key = key;
+    }
 
-        public String getKey() {
-            return key;
-        }
+    public Message(Status status, V value) {
+        this.status = status;
+        this.value = value;
+    }
 
-        public String getValue() {
-            return value;
-        }
+    public Message(Status status, K key, V value) {
+        this.status = status;
+        this.value = value;
     }
 
     @Override
     public String getKey() {
-        return null;
+        return key.get();
     }
 
     @Override
     public String getValue() {
-        return null;
+        return value.get();
     }
 
     @Override
-    public StatusType getStatus() {
-        return null;
+    public Status getStatus() {
+        return status;
     }
+
+
+
 }

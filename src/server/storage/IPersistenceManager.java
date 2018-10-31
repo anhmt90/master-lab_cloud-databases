@@ -16,5 +16,4 @@ public interface IPersistenceManager {
     boolean updateStorage(String key, String value);
     String getFromStorage(String key);
 
-
 }

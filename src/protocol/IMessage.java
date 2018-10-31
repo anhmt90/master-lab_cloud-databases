@@ -2,7 +2,7 @@ package protocol;
 
 public interface IMessage {
 
-    public enum StatusType {
+    enum Status {
         GET, 			/* Get - request */
         GET_ERROR, 		/* requested tuple (i.e. value) not found */
         GET_SUCCESS, 	/* requested tuple (i.e. value) found */
@@ -13,6 +13,30 @@ public interface IMessage {
         DELETE, 		/* Delete - request */
         DELETE_SUCCESS, /* Delete - request successful */
         DELETE_ERROR 	/* Delete - request successful */
+    }
+
+    class K {
+        String key;
+
+        public K(String key) {
+            this.key = key;
+        }
+
+        public String get() {
+            return key;
+        }
+    }
+
+    class V {
+        String value;
+
+        public V(String value) {
+            this.value = value;
+        }
+
+        public String get()  {
+            return value;
+        }
     }
 
     /**
@@ -31,7 +55,7 @@ public interface IMessage {
      * @return a status string that is used to identify request types,
      * response types and error types associated to the message.
      */
-    public StatusType getStatus();
+    public Status getStatus();
 
 }
 

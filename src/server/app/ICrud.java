@@ -1,8 +1,8 @@
-package app_kvServer;
+package server.app;
 
-import common.messages.KVMessage;
+import protocol.Message;
 
 public interface ICrud {
-  KVMessage get(String key);
-  KVMessage put(String key, String value);
+  Message get(String key);
+  Message put(String key, String value);
 }

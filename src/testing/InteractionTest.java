@@ -2,7 +2,7 @@ package testing;
 
 import client.api.Client;
 import protocol.IMessage;
-import protocol.IMessage.StatusType;
+import protocol.IMessage.Status;
 import junit.framework.TestCase;
 import org.junit.Test;
 
@@ -37,7 +37,7 @@ public class InteractionTest extends TestCase {
             ex = e;
         }
 
-        assertTrue(ex == null && response.getStatus() == StatusType.PUT_SUCCESS);
+        assertTrue(ex == null && response.getStatus() == Status.PUT_SUCCESS);
     }
 
     @Test
@@ -73,7 +73,7 @@ public class InteractionTest extends TestCase {
             ex = e;
         }
 
-        assertTrue(ex == null && response.getStatus() == StatusType.PUT_UPDATE
+        assertTrue(ex == null && response.getStatus() == Status.PUT_UPDATE
                 && response.getValue().equals(updatedValue));
     }
 
@@ -93,7 +93,7 @@ public class InteractionTest extends TestCase {
             ex = e;
         }
 
-        assertTrue(ex == null && response.getStatus() == StatusType.DELETE_SUCCESS);
+        assertTrue(ex == null && response.getStatus() == Status.DELETE_SUCCESS);
     }
 
     @Test
@@ -125,7 +125,7 @@ public class InteractionTest extends TestCase {
             ex = e;
         }
 
-        assertTrue(ex == null && response.getStatus() == StatusType.GET_ERROR);
+        assertTrue(ex == null && response.getStatus() == Status.GET_ERROR);
     }
 
 }
