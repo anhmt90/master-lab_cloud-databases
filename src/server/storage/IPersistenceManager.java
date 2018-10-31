@@ -9,11 +9,9 @@ public interface IPersistenceManager {
     * client IP address and the key.
     * */
 //    ConcurrentHashMap KVHashTable;
-    
 
-    Integer hashKey(String key);
 
-    boolean updateStorage(String key, String value);
-    String getFromStorage(String key);
+    boolean write(String key, String value);
+    String read(String key);
 
 }

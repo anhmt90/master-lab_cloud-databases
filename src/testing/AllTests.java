@@ -1,6 +1,7 @@
 package testing;
 
-import server.app.Server;
+import server.app.KVServer;
+import server.app.ServerManager;
 import junit.framework.Test;
 import junit.framework.TestSuite;
 
@@ -9,7 +10,7 @@ public class AllTests {
 
     static {
         try {
-            new Server(50000, 10, "FIFO");
+            new KVServer(50000, 10, "FIFO");
         } catch (Exception e) {
             e.printStackTrace();
         }

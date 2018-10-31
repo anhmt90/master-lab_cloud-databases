@@ -7,10 +7,10 @@ public class Client implements IClient {
 
 
     /**
-     * Initialize Client with address and port of Server
+     * Initialize Client with address and port of ServerManager
      *
-     * @param address the address of the Server
-     * @param port    the port of the Server
+     * @param address the address of the ServerManager
+     * @param port    the port of the ServerManager
      */
     public Client(String address, int port) {
 

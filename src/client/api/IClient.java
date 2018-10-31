@@ -5,7 +5,7 @@ import protocol.IMessage;
 public interface IClient {
 
     /**
-     * Establishes a connection to the KV Server.
+     * Establishes a connection to the KV ServerManager.
      *
      * @throws Exception if connection could not be established.
      */
@@ -17,7 +17,7 @@ public interface IClient {
     public void disconnect();
 
     /**
-     * Inserts a key-value pair into the Server.
+     * Inserts a key-value pair into the ServerManager.
      *
      * @param key   the key that identifies the given value.
      * @param value the value that is indexed by the given key.
@@ -28,7 +28,7 @@ public interface IClient {
     public IMessage put(String key, String value) throws Exception;
 
     /**
-     * Retrieves the value for a given key from the Server.
+     * Retrieves the value for a given key from the ServerManager.
      *
      * @param key the key that identifies the value.
      * @return the value, which is indexed by the given key.
