@@ -1,5 +1,6 @@
 package server.app;
 
+import protocol.IMessage;
 import protocol.Message;
 
 public class PersistentStorage implements ICrud {
@@ -7,12 +8,12 @@ public class PersistentStorage implements ICrud {
   }
 
   @Override
-  public Message get(String key) {
+  public IMessage get(IMessage.K key) {
     return null;
   }
 
   @Override
-  public Message put(String key, String value) {
+  public IMessage put(IMessage msg) {
     return null;
   }
 }
