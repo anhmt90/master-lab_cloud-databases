@@ -1,4 +1,4 @@
-package server.app;
+package server.app.Cache;
 
 public enum CacheDisplacementType {
   FIFO,

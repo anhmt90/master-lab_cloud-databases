@@ -1,7 +1,6 @@
 package server.app;
 
 import protocol.IMessage;
-import protocol.Message;
 
 public class PersistentStorage implements ICrud {
   public PersistentStorage(String path) {

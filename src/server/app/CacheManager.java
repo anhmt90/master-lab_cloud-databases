@@ -1,9 +1,7 @@
 package server.app;
 
 import protocol.IMessage;
-import protocol.Message;
-
-import javax.swing.*;
+import server.app.Cache.*;
 
 public class CacheManager implements ICrud {
   private CacheStorage cache;
