@@ -1,8 +1,9 @@
 package server.app;
 
+import protocol.IMessage;
 import protocol.Message;
 
 public interface ICrud {
-  Message get(String key);
-  Message put(String key, String value);
+  IMessage get(IMessage.K key);
+  IMessage put(IMessage msg);
 }

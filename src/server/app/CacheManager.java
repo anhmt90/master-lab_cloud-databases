@@ -1,11 +1,13 @@
 package server.app;
 
+import protocol.IMessage;
 import protocol.Message;
+
+import javax.swing.*;
 
 public class CacheManager implements ICrud {
   private CacheStorage cache;
   private PersistentStorage disk;
-  private ICacheDisplacementStrategy strategy;
 
   private void setCache(CacheStorage cache) {
     this.cache = cache;
@@ -16,13 +18,12 @@ public class CacheManager implements ICrud {
   }
 
   private void setStrategy(ICacheDisplacementStrategy strategy) {
-    this.strategy = strategy;
     this.cache.setStrategy(strategy);
   }
 
   @Override
-  public Message get(String key) {
-    Message msg = this.cache.get(key);
+  public IMessage get(IMessage.K key) {
+    IMessage msg = this.cache.get(key);
     if (msg == null) {
       /*
       If there is no key in cache, it can be found in persistent storage
@@ -31,7 +32,7 @@ public class CacheManager implements ICrud {
       synchronized (this.cache) {
         msg = this.disk.get(key);
         if (msg != null) {
-          this.put(msg.getKey(), msg.getValue());
+          this.put(msg);
         }
       }
     }
@@ -39,14 +40,13 @@ public class CacheManager implements ICrud {
   }
 
   @Override
-  public Message put(String key, String value) {
-    Message msg;
+  public IMessage put(IMessage msg) {
     synchronized (this.cache) {
       if (this.cache.isFull()) {
-        Message evictedMsg = this.cache.evict();
-        this.disk.put(evictedMsg.getKey(), evictedMsg.getValue());
+        IMessage evictedMsg = this.cache.evict();
+        this.disk.put(evictedMsg);
       }
-      msg = this.cache.put(key, value);
+      this.cache.put(msg);
     }
     return msg;
   }
