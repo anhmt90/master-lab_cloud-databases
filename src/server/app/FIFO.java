@@ -17,7 +17,6 @@ public class FIFO implements ICacheDisplacementStrategy {
 
   @Override
   public void register(IMessage.K key) {
-    registry.remove(key);
     registry.add(key);
   }
 }
