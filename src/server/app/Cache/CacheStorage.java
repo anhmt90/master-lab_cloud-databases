@@ -5,6 +5,9 @@ import server.app.ICrud;
 
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Level1 cache for the Key-Value store
+ */
 public class CacheStorage implements ICrud {
   private int size;
   private ICacheDisplacementStrategy displacementStrategy;
@@ -45,6 +48,10 @@ public class CacheStorage implements ICrud {
     return msg;
   }
 
+  /**
+   * Free a space in the cache
+   * @return Key-Value entry evicted from cache
+   */
   public IMessage evict() {
     IMessage.K k = this.displacementStrategy.evict();
     IMessage msg = this.storage.get(k);
@@ -58,6 +65,10 @@ public class CacheStorage implements ICrud {
     return this.storage.mappingCount() >= this.size;
   }
 
+  /**
+   * Set cache displacement strategy, that decides which entry to evict from the cache
+   * @param strategy displacement strategy to use
+   */
   public void setStrategy(ICacheDisplacementStrategy strategy) {
     this.displacementStrategy = strategy;
   }

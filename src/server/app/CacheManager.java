@@ -3,6 +3,8 @@ package server.app;
 import protocol.IMessage;
 import server.app.Cache.*;
 
+/** Manages available storage options by their capacities
+ */
 public class CacheManager implements ICrud {
   private CacheStorage cache;
   private PersistentStorage disk;
@@ -19,6 +21,11 @@ public class CacheManager implements ICrud {
     this.cache.setStrategy(strategy);
   }
 
+  /**
+   * Get a message from Key-Value store
+   * @param key Key of a ke-value entry
+   * @return Key-value entry as a message
+   */
   @Override
   public IMessage get(IMessage.K key) {
     IMessage msg = this.cache.get(key);
@@ -37,6 +44,11 @@ public class CacheManager implements ICrud {
     return msg;
   }
 
+  /**
+   * Stores a key-value entry in the key-value store
+   * @param msg A key-value entry
+   * @return A key-value entry stored
+   */
   @Override
   public IMessage put(IMessage msg) {
     synchronized (this.cache) {
@@ -49,6 +61,9 @@ public class CacheManager implements ICrud {
     return msg;
   }
 
+  /**
+   * Builder for the {@link CacheManager}
+   */
   public static class Builder {
     private static String DEFAULT_DISK_PATH = "./persistent";
 
@@ -56,6 +71,11 @@ public class CacheManager implements ICrud {
     private PersistentStorage disk;
     private ICacheDisplacementStrategy strategy;
 
+    /**
+     * {@link CacheManager} builder constructor that sets default parameters,
+     * use {@link Builder} setters to change the {@link CacheManager} parameters,
+     * then call {@link #build()} to get a new {@link CacheManager} object
+     */
     public Builder() {
       this.setCacheSize(100);
       this.setDiskStoragePath(DEFAULT_DISK_PATH);
@@ -72,6 +92,12 @@ public class CacheManager implements ICrud {
       return this;
     }
 
+    /**
+     * Sets a displacement strategy for the cache to choose entries to move to the disk
+     * if the cache is full
+     * @param strategyType displacement strategy type
+     * @return {@link Builder} for the {@link CacheManager}
+     */
     public Builder setStrategy(CacheDisplacementType strategyType) {
       switch(strategyType) {
         case LFU:
