@@ -2,6 +2,7 @@ package server.storage;
 
 import protocol.IMessage;
 import server.storage.Cache.*;
+import static util.StringUtils.PATH_SEP;
 
 import java.util.Map;
 
@@ -71,7 +72,7 @@ public class CacheManager implements ICrud {
    * Builder for the {@link CacheManager}
    */
   public static class Builder {
-    private static String DEFAULT_DISK_PATH = "./persistent";
+    private static final String DEFAULT_DISK_PATH = System.getProperty("user.dir") + PATH_SEP +"db";
 
     private CacheStorage cache;
     private PersistentStorage disk;
