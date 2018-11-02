@@ -21,7 +21,27 @@ public class PersistenceManager implements IPersistenceManager {
     private static final String FILE_EXT = EMPTY;
     private static Pattern notAlphanumeric = Pattern.compile(NOT_ALPHANUMERIC);
     private static Pattern notAlphabetic = Pattern.compile(NOT_ALPHABETIC);
+    private final String rootDbPath;
 
+    public PersistenceManager(String path) {
+        createDBDir(path);
+        this.rootDbPath = path;
+    }
+
+    public boolean createDBDir(String path) {
+        Path dbPath = Paths.get(path);
+        if (!Files.exists(dbPath)) {
+            try {
+                Files.createDirectories(dbPath);
+                System.out.println("New Directory Successfully Created !"); //TODO change to LOG
+                return true;
+            } catch (IOException ioe) {
+                System.out.println("Problem occured while creating 'db' directory = " + ioe.getMessage()); //TODO change to LOG
+            }
+        }
+        return false;
+    }
+    
     @Override
     public OpStatus write(IMessage.K key, IMessage.V value) {
         Path file = getFilePath(key);
@@ -48,7 +68,7 @@ public class PersistenceManager implements IPersistenceManager {
         String[] keyParts = encode(k);
         String escapedKey = String.join(EMPTY, keyParts);
 
-        String path = KVServer.ROOT_DB_PATH
+        String path = this.rootDbPath
                 + PATH_SEP + String.join(PATH_SEP, keyParts)
                 + PATH_SEP + escapedKey + FILE_EXT;
         return Paths.get(path);

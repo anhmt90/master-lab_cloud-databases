@@ -8,7 +8,7 @@ public class PersistenceManagerAdapter extends PersistentStorage {
   private PersistenceManager pm;
   public PersistenceManagerAdapter(String path) {
     super(path);
-    pm = new PersistenceManager();
+    pm = new PersistenceManager(path);
   }
 
   @Override

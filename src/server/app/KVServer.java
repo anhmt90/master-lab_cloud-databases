@@ -11,10 +11,6 @@ import java.nio.file.Paths;
 import static util.StringUtils.PATH_SEP;
 
 public class KVServer {
-    public static final String ROOT_DB_PATH = System.getProperty("user.dir") + PATH_SEP +"db";
-
-    PersistenceManager persistenceManager;
-
     /**
      * Start KV ServerManager at given port
      *
@@ -28,26 +24,6 @@ public class KVServer {
      */
     public KVServer(int port, int cacheSize, String strategy) {
 
-    }
-
-    @PostConstruct
-    public void init() {
-        persistenceManager = new PersistenceManager();
-        createDBDir(ROOT_DB_PATH);
-    }
-
-    public boolean createDBDir(String path) {
-        Path dbPath = Paths.get(path);
-        if (!Files.exists(dbPath)) {
-            try {
-                Files.createDirectories(dbPath);
-                System.out.println("New Directory Successfully Created !"); //TODO change to LOG
-                return true;
-            } catch (IOException ioe) {
-                System.out.println("Problem occured while creating 'db' directory = " + ioe.getMessage()); //TODO change to LOG
-            }
-        }
-        return false;
     }
 
 }
