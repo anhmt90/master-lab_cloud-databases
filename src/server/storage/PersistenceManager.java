@@ -5,6 +5,7 @@ import server.app.KVServer;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
+import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -21,7 +22,7 @@ public class PersistenceManager implements IPersistenceManager {
     @Override
     public OpStatus write(String key, String value) {
         Path file = getFilePath(key);
-        String fileContent = format(file.getFileName().toString(), value);
+        String fileContent = escape(value);
         try {
             Files.createDirectories(file.getParent());
             return createOrUpdate(file, fileContent);
@@ -40,20 +41,16 @@ public class PersistenceManager implements IPersistenceManager {
         return value.replace("\\", "\\\\");
     }
 
-    private Path getFilePath(String key) {
+    public Path getFilePath(String key) {
         String[] keyParts = encode(key);
         String escapedKey = String.join(EMPTY, keyParts);
 
         String path = KVServer.ROOT_DB_PATH
-                + PATH_SEP + String.valueOf(escapedKey.length())
                 + PATH_SEP + String.join(PATH_SEP, keyParts)
                 + PATH_SEP + escapedKey + FILE_EXT;
         return Paths.get(path);
     }
 
-    private String format(String key, String value) {
-        return key + "=" + value;
-    }
 
     private String[] encode(String key) {
         String[] subpaths = key.split(EMPTY);
@@ -85,9 +82,11 @@ public class PersistenceManager implements IPersistenceManager {
         if (isExisted(file)) {
             try {
                 List<String> lines = Files.readAllLines(file);
+                String ret = EMPTY;
                 for (String line : lines) {
-                    return line.split("=", 2)[1];
+                    ret += line;
                 }
+                return ret;
             } catch (IOException e) {
                 System.out.println(e);
                 e.printStackTrace();
