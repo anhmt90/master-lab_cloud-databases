@@ -1,8 +1,12 @@
 package server.app;
 
-import protocol.Message;
+import protocol.IMessage;
 
+/**
+ * CRUD interface
+ * Implement to comply with operations used in Key-Value store
+ */
 public interface ICrud {
-  Message get(String key);
-  Message put(String key, String value);
+  IMessage get(IMessage.K key);
+  IMessage put(IMessage msg);
 }

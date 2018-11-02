@@ -1,18 +1,18 @@
 package server.app;
 
-import protocol.Message;
+import protocol.IMessage;
 
 public class PersistentStorage implements ICrud {
   public PersistentStorage(String path) {
   }
 
   @Override
-  public Message get(String key) {
+  public IMessage get(IMessage.K key) {
     return null;
   }
 
   @Override
-  public Message put(String key, String value) {
+  public IMessage put(IMessage msg) {
     return null;
   }
 }

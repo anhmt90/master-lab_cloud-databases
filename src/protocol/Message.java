@@ -24,14 +24,19 @@ public class Message implements IMessage {
         this.value = value;
     }
 
-    @Override
-    public String getKey() {
-        return key.get();
+    public Message(K key, V value) {
+        this.key = key;
+        this.value = value;
     }
 
     @Override
-    public String getValue() {
-        return value.get();
+    public K getKey() {
+        return key;
+    }
+
+    @Override
+    public V getValue() {
+        return value;
     }
 
     @Override

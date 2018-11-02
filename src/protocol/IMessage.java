@@ -43,13 +43,13 @@ public interface IMessage {
      * @return the key that is associated with this message,
      * null if not key is associated.
      */
-    public String getKey();
+    public K getKey();
 
     /**
      * @return the value that is associated with this message,
      * null if not value is associated.
      */
-    public String getValue();
+    public V getValue();
 
     /**
      * @return a status string that is used to identify request types,
