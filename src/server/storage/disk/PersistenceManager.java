@@ -1,4 +1,4 @@
-package server.storage;
+package server.storage.disk;
 
 import protocol.IMessage;
 import server.app.KVServer;
@@ -44,7 +44,7 @@ public class PersistenceManager implements IPersistenceManager {
         return value.replace("\\", "\\\\");
     }
 
-    private Path getFilePath(IMessage.K k) {
+    public Path getFilePath(IMessage.K k) {
         String[] keyParts = encode(k);
         String escapedKey = String.join(EMPTY, keyParts);
 

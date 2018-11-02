@@ -1,4 +1,4 @@
-package server.app;
+package server.storage;
 
 import protocol.IMessage;
 

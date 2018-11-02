@@ -1,10 +1,10 @@
-package server.app.Cache;
+package server.storage.Cache;
 
 import protocol.IMessage;
 
 import java.util.LinkedHashSet;
 
-public class FIFO implements ICacheDisplacementStrategy {
+public class LRU implements ICacheDisplacementStrategy {
   private LinkedHashSet<IMessage.K> registry = new LinkedHashSet<>(1000);
 
   @Override
@@ -17,6 +17,7 @@ public class FIFO implements ICacheDisplacementStrategy {
 
   @Override
   public void register(IMessage.K key) {
+    registry.remove(key);
     registry.add(key);
   }
 }

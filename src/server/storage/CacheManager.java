@@ -1,11 +1,11 @@
-package server.app;
+package server.storage;
 
 import protocol.IMessage;
-import server.app.Cache.*;
+import server.storage.Cache.*;
 
 import java.util.Map;
 
-/** Manages available storage options by their capacities
+/** Manages available disk options by their capacities
  */
 public class CacheManager implements ICrud {
   private CacheStorage cache;
@@ -33,7 +33,7 @@ public class CacheManager implements ICrud {
     IMessage.V val = this.cache.get(key);
     if (val == null) {
       /*
-      If there is no key in cache, it can be found in persistent storage
+      If there is no key in storage, it can be found in persistent disk
       Synchronize to avoid overwriting new value incoming in the same time for this key
        */
       synchronized (this.cache) {
@@ -96,8 +96,8 @@ public class CacheManager implements ICrud {
     }
 
     /**
-     * Sets a displacement strategy for the cache to choose entries to move to the disk
-     * if the cache is full
+     * Sets a displacement strategy for the storage to choose entries to move to the disk
+     * if the storage is full
      * @param strategyType displacement strategy type
      * @return {@link Builder} for the {@link CacheManager}
      */

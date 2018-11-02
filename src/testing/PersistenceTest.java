@@ -2,25 +2,24 @@ package testing;
 
 import org.junit.Before;
 import org.junit.Test;
-import server.app.KVServer;
-import server.storage.IPersistenceManager;
-import server.storage.PersistenceManager;
+import protocol.IMessage;
+import server.storage.disk.PersistenceManager;
 
-import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.assertTrue;
-import server.storage.IPersistenceManager.OpStatus;
+import server.storage.disk.IPersistenceManager.OpStatus;
 
 public class PersistenceTest {
     PersistenceManager persistenceManager;
-    private final String key = "Some\"Key=09";
+    private final String k = "Some\"Key=09";
+    private final IMessage.K key = new IMessage.K(k.getBytes());
 //    private String value = "==Abc\n09$8";
-    private String value = "==Abc09$8";
+    private String v = "==Abc09$8";
+    private IMessage.V value = new IMessage.V(v.getBytes());
 
     @Before
     public void init() {
@@ -45,7 +44,9 @@ public class PersistenceTest {
 
     private void testUpdateFile() {
 //        String newValue = "New\"Key=10\r";
-        String newValue = "New\"Key=10";
+        String newV = "New\"Key=10";
+        IMessage.V newValue = new IMessage.V(newV.getBytes());
+
         OpStatus status =  persistenceManager.write(key, newValue);
         assertThat(status, is(OpStatus.WRITE_SUCCESS));
 
