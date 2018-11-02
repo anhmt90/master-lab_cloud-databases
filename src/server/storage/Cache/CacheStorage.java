@@ -1,7 +1,7 @@
 package server.storage.Cache;
 
 import protocol.IMessage;
-import server.app.ICrud;
+import server.storage.ICrud;
 
 import java.util.AbstractMap;
 import java.util.Map;
@@ -25,7 +25,7 @@ public class CacheStorage implements ICrud {
   public IMessage.V get(IMessage.K key) {
     IMessage.V val = this.storage.get(key);
     if (val != null) {
-      this.displacementStrategy.register(key);
+      this.displacementStrategy.get(key);
     }
 
     return val;
@@ -33,8 +33,12 @@ public class CacheStorage implements ICrud {
 
   @Override
   public IMessage.K put(IMessage.K key, IMessage.V val) {
+    /**
+     * remove key-value if a value equals null
+     */
     if (val == null) {
       this.storage.remove(key);
+      this.displacementStrategy.unregister(key);
       return key;
     }
 
@@ -43,6 +47,7 @@ public class CacheStorage implements ICrud {
     }
 
     this.storage.put(key, val);
+    this.displacementStrategy.put(key);
 
     return key;
   }

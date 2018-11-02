@@ -48,14 +48,17 @@ public class CacheManager implements ICrud {
 
   /**
    * Stores a key-value entry in the key-value store
-   * @param key A key-value entry
-   * @param val
+   * @param key key of a new entry
+   * @param val value of a new entry
    * @return A key-value entry stored
    */
   @Override
   public IMessage.K put(IMessage.K key, IMessage.V val) {
     synchronized (this.cache) {
-      if (this.cache.isFull()) {
+      /*
+        If an entry is not being removed from the cache, space in cache should be freed
+       */
+      if (this.cache.isFull() && val != null) {
         Map.Entry<IMessage.K, IMessage.V> evictedEntry = this.cache.evict();
         this.disk.put(evictedEntry.getKey(), evictedEntry.getValue());
       }

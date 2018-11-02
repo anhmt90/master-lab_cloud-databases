@@ -16,8 +16,24 @@ public class LRU implements ICacheDisplacementStrategy {
   }
 
   @Override
-  public void register(IMessage.K key) {
-    registry.remove(key);
-    registry.add(key);
+  public void register(IMessage.K k) {
+    registry.remove(k);
+    registry.add(k);
+  }
+
+  @Override
+  public void unregister(IMessage.K k) {
+    this.registry.remove(k);
+  }
+
+  @Override
+  public void put(IMessage.K k) {
+    registry.remove(k);
+    register(k);
+  }
+
+  @Override
+  public void get(IMessage.K k) {
+    register(k);
   }
 }

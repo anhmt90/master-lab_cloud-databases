@@ -10,7 +10,10 @@ public interface ICacheDisplacementStrategy {
 
   /**
    * Register a use (get, put) of a key-value entry in storage
-   * @param key
+   * @param k
    */
-  void register(IMessage.K key);
+  void register(IMessage.K k);
+  void unregister(IMessage.K k);
+  void put(IMessage.K k);
+  void get(IMessage.K k);
 }
