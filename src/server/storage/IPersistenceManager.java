@@ -1,5 +1,7 @@
 package server.storage;
 
+import protocol.IMessage;
+
 public interface IPersistenceManager {
 
     public enum OpStatus {
@@ -23,8 +25,8 @@ public interface IPersistenceManager {
 //    ConcurrentHashMap KVHashTable;
 
 
-    OpStatus write(String key, String value);
-    String read(String key);
-    OpStatus delete(String key);
+    OpStatus write(IMessage.K key, IMessage.V value);
+    String read(IMessage.K k);
+    OpStatus delete(IMessage.K key);
 
 }

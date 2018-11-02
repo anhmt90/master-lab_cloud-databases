@@ -7,6 +7,6 @@ import protocol.IMessage;
  * Implement to comply with operations used in Key-Value store
  */
 public interface ICrud {
-  IMessage get(IMessage.K key);
-  IMessage put(IMessage msg);
+  IMessage.V get(IMessage.K key);
+  IMessage.K put(IMessage.K key, IMessage.V val);
 }

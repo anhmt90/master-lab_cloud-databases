@@ -3,6 +3,8 @@ package server.app.Cache;
 import protocol.IMessage;
 import server.app.ICrud;
 
+import java.util.AbstractMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -11,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class CacheStorage implements ICrud {
   private int size;
   private ICacheDisplacementStrategy displacementStrategy;
-  private ConcurrentHashMap<IMessage.K, IMessage> storage;
+  private ConcurrentHashMap<IMessage.K, IMessage.V> storage;
 
   public CacheStorage(int size) {
     this.setSize(size);
@@ -20,45 +22,42 @@ public class CacheStorage implements ICrud {
   }
 
   @Override
-  public IMessage get(IMessage.K key) {
-    IMessage msg = this.storage.get(key);
-    if (msg != null) {
+  public IMessage.V get(IMessage.K key) {
+    IMessage.V val = this.storage.get(key);
+    if (val != null) {
       this.displacementStrategy.register(key);
     }
 
-    return msg;
+    return val;
   }
 
   @Override
-  public IMessage put(IMessage msg) {
-    IMessage.K k = msg.getKey();
-    IMessage.V v = msg.getValue();
-
-    if (v == null) {
-      this.storage.remove(k);
-      return msg;
+  public IMessage.K put(IMessage.K key, IMessage.V val) {
+    if (val == null) {
+      this.storage.remove(key);
+      return key;
     }
 
     if (this.isFull()) {
       return null;
     }
 
-    this.storage.put(k, msg);
+    this.storage.put(key, val);
 
-    return msg;
+    return key;
   }
 
   /**
    * Free a space in the cache
    * @return Key-Value entry evicted from cache
    */
-  public IMessage evict() {
+  public Map.Entry<IMessage.K, IMessage.V> evict() {
     IMessage.K k = this.displacementStrategy.evict();
-    IMessage msg = this.storage.get(k);
-    if (msg != null) {
+    IMessage.V v = this.storage.get(k);
+    if (v != null) {
       this.storage.remove(k);
     }
-    return msg;
+    return new AbstractMap.SimpleImmutableEntry<>(k, v);
   }
 
   public boolean isFull() {

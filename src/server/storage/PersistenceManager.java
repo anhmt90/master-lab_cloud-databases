@@ -1,5 +1,6 @@
 package server.storage;
 
+import protocol.IMessage;
 import server.app.KVServer;
 
 import java.io.IOException;
@@ -19,9 +20,9 @@ public class PersistenceManager implements IPersistenceManager {
     private static Pattern notAlphabetic = Pattern.compile(NOT_ALPHABETIC);
 
     @Override
-    public OpStatus write(String key, String value) {
+    public OpStatus write(IMessage.K key, IMessage.V value) {
         Path file = getFilePath(key);
-        String fileContent = format(file.getFileName().toString(), value);
+        String fileContent = format(file.getFileName().toString(), value.get());
         try {
             Files.createDirectories(file.getParent());
             return createOrUpdate(file, fileContent);
@@ -40,8 +41,8 @@ public class PersistenceManager implements IPersistenceManager {
         return value.replace("\\", "\\\\");
     }
 
-    private Path getFilePath(String key) {
-        String[] keyParts = encode(key);
+    private Path getFilePath(IMessage.K k) {
+        String[] keyParts = encode(k);
         String escapedKey = String.join(EMPTY, keyParts);
 
         String path = KVServer.ROOT_DB_PATH
@@ -51,11 +52,12 @@ public class PersistenceManager implements IPersistenceManager {
         return Paths.get(path);
     }
 
-    private String format(String key, String value) {
-        return key + "=" + value;
+    private String format(String keyStr, String valStr) {
+        return keyStr + "=" + valStr;
     }
 
-    private String[] encode(String key) {
+    private String[] encode(IMessage.K k) {
+        String key = k.get();
         String[] subpaths = key.split(EMPTY);
         if (notAlphanumeric.matcher(key).find())
             for (int i = 0; i < subpaths.length; i++) {
@@ -80,8 +82,8 @@ public class PersistenceManager implements IPersistenceManager {
 
 
     @Override
-    public String read(String key) {
-        Path file = getFilePath(key);
+    public String read(IMessage.K k) {
+        Path file = getFilePath(k);
         if (isExisted(file)) {
             try {
                 List<String> lines = Files.readAllLines(file);
@@ -97,7 +99,7 @@ public class PersistenceManager implements IPersistenceManager {
     }
 
     @Override
-    public OpStatus delete(String key) {
+    public OpStatus delete(IMessage.K key) {
         Path file = getFilePath(key);
         if(!Files.isDirectory(file)) {
             try {

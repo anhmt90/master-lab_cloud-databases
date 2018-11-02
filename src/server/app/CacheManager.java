@@ -3,6 +3,8 @@ package server.app;
 import protocol.IMessage;
 import server.app.Cache.*;
 
+import java.util.Map;
+
 /** Manages available storage options by their capacities
  */
 public class CacheManager implements ICrud {
@@ -27,38 +29,39 @@ public class CacheManager implements ICrud {
    * @return Key-value entry as a message
    */
   @Override
-  public IMessage get(IMessage.K key) {
-    IMessage msg = this.cache.get(key);
-    if (msg == null) {
+  public IMessage.V get(IMessage.K key) {
+    IMessage.V val = this.cache.get(key);
+    if (val == null) {
       /*
       If there is no key in cache, it can be found in persistent storage
       Synchronize to avoid overwriting new value incoming in the same time for this key
        */
       synchronized (this.cache) {
-        msg = this.disk.get(key);
-        if (msg != null) {
-          this.put(msg);
+        val = this.disk.get(key);
+        if (val != null) {
+          this.put(key, val);
         }
       }
     }
-    return msg;
+    return val;
   }
 
   /**
    * Stores a key-value entry in the key-value store
-   * @param msg A key-value entry
+   * @param key A key-value entry
+   * @param val
    * @return A key-value entry stored
    */
   @Override
-  public IMessage put(IMessage msg) {
+  public IMessage.K put(IMessage.K key, IMessage.V val) {
     synchronized (this.cache) {
       if (this.cache.isFull()) {
-        IMessage evictedMsg = this.cache.evict();
-        this.disk.put(evictedMsg);
+        Map.Entry<IMessage.K, IMessage.V> evictedEntry = this.cache.evict();
+        this.disk.put(evictedEntry.getKey(), evictedEntry.getValue());
       }
-      this.cache.put(msg);
+      this.cache.put(key, val);
     }
-    return msg;
+    return key;
   }
 
   /**

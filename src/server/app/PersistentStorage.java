@@ -7,12 +7,12 @@ public class PersistentStorage implements ICrud {
   }
 
   @Override
-  public IMessage get(IMessage.K key) {
+  public IMessage.V get(IMessage.K key) {
     return null;
   }
 
   @Override
-  public IMessage put(IMessage msg) {
+  public IMessage.K put(IMessage.K key, IMessage.V val) {
     return null;
   }
 }
