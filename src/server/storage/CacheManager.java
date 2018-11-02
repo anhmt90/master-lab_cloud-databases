@@ -91,7 +91,7 @@ public class CacheManager implements ICrud {
     }
 
     public Builder setDiskStoragePath(String path) {
-      this.disk = new PersistentStorage(path);
+      this.disk = new PersistenceManagerAdapter(path);
       return this;
     }
 
