@@ -13,3 +13,4 @@ data
 *.dat
 /.metadata/
 /*.jar
+db/

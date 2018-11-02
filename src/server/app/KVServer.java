@@ -3,14 +3,15 @@ package server.app;
 import server.storage.PersistenceManager;
 
 import javax.annotation.PostConstruct;
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import static util.StringUtils.PATH_SEP;
+
 public class KVServer {
-    public static final String DB_PATH = System.getProperty("user.dir") + File.pathSeparator +"db";
+    public static final String ROOT_DB_PATH = System.getProperty("user.dir") + PATH_SEP +"db";
 
     PersistenceManager persistenceManager;
 
@@ -32,7 +33,7 @@ public class KVServer {
     @PostConstruct
     public void init() {
         persistenceManager = new PersistenceManager();
-        createDBDir(DB_PATH);
+        createDBDir(ROOT_DB_PATH);
     }
 
     public boolean createDBDir(String path) {
