@@ -1,14 +1,14 @@
 package server.storage;
 
 import protocol.IMessage;
-import server.storage.disk.IPersistenceManager;
-import server.storage.disk.PersistenceManager;
+import server.storage.disk.IPersistentStorage;
+import server.storage.disk.PersistentStorage;
 
-public class PersistenceManagerAdapter extends PersistentStorage {
-  private PersistenceManager pm;
+public class PersistenceManagerAdapter extends server.storage.PersistentStorage {
+  private PersistentStorage pm;
   public PersistenceManagerAdapter(String path) {
     super(path);
-    pm = new PersistenceManager(path);
+    pm = new PersistentStorage(path);
   }
 
   @Override
@@ -27,7 +27,7 @@ public class PersistenceManagerAdapter extends PersistentStorage {
 
   @Override
   public IMessage.K put(IMessage.K key, IMessage.V val) {
-    IPersistenceManager.OpStatus opStatus;
+    IPersistentStorage.OpStatus opStatus;
 
     if (val == null) {
       opStatus = pm.delete(key);

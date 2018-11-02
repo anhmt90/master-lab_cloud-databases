@@ -3,7 +3,7 @@ package testing;
 import org.junit.Before;
 import org.junit.Test;
 import protocol.IMessage;
-import server.storage.disk.PersistenceManager;
+import server.storage.disk.PersistentStorage;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -11,10 +11,10 @@ import java.nio.file.Path;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.assertTrue;
-import server.storage.disk.IPersistenceManager.OpStatus;
+import server.storage.disk.IPersistentStorage.OpStatus;
 
 public class PersistenceTest {
-    PersistenceManager persistenceManager;
+    PersistentStorage persistenceManager;
     private final String k = "Some\"Key=09";
     private final IMessage.K key = new IMessage.K(k.getBytes());
 //    private String value = "==Abc\n09$8";
@@ -23,7 +23,7 @@ public class PersistenceTest {
 
     @Before
     public void init() {
-        persistenceManager = new PersistenceManager();
+        persistenceManager = new PersistentStorage();
     }
 
     @Test

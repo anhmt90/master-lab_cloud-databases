@@ -1,7 +1,6 @@
 package server.storage.disk;
 
 import protocol.IMessage;
-import server.app.KVServer;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -14,7 +13,7 @@ import java.util.regex.Pattern;
 
 import static util.StringUtils.PATH_SEP;
 
-public class PersistenceManager implements IPersistenceManager {
+public class PersistentStorage implements IPersistentStorage {
     private static final String NOT_ALPHANUMERIC = "[^A-Za-z0-9]";
     private static final String NOT_ALPHABETIC = "[^A-Za-z]";
     private static final String EMPTY = "";
@@ -23,7 +22,7 @@ public class PersistenceManager implements IPersistenceManager {
     private static Pattern notAlphabetic = Pattern.compile(NOT_ALPHABETIC);
     private final String rootDbPath;
 
-    public PersistenceManager(String path) {
+    public PersistentStorage(String path) {
         createDBDir(path);
         this.rootDbPath = path;
     }

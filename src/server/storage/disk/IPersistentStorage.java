@@ -2,7 +2,7 @@ package server.storage.disk;
 
 import protocol.IMessage;
 
-public interface IPersistenceManager {
+public interface IPersistentStorage {
 
     public enum OpStatus {
         WRITE_SUCCESS("File successfully created/updated"),
