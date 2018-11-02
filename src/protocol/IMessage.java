@@ -16,25 +16,25 @@ public interface IMessage {
     }
 
     class K {
-        String key;
+        byte[] key;
 
-        public K(String key) {
+        public K(byte[] key) {
             this.key = key;
         }
 
-        public String get() {
+        public byte[] get() {
             return key;
         }
     }
 
     class V {
-        String value;
+        byte[] value;
 
-        public V(String value) {
+        public V(byte[] value) {
             this.value = value;
         }
 
-        public String get()  {
+        public byte[] get()  {
             return value;
         }
     }

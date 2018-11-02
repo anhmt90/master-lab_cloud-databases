@@ -5,7 +5,10 @@ import server.app.KVServer;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.*;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -22,7 +25,7 @@ public class PersistenceManager implements IPersistenceManager {
     @Override
     public OpStatus write(IMessage.K key, IMessage.V value) {
         Path file = getFilePath(key);
-        String fileContent = format(file.getFileName().toString(), value.get());
+        String fileContent = escape(value.toString());
         try {
             Files.createDirectories(file.getParent());
             return createOrUpdate(file, fileContent);
@@ -46,18 +49,13 @@ public class PersistenceManager implements IPersistenceManager {
         String escapedKey = String.join(EMPTY, keyParts);
 
         String path = KVServer.ROOT_DB_PATH
-                + PATH_SEP + String.valueOf(escapedKey.length())
                 + PATH_SEP + String.join(PATH_SEP, keyParts)
                 + PATH_SEP + escapedKey + FILE_EXT;
         return Paths.get(path);
     }
 
-    private String format(String keyStr, String valStr) {
-        return keyStr + "=" + valStr;
-    }
-
     private String[] encode(IMessage.K k) {
-        String key = k.get();
+        String key = k.toString();
         String[] subpaths = key.split(EMPTY);
         if (notAlphanumeric.matcher(key).find())
             for (int i = 0; i < subpaths.length; i++) {
@@ -87,9 +85,11 @@ public class PersistenceManager implements IPersistenceManager {
         if (isExisted(file)) {
             try {
                 List<String> lines = Files.readAllLines(file);
+                String ret = EMPTY;
                 for (String line : lines) {
-                    return line.split("=", 2)[1];
+                    ret += line;
                 }
+                return ret;
             } catch (IOException e) {
                 System.out.println(e);
                 e.printStackTrace();
