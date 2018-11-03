@@ -1,6 +1,8 @@
 package server.storage;
 
 import protocol.IMessage;
+import protocol.K;
+import protocol.V;
 import server.storage.Cache.*;
 import static util.StringUtils.PATH_SEP;
 
@@ -30,8 +32,8 @@ public class CacheManager implements ICrud {
    * @return Key-value entry as a message
    */
   @Override
-  public IMessage.V get(IMessage.K key) {
-    IMessage.V val = this.cache.get(key);
+  public V get(K key) {
+    V val = this.cache.get(key);
     if (val == null) {
       /*
       If there is no key in storage, it can be found in persistent disk
@@ -54,13 +56,13 @@ public class CacheManager implements ICrud {
    * @return A key-value entry stored
    */
   @Override
-  public IMessage.K put(IMessage.K key, IMessage.V val) {
+  public K put(K key, V val) {
     synchronized (this.cache) {
       /*
         If an entry is not being removed from the cache, space in cache should be freed
        */
       if (this.cache.isFull() && val != null) {
-        Map.Entry<IMessage.K, IMessage.V> evictedEntry = this.cache.evict();
+        Map.Entry<K, V> evictedEntry = this.cache.evict();
         this.disk.put(evictedEntry.getKey(), evictedEntry.getValue());
       }
       this.cache.put(key, val);
