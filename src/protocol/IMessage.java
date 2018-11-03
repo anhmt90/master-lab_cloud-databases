@@ -1,5 +1,7 @@
 package protocol;
 
+import java.util.Arrays;
+
 public interface IMessage {
 
     enum Status {
@@ -28,6 +30,20 @@ public interface IMessage {
         public static Status getByCode(byte code){
             final Status[] all = Status.values();
             return all[code - all[0].getCode()];
+        }
+
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            K k = (K) o;
+            return Arrays.equals(key, k.key);
+        }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(key);
         }
     }
 
