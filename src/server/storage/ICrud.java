@@ -1,12 +1,13 @@
 package server.storage;
 
-import protocol.IMessage;
+import protocol.K;
+import protocol.V;
 
 /**
  * CRUD interface
  * Implement to comply with operations used in Key-Value store
  */
 public interface ICrud {
-  IMessage.V get(IMessage.K key);
-  IMessage.K put(IMessage.K key, IMessage.V val);
+  V get(K key);
+  K put(K key, V val);
 }

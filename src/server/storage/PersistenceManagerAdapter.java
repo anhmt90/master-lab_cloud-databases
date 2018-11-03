@@ -1,6 +1,8 @@
 package server.storage;
 
 import protocol.IMessage;
+import protocol.K;
+import protocol.V;
 import server.storage.disk.IPersistentStorage;
 import server.storage.disk.PersistentStorage;
 
@@ -12,7 +14,7 @@ public class PersistenceManagerAdapter extends server.storage.PersistentStorage 
   }
 
   @Override
-  public IMessage.V get(IMessage.K key) {
+  public V get(K key) {
     /* TODO: why is it returning String instead of OpResult compared to other operations?
     TODO: will it actually always return null if there is no key in disk storage?
      */
@@ -22,11 +24,11 @@ public class PersistenceManagerAdapter extends server.storage.PersistentStorage 
       return null;
     }
 
-    return new IMessage.V(readResult.getBytes());
+    return new V(readResult.getBytes());
   }
 
   @Override
-  public IMessage.K put(IMessage.K key, IMessage.V val) {
+  public K put(K key, V val) {
     IPersistentStorage.OpStatus opStatus;
 
     if (val == null) {

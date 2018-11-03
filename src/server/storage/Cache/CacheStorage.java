@@ -1,6 +1,8 @@
 package server.storage.Cache;
 
 import protocol.IMessage;
+import protocol.K;
+import protocol.V;
 import server.storage.ICrud;
 
 import java.util.AbstractMap;
@@ -13,7 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class CacheStorage implements ICrud {
   private int size;
   private ICacheDisplacementStrategy displacementStrategy;
-  private ConcurrentHashMap<IMessage.K, IMessage.V> storage;
+  private ConcurrentHashMap<K, V> storage;
 
   public CacheStorage(int size) {
     this.setSize(size);
@@ -22,8 +24,8 @@ public class CacheStorage implements ICrud {
   }
 
   @Override
-  public IMessage.V get(IMessage.K key) {
-    IMessage.V val = this.storage.get(key);
+  public V get(K key) {
+    V val = this.storage.get(key);
     if (val != null) {
       this.displacementStrategy.get(key);
     }
@@ -32,7 +34,7 @@ public class CacheStorage implements ICrud {
   }
 
   @Override
-  public IMessage.K put(IMessage.K key, IMessage.V val) {
+  public K put(K key, V val) {
     /**
      * remove key-value if a value equals null
      */
@@ -56,9 +58,9 @@ public class CacheStorage implements ICrud {
    * Free a space in the storage
    * @return Key-Value entry evicted from storage
    */
-  public Map.Entry<IMessage.K, IMessage.V> evict() {
-    IMessage.K k = this.displacementStrategy.evict();
-    IMessage.V v = this.storage.get(k);
+  public Map.Entry<K, V> evict() {
+    K k = this.displacementStrategy.evict();
+    V v = this.storage.get(k);
     if (v != null) {
       this.storage.remove(k);
     }

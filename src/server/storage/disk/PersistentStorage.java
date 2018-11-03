@@ -1,6 +1,8 @@
 package server.storage.disk;
 
 import protocol.IMessage;
+import protocol.K;
+import protocol.V;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -42,7 +44,7 @@ public class PersistentStorage implements IPersistentStorage {
     }
     
     @Override
-    public OpStatus write(IMessage.K key, IMessage.V value) {
+    public OpStatus write(K key, V value) {
         Path file = getFilePath(key);
         String fileContent = escape(value.toString());
         try {
@@ -63,7 +65,7 @@ public class PersistentStorage implements IPersistentStorage {
         return value.replace("\\", "\\\\");
     }
 
-    public Path getFilePath(IMessage.K k) {
+    public Path getFilePath(K k) {
         String[] keyParts = encode(k);
         String escapedKey = String.join(EMPTY, keyParts);
 
@@ -73,7 +75,7 @@ public class PersistentStorage implements IPersistentStorage {
         return Paths.get(path);
     }
 
-    private String[] encode(IMessage.K k) {
+    private String[] encode(K k) {
         String key = k.toString();
         String[] subpaths = key.split(EMPTY);
         if (notAlphanumeric.matcher(key).find())
@@ -99,7 +101,7 @@ public class PersistentStorage implements IPersistentStorage {
 
 
     @Override
-    public String read(IMessage.K k) {
+    public String read(K k) {
         Path file = getFilePath(k);
         if (isExisted(file)) {
             try {
@@ -118,7 +120,7 @@ public class PersistentStorage implements IPersistentStorage {
     }
 
     @Override
-    public OpStatus delete(IMessage.K key) {
+    public OpStatus delete(K key) {
         Path file = getFilePath(key);
         if(!Files.isDirectory(file)) {
             try {

@@ -3,41 +3,36 @@ package protocol;
 public interface IMessage {
 
     enum Status {
-        GET, 			/* Get - request */
-        GET_ERROR, 		/* requested tuple (i.e. value) not found */
-        GET_SUCCESS, 	/* requested tuple (i.e. value) found */
-        PUT, 			/* Put - request */
-        PUT_SUCCESS, 	/* Put - request successful, tuple inserted */
-        PUT_UPDATE, 	/* Put - request successful, i.e. value updated */
-        PUT_ERROR, 		/* Put - request not successful */
-        DELETE, 		/* Delete - request */
-        DELETE_SUCCESS, /* Delete - request successful */
-        DELETE_ERROR 	/* Delete - request successful */
-    }
+        GET(0x30),            /* Get - request */
+        GET_ERROR(0x31),        /* requested tuple (i.e. value) not found */
+        GET_SUCCESS(0x32),    /* requested tuple (i.e. value) found */
+        PUT(0x33),            /* Put - request */
+        PUT_SUCCESS(0x34),    /* Put - request successful, tuple inserted */
+        PUT_UPDATE(0x35),    /* Put - request successful, i.e. value updated */
+        PUT_ERROR(0x36),        /* Put - request not successful */
+        DELETE(0x37),        /* Delete - request */
+        DELETE_SUCCESS(0x38), /* Delete - request successful */
+        DELETE_ERROR(0x39)    /* Delete - request successful */;
 
-    class K {
-        byte[] key;
+        byte code;
 
-        public K(byte[] key) {
-            this.key = key;
+
+        Status(int code) {
+            this.code = (byte) code;
         }
 
-        public byte[] get() {
-            return key;
-        }
-    }
-
-    class V {
-        byte[] value;
-
-        public V(byte[] value) {
-            this.value = value;
+        public byte getCode() {
+            return this.code;
         }
 
-        public byte[] get()  {
-            return value;
+        public static Status getByCode(byte code){
+            final Status[] all = Status.values();
+            return all[code - all[0].getCode()];
         }
     }
+
+
+
 
     /**
      * @return the key that is associated with this message,

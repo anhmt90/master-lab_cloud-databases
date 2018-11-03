@@ -1,6 +1,7 @@
 package server.storage.disk;
 
-import protocol.IMessage;
+import protocol.K;
+import protocol.V;
 
 public interface IPersistentStorage {
 
@@ -25,8 +26,8 @@ public interface IPersistentStorage {
 //    ConcurrentHashMap KVHashTable;
 
 
-    OpStatus write(IMessage.K key, IMessage.V value);
-    String read(IMessage.K k);
-    OpStatus delete(IMessage.K key);
+    OpStatus write(K key, V value);
+    String read(K k);
+    OpStatus delete(K key);
 
 }

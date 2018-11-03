@@ -1,5 +1,7 @@
 package server.api;
 
+import util.StringUtils;
+
 import java.io.Serializable;
 
 /**
@@ -33,7 +35,7 @@ public class TextMessage implements Serializable {
      */
     public TextMessage(String msg) {
         this.msg = msg;
-        this.msgBytes = toByteArray(msg);
+        this.msgBytes = StringUtils.toByteArray(msg);
     }
 
 
@@ -42,7 +44,7 @@ public class TextMessage implements Serializable {
      *
      * @return the content of this message in String format.
      */
-    public String getMsg() {
+    public String getMessage() {
         return msg;
     }
 
@@ -52,7 +54,7 @@ public class TextMessage implements Serializable {
      * @return the content of this message as an array of bytes
      * 		in ASCII coding.
      */
-    public byte[] getMsgBytes() {
+    public byte[] getMessageBytes() {
         return msgBytes;
     }
 
@@ -66,7 +68,7 @@ public class TextMessage implements Serializable {
         return tmp;
     }
 
-    private byte[] toByteArray(String s){
+/*    private byte[] toByteArray(String s){
         byte[] bytes = s.getBytes();
         byte[] ctrBytes = new byte[]{LINE_FEED, RETURN};
         byte[] tmp = new byte[bytes.length + ctrBytes.length];
@@ -75,6 +77,6 @@ public class TextMessage implements Serializable {
         System.arraycopy(ctrBytes, 0, tmp, bytes.length, ctrBytes.length);
 
         return tmp;
-    }
+    }*/
 
 }

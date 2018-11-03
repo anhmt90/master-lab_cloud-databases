@@ -39,15 +39,12 @@ public class ServerManager extends Thread {
      * Loops until the the server should be closed.
      */
     public void run() {
-
         running = initializeServer();
-
         if(serverSocket != null) {
             while(isRunning()){
                 try {
                     Socket client = serverSocket.accept();
-                    ClientConnection connection =
-                            new ClientConnection(client);
+                    ClientConnection connection = new ClientConnection(client);
                     new Thread(connection).start();
 
                     logger.info("Connected to "
@@ -86,7 +83,6 @@ public class ServerManager extends Thread {
             logger.info("Server listening on port: "
                     + serverSocket.getLocalPort());
             return true;
-
         } catch (IOException e) {
             logger.error("Error! Cannot open server socket:");
             if(e instanceof BindException){

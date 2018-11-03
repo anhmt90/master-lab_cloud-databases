@@ -1,13 +1,13 @@
 package server.storage.Cache;
 
-import protocol.IMessage;
+import protocol.K;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
 public class LFU implements ICacheDisplacementStrategy {
-  private HashMap<IMessage.K, Counter> registry = new HashMap<>(1000);
+  private HashMap<K, Counter> registry = new HashMap<>(1000);
 
   private class Counter implements Comparable<Counter> {
     private int value = 1;
@@ -25,8 +25,8 @@ public class LFU implements ICacheDisplacementStrategy {
   }
 
   @Override
-  public IMessage.K evict() {
-    Optional<Map.Entry<IMessage.K, Counter>> min = registry.entrySet()
+  public K evict() {
+    Optional<Map.Entry<K, Counter>> min = registry.entrySet()
         .stream()
         .min(Map.Entry.comparingByValue());
 
@@ -37,7 +37,7 @@ public class LFU implements ICacheDisplacementStrategy {
   }
 
   @Override
-  public void register(IMessage.K k) {
+  public void register(K k) {
     Counter c = registry.get(k);
 
     if (c == null) {
@@ -48,17 +48,17 @@ public class LFU implements ICacheDisplacementStrategy {
   }
 
   @Override
-  public void unregister(IMessage.K k) {
+  public void unregister(K k) {
     this.registry.remove(k);
   }
 
   @Override
-  public void put(IMessage.K k) {
+  public void put(K k) {
     register(k);
   }
 
   @Override
-  public void get(IMessage.K k) {
+  public void get(K k) {
     register(k);
   }
 }
