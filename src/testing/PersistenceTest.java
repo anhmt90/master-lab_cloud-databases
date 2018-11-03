@@ -11,9 +11,12 @@ import java.nio.file.Path;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.assertTrue;
+import static util.StringUtils.PATH_SEP;
+
 import server.storage.disk.IPersistentStorage.OpStatus;
 
 public class PersistenceTest {
+    String dbPath = System.getProperty("user.dir") + PATH_SEP + "test" + PATH_SEP +"db";
     PersistentStorage persistenceManager;
     private final String k = "Some\"Key=09";
     private final IMessage.K key = new IMessage.K(k.getBytes());
@@ -23,7 +26,7 @@ public class PersistenceTest {
 
     @Before
     public void init() {
-        persistenceManager = new PersistentStorage();
+        persistenceManager = new PersistentStorage(dbPath);
     }
 
     @Test
