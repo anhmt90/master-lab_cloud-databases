@@ -1,5 +1,6 @@
 package client.api;
 
+import java.io.IOException;
 import java.net.SocketTimeoutException;
 
 import protocol.IMessage;
@@ -7,12 +8,10 @@ import protocol.IMessage;
 public interface IClient {
 
 	/**
-     * Creates a new client and opens a client socket to immediately connect to the server identified by the parameters
-     *
-     * @param address The address of the server to connect to
-     * @param port    The port number that server is listening to
+     * Creates a new client and opens a client socket to immediately connect to the server identified by the fields
+     * address and port of Client
      */
-    void connect(String address, int port);
+    void connect() throws IOException;
 
     /**
      * Disconnects the connection to the server by closing the socket
@@ -24,7 +23,7 @@ public interface IClient {
      *
      * @param data The data to be sent to the connected server
      */
-    void send(byte[] data);
+    void send(byte[] data) throws IOException;
 
     /**
      * Receives data sent from the connected server
@@ -49,7 +48,7 @@ public interface IClient {
     boolean isConnected();
 
     /**
-     * Inserts a key-value pair into the ServerManager.
+     * Inserts a key-value pair into the StorageServer.
      *
      * @param key   the key that identifies the given value.
      * @param value the value that is indexed by the given key. if value is null
@@ -57,13 +56,13 @@ public interface IClient {
      * @return a server response that confirms the insertion of the tuple, an insertion error, 
      * 		   the deletion of the value on the server or a deletion error.
      */
-    public IMessage put(String key, String value);
+    public IMessage put(String key, String value) throws IOException;
 
     /**
-     * Retrieves the value for a given key from the ServerManager.
+     * Retrieves the value for a given key from the StorageServer.
      *
      * @param key the key that identifies the value.
      * @return a server response, containing the value for the indexed key or an error.
      */
-    public IMessage get(String key);
+    public IMessage get(String key) throws IOException;
 }

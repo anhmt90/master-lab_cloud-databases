@@ -1,6 +1,9 @@
 package protocol;
 
-public class V {
+import java.io.Serializable;
+import java.util.Arrays;
+
+public class V implements Serializable {
     byte[] value;
 
     public V(byte[] value) {
@@ -9,5 +12,10 @@ public class V {
 
     public byte[] get() {
         return value;
+    }
+
+    @Override
+    public String toString() {
+        return Arrays.toString(value);
     }
 }

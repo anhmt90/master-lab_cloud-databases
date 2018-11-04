@@ -1,31 +1,41 @@
 package testing;
 
 import client.api.Client;
+import junit.framework.TestCase;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 import protocol.IMessage;
 import protocol.IMessage.Status;
-import junit.framework.TestCase;
-import org.junit.Test;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 
 public class InteractionTest extends TestCase {
 
     private Client kvClient;
 
+    @Before
     public void setUp() {
         kvClient = new Client("localhost", 50000);
         try {
             kvClient.connect();
+            byte[] bytes = kvClient.receive();
+            String welcomeMessage = new String(bytes, StandardCharsets.US_ASCII).trim();
+            System.out.println(welcomeMessage);
         } catch (Exception e) {
         }
     }
 
+    @After
     public void tearDown() {
         kvClient.disconnect();
     }
 
 
     @Test
-    public void testPut() {
+    public void testPut() throws IOException {
         String key = "foo";
         String value = "bar";
         IMessage response = null;
@@ -35,6 +45,7 @@ public class InteractionTest extends TestCase {
             response = kvClient.put(key, value);
         } catch (Exception e) {
             ex = e;
+            throw e;
         }
 
         assertTrue(ex == null && response.getStatus() == Status.PUT_SUCCESS);

@@ -1,8 +1,9 @@
 package protocol;
 
+import java.io.Serializable;
 import java.util.Arrays;
 
-public interface IMessage {
+public interface IMessage extends Serializable {
 
     enum Status {
         GET(0x30),            /* Get - request */
@@ -29,7 +30,10 @@ public interface IMessage {
 
         public static Status getByCode(byte code){
             final Status[] all = Status.values();
-            return all[code - all[0].getCode()];
+            int i = code - all[0].getCode();
+            if (i < 0 || i > all.length - 1 )
+                return null;
+            return all[i];
         }
 
 

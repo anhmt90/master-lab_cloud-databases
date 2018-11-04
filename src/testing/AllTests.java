@@ -1,16 +1,16 @@
 package testing;
 
-import server.app.KVServer;
-import server.app.ServerManager;
 import junit.framework.Test;
 import junit.framework.TestSuite;
+import server.app.StorageServer;
+import server.storage.Cache.CacheDisplacementType;
 
 
 public class AllTests {
 
     static {
         try {
-            new KVServer(50000, 10, "FIFO");
+            new StorageServer(50000, 10, CacheDisplacementType.FIFO);
         } catch (Exception e) {
             e.printStackTrace();
         }

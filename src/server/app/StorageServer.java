@@ -1,20 +1,19 @@
 package server.app;
 
-import java.net.BindException;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.io.IOException;
-
-
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import server.api.ClientConnection;
+import server.storage.Cache.CacheDisplacementType;
+
+import java.io.IOException;
+import java.net.BindException;
+import java.net.ServerSocket;
+import java.net.Socket;
 
 /**
  * Represents a simple Echo Server implementation.
  */
-public class ServerManager extends Thread {
+public class StorageServer extends Thread {
 
     private static Logger logger = LogManager.getLogger(ClientConnection.class);
 
@@ -23,16 +22,21 @@ public class ServerManager extends Thread {
     private boolean running;
 
     /**
-     * Constructs a (Echo-) Server object which listens to connection attempts
-     * at the given port.
+     * Start KV StorageServer at given port
      *
-     * @param port a port number which the Server is listening to in order to
-     * 		establish a socket connection to a client. The port number should
-     * 		reside in the range of dynamic ports, i.e 49152 – 65535.
+     * @param port      given port for disk server to operate
+     * @param cacheSize specifies how many key-value pairs the server is allowed
+     *                  to keep in-memory
+     * @param strategy  specifies the storage replacement strategy in case the storage
+     *                  is full and there is a GET- or PUT-request on a key that is
+     *                  currently not contained in the storage. Options are "FIFO", "LRU",
+     *                  and "LFU".
      */
-    public ServerManager(int port){
+    public StorageServer(int port, int cacheSize, CacheDisplacementType strategy) {
         this.port = port;
+        System.out.println("Server started on port " + this.port + " with cache size " + cacheSize + " and cache strategy " + strategy.name());
     }
+
 
     /**
      * Initializes and starts the server.
@@ -40,8 +44,8 @@ public class ServerManager extends Thread {
      */
     public void run() {
         running = initializeServer();
-        if(serverSocket != null) {
-            while(isRunning()){
+        if (serverSocket != null) {
+            while (isRunning()) {
                 try {
                     Socket client = serverSocket.accept();
                     ClientConnection connection = new ClientConnection(client);
@@ -49,7 +53,7 @@ public class ServerManager extends Thread {
 
                     logger.info("Connected to "
                             + client.getInetAddress().getHostName()
-                            +  " on port " + client.getPort());
+                            + " on port " + client.getPort());
                 } catch (IOException e) {
                     logger.error("Error! " +
                             "Unable to establish connection. \n", e);
@@ -66,7 +70,7 @@ public class ServerManager extends Thread {
     /**
      * Stops the server insofar that it won't listen at the given port any more.
      */
-    public void stopServer(){
+    public void stopServer() {
         running = false;
         try {
             serverSocket.close();
@@ -85,7 +89,7 @@ public class ServerManager extends Thread {
             return true;
         } catch (IOException e) {
             logger.error("Error! Cannot open server socket:");
-            if(e instanceof BindException){
+            if (e instanceof BindException) {
                 logger.error("Port " + port + " is already bound!");
             }
             return false;
@@ -94,6 +98,7 @@ public class ServerManager extends Thread {
 
     /**
      * Main entry point for the echo server application.
+     *
      * @param args contains the port number at args[0].
      */
     public static void main(String[] args) {
@@ -101,12 +106,12 @@ public class ServerManager extends Thread {
             /*TODO adapt logging with LogSetup
             new LogSetup("logs/server.log", Level.ALL);*/
 
-            if(args.length != 1) {
+            if (args.length != 1) {
                 System.out.println("Error! Invalid number of arguments!");
                 System.out.println("Usage: Server <port>!");
             } else {
                 int port = Integer.parseInt(args[0]);
-                new ServerManager(port).start();
+                new StorageServer(port, 100, CacheDisplacementType.FIFO).start();
             }
         }
         /* TODO adapt logging with LogSetup
@@ -114,8 +119,7 @@ public class ServerManager extends Thread {
             System.out.println("Error! Unable to initialize logger!");
             e.printStackTrace();
             System.exit(1);
-        } */
-        catch (NumberFormatException nfe) {
+        } */ catch (NumberFormatException nfe) {
             System.out.println("Error! Invalid argument <port>! Not a number!");
             System.out.println("Usage: Server <port>!");
             System.exit(1);

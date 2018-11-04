@@ -5,8 +5,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class AdditionalTest extends TestCase {
-    // TODO add your test cases, at least 3
-
+    /**
+     * These 'TO-DO' tests resides in separate classes inside package 'testing'
+     */
     @Test
     public void testStub() {
         assertTrue(true);

@@ -4,6 +4,8 @@ public class StringUtils {
     public static final String PATH_SEP = "/";
     private static final char LINE_FEED = 0x0A;
     private static final char RETURN = 0x0D;
+    private static final String EMPTY_STRING = "";
+
 
     public static byte[] toByteArray(String s){
         byte[] bytes = s.getBytes();
@@ -14,5 +16,9 @@ public class StringUtils {
         System.arraycopy(ctrBytes, 0, tmp, bytes.length, ctrBytes.length);
 
         return tmp;
+    }
+
+    public static boolean isEmpty (String s){
+        return s == null || s.equals(EMPTY_STRING);
     }
 }

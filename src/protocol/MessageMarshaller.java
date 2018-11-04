@@ -7,42 +7,52 @@ import java.io.ObjectInput;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
+import java.nio.ByteBuffer;
 
 import protocol.IMessage;
+import util.Validate;
 
 public class MessageMarshaller {
 
-	public static byte[] marshall(IMessage message) {
-		if (message == null) {
-			return null;
-		}
-		ByteArrayOutputStream bos = new ByteArrayOutputStream();
-		ObjectOutput out = null;
-		try {
-			ObjectOutputStream oos = new ObjectOutputStream(bos);
-			oos.writeObject(message);
-			oos.flush();
-		} catch (IOException ex) {
-			return null;
-		}
-		return bos.toByteArray();
-	}
+    public static byte[] marshall(IMessage message) {
+        if (message == null) {
+            return null;
+        }
+        byte[] keyBytes = message.getKey().get();
+        byte[] valueBytes = message.getValue().get();
+        byte[] output = new byte[1 + 1 + 3 + keyBytes.length + valueBytes.length];
 
-	public static IMessage unmarshall(byte[] marshalledMessage) {
-		if (marshalledMessage == null) {
-			return null;
-		}
-		ByteArrayInputStream bis = new ByteArrayInputStream(marshalledMessage);
-		ObjectInput in = null;
-		try {
-			in = new ObjectInputStream(bis);
-			IMessage message = (IMessage) in.readObject();
-			return message;
-		} catch (IOException ex) {
-			return null;
-		} catch (ClassNotFoundException e) {
-			return null;
-		}
-	}
+        final short BUFFER_CAPACITY = 4;
+        final short VAL_LENGTH_NUM_BYTES = 3;
+        ByteBuffer valueLengthBuffer = ByteBuffer.allocate(BUFFER_CAPACITY).putInt(valueBytes.length);
+
+        output[0] = message.getStatus().getCode();
+        output[1] = (byte) keyBytes.length;
+
+        System.arraycopy(valueLengthBuffer.array(), 1, output, 2, VAL_LENGTH_NUM_BYTES);
+        System.arraycopy(keyBytes, 0, output, 2 + VAL_LENGTH_NUM_BYTES, keyBytes.length);
+        System.arraycopy(valueBytes, 0, output, 2 + VAL_LENGTH_NUM_BYTES + keyBytes.length, valueBytes.length);
+        return output;
+    }
+
+    public static IMessage unmarshall(byte[] msgBytes) {
+        if (msgBytes == null) {
+            return null;
+        }
+        IMessage.Status status = IMessage.Status.getByCode(msgBytes[0]);
+        if (status == null)
+            return null;
+
+        byte keyLength = msgBytes[1];
+        int valLength = ByteBuffer.wrap(new byte[]{0, msgBytes[2], msgBytes[3], msgBytes[4]}).getInt();
+
+
+        byte[] keyBytes = new byte[keyLength];
+        System.arraycopy(msgBytes, 1 + 1 + 3, keyBytes, 0, keyLength);
+
+        byte[] valBytes = new byte[valLength];
+        System.arraycopy(msgBytes, 1 + 1 + 3 + keyLength, valBytes, 0, valLength);
+        return new Message(status, new K(keyBytes), new V(valBytes));
+    }
 
 }

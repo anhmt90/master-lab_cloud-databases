@@ -1,6 +1,5 @@
 package server.storage.Cache;
 
-import protocol.IMessage;
 import protocol.K;
 import protocol.V;
 import server.storage.ICrud;
