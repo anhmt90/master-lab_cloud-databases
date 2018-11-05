@@ -18,10 +18,10 @@ import java.net.Socket;
  * Represents a simple Echo Server implementation.
  */
 public class Server extends Thread {
-
+    public static final String SERVER_LOG = "kvServer";
     private static final String DEFAULT_LOG_LEVEL = "INFO";
 
-	private static Logger LOG = LogManager.getLogger(ClientConnection.class);
+	private static Logger LOG = LogManager.getLogger("SERVER_LOG");
 
     private int port;
     private ServerSocket serverSocket;
@@ -45,9 +45,11 @@ public class Server extends Thread {
         this.cm = new CacheManager(cacheSize, strategy);
         Level level = Level.getLevel(logLevel);
         Configurator.setRootLevel(level);
-        System.out.println("Server started.");
-        LOG.info("Server started at port " + this.port + ", with cache size " + cacheSize
-                + ", with cache strategy " + strategy.name() + " and with logging Level " + logLevel);
+
+        String toPrint = "Server started at port " + this.port + ", with cache size " + cacheSize
+                + ", with cache strategy " + strategy.name() + " and with logging Level " + logLevel;
+        LOG.info(toPrint);
+        System.out.println(toPrint);
 
     }
 

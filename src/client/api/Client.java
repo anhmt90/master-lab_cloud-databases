@@ -16,8 +16,8 @@ import protocol.*;
 import protocol.IMessage.*;
 
 public class Client implements IClient {
-
-    private static Logger LOG = LogManager.getLogger(Client.class);
+    public static final String CLIENT_LOG = "CloudDB";
+    private static Logger LOG = LogManager.getLogger(Client.CLIENT_LOG);
     /**
      * The client socket
      */

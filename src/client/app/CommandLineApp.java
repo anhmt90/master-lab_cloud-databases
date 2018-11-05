@@ -21,7 +21,7 @@ import util.StringUtils;
 public class CommandLineApp {
 
     private static final String WHITESPACE = " ";
-    static Logger LOG = LogManager.getLogger(CommandLineApp.class);
+    static Logger LOG = LogManager.getLogger(Client.CLIENT_LOG);
 
     private static final int MAX_VALUE_SIZE = (120 * 1024) - 1;
     private static final int MAX_KEY_LENGTH = 20;
