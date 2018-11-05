@@ -50,12 +50,13 @@ public class PersistenceManager implements IPersistenceManager {
     }
 
     public Path getFilePath(byte[] key) {
-        String path = DB_PATH + formatFilePath(key) + formatFileName(key);
+        String path = DB_PATH + PATH_SEP + formatFilePath(key) + PATH_SEP + formatFileName(key);
         return Paths.get(path);
     }
 
     private String formatFilePath(byte[] key) {
-        return formatFileName(key).replaceAll("..", "$0/");
+        return Arrays.toString(key).replaceAll("[\\[ \\]]", "")
+                .replaceAll(",", "/");
     }
 
     private String formatFileName(byte[] key) {
