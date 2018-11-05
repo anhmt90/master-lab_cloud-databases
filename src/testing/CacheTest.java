@@ -20,7 +20,7 @@ public class CacheTest extends TestCase {
     private final Method updateCache;
     private final CacheManager cm;
 
-    public TestClient(int from, int to, CacheManager cm, Method updateCache) {
+    TestClient(int from, int to, CacheManager cm, Method updateCache) {
       this.from = from;
       this.to = to;
       this.updateCache = updateCache;
@@ -68,7 +68,7 @@ public class CacheTest extends TestCase {
     to *= keysPerClient;
     for (int i = 0; i < to; i++) {
       K key = new K(Integer.toString(i).getBytes());
-      assertTrue(String.format("Key \"%d\" is missing", i), cm.getCache().contains(key));
+      assertTrue(String.format("Key \"%d\" is missing", i), cm.getCache().containsKey(key));
     }
   }
 

@@ -26,15 +26,14 @@ public class K implements Serializable {
 
     @Override
     public boolean equals(Object o) {
-        if(o instanceof K) {
-            K other = (K) o;
-            return Arrays.equals(key, other.get());
-        }
-        return false;
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        K k = (K) o;
+        return Arrays.equals(key, k.key);
     }
 
     @Override
     public int hashCode() {
-        return 19;
+        return Arrays.hashCode(key);
     }
 }
