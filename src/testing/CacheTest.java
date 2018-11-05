@@ -15,6 +15,9 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Test cases for cache and its displacement strategies
+ */
 public class CacheTest extends TestCase {
 	private static Logger LOG = LogManager.getLogger(AllTests.TEST_LOG);
 
@@ -46,6 +49,12 @@ public class CacheTest extends TestCase {
     }
   }
 
+  /**
+   * Get private method for updating the cache from the {@link CacheManager}
+   * @param cm CacheManager
+   * @return {@link CacheManager#updateCache(K, V)}
+   * @throws NoSuchMethodException something was changed in the implementation and method doesn't exist anymore
+   */
   private Method getUpdateCacheMethod(CacheManager cm) throws NoSuchMethodException {
     Class<? extends CacheManager> cl = cm.getClass();
     Method updateCache = cl.getDeclaredMethod("updateCache", K.class, V.class);
@@ -54,6 +63,13 @@ public class CacheTest extends TestCase {
     return updateCache;
   }
 
+  /**
+   * Test simple put operation on cache without exceeding the capacity
+   * @param capacity capacity of the cache to test
+   * @param strategy displacemetn strategy to test
+   * @throws NoSuchMethodException for some reqson {@link CacheManager#updateCache(K, V)} was not found
+   * @throws InterruptedException if {@link TestClient} thread was interrupted
+   */
   private void testCacheStrategySimplePut(int capacity, CacheDisplacementStrategy strategy) throws NoSuchMethodException, InterruptedException {
     CacheManager cm = new CacheManager(capacity, strategy);
 
@@ -79,21 +95,34 @@ public class CacheTest extends TestCase {
     }
   }
 
+  /**
+   * Test simple put for {@link server.storage.cache.FIFO} strategy {@link #testCacheStrategySimplePut(int, CacheDisplacementStrategy)}
+   */
   @Test
   public void testFIFOsimplePut() throws NoSuchMethodException, InterruptedException {
     testCacheStrategySimplePut(1000, CacheDisplacementStrategy.FIFO);
   }
 
+  /**
+   * Test simple put for {@link server.storage.cache.LRU} strategy {@link #testCacheStrategySimplePut(int, CacheDisplacementStrategy)}
+   */
   @Test
   public void testLRUsimplePut() throws NoSuchMethodException, InterruptedException {
     testCacheStrategySimplePut(1000, CacheDisplacementStrategy.LRU);
   }
 
+  /**
+   * Test simple put for {@link server.storage.cache.LFU} strategy {@link #testCacheStrategySimplePut(int, CacheDisplacementStrategy)}
+   */
   @Test
   public void testLFUsimplePut() throws NoSuchMethodException, InterruptedException {
     testCacheStrategySimplePut(1000, CacheDisplacementStrategy.LFU);
   }
 
+  /**
+   * Test one of the edge cases when there is a cache of size one, check if eviction works
+   * @param strategy {@link CacheDisplacementStrategy}
+   */
   private void testCacheOneItemEvict(CacheDisplacementStrategy strategy) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
     CacheManager cm = new CacheManager(1, strategy);
     Method updateCache = getUpdateCacheMethod(cm);
@@ -112,16 +141,25 @@ public class CacheTest extends TestCase {
     assertTrue(String.format("Added key \"%s\" is missing", k2Str), cm.getCache().containsKey(k2));
   }
 
+  /**
+   * Eviction test {@link #testCacheOneItemEvict(CacheDisplacementStrategy)} for {@link server.storage.cache.FIFO} strategy
+   */
   @Test
   public void testFIFOoneItemEvict() throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
     testCacheOneItemEvict(CacheDisplacementStrategy.FIFO);
   }
 
+  /**
+   * Eviction test {@link #testCacheOneItemEvict(CacheDisplacementStrategy)} for {@link server.storage.cache.LRU} strategy
+   */
   @Test
   public void testLRUoneItemEvict() throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
     testCacheOneItemEvict(CacheDisplacementStrategy.LRU);
   }
 
+  /**
+   * Eviction test {@link #testCacheOneItemEvict(CacheDisplacementStrategy)} for {@link server.storage.cache.LFU} strategy
+   */
   @Test
   public void testLFUoneItemEvict() throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
     testCacheOneItemEvict(CacheDisplacementStrategy.LFU);
