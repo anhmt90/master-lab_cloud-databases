@@ -10,7 +10,7 @@ public class AllTests {
 
     static {
         try {
-            new Server(50000, 10, CacheDisplacementStrategy.FIFO);
+            new Server(50000, 10, CacheDisplacementStrategy.FIFO, "ERROR");
         } catch (Exception e) {
             e.printStackTrace();
         }
