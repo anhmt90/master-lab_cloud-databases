@@ -7,6 +7,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Least Frequently Used strategy.
+ * Evicts ({@link ICacheDisplacementTracker#evict()}) the least accessed item;
+ * Access - put ot get operations.
+ */
 public class LFU implements ICacheDisplacementTracker {
   private ConcurrentHashMap<K, Counter> registry;
 
