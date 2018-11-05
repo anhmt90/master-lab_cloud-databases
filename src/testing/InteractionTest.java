@@ -48,7 +48,7 @@ public class InteractionTest extends TestCase {
             throw e;
         }
 
-        assertTrue(ex == null && response.getStatus() == Status.PUT_SUCCESS);
+        assertTrue(ex == null && response.getStatus() == Status.PUT_SUCCESS || response.getStatus() == Status.PUT_UPDATE);
     }
 
     @Test
@@ -85,7 +85,7 @@ public class InteractionTest extends TestCase {
         }
 
         assertTrue(ex == null && response.getStatus() == Status.PUT_UPDATE
-                && response.getValue().equals(updatedValue));
+                && new String(response.getValue().get()).equals(updatedValue));
     }
 
     @Test
@@ -121,7 +121,7 @@ public class InteractionTest extends TestCase {
             ex = e;
         }
 
-        assertTrue(ex == null && response.getValue().equals("bar"));
+        assertTrue(ex == null && new String(response.getValue().get()).equals("bar"));
     }
 
     @Test

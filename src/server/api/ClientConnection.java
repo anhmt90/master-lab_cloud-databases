@@ -2,8 +2,10 @@ package server.api;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
-import protocol.IMessage;
-import protocol.MessageMarshaller;
+import protocol.*;
+import protocol.IMessage.Status;
+import server.storage.PUTStatus;
+import server.storage.CacheManager;
 import util.StringUtils;
 
 import java.io.*;
@@ -22,20 +24,21 @@ public class ClientConnection implements Runnable {
     private static Logger logger = LogManager.getLogger(ClientConnection.class);
 
     private boolean isOpen;
-    private static final int BUFFER_SIZE = 1024;
-    private static final int DROP_SIZE = 128 * BUFFER_SIZE;
 
     private Socket clientSocket;
     private BufferedInputStream input;
     private BufferedOutputStream output;
+
+    private CacheManager cm;
 
     /**
      * Constructs a new CientConnection object for a given TCP socket.
      *
      * @param clientSocket the Socket object for the client connection.
      */
-    public ClientConnection(Socket clientSocket) {
+    public ClientConnection(Socket clientSocket, CacheManager cm) {
         this.clientSocket = clientSocket;
+        this.cm = cm;
         this.isOpen = true;
     }
 
@@ -49,13 +52,13 @@ public class ClientConnection implements Runnable {
             input = new BufferedInputStream(clientSocket.getInputStream());
 
             send("Connection to KV Storage Server established: "
-                            + clientSocket.getLocalAddress() + " / "
-                            + clientSocket.getLocalPort());
+                    + clientSocket.getLocalAddress() + " / "
+                    + clientSocket.getLocalPort());
 
             while (isOpen) {
                 try {
                     IMessage kvMessage = receive();
-                    send(kvMessage);
+                    send(handleRequest(kvMessage));
 
                     /* connection either terminated by the client or lost due to
                      * network problems*/
@@ -79,6 +82,51 @@ public class ClientConnection implements Runnable {
                 logger.error("Error! Unable to tear down connection!", ioe);
             }
         }
+    }
+
+
+    /**
+     * Handle request sent from client
+     *
+     * @param message the request message from the client
+     * @return a response message to the client
+     */
+    private IMessage handleRequest(IMessage message) {
+        K key = message.getKey();
+        V val = message.getValue();
+        switch (message.getStatus()) {
+            case GET:
+                return handleGET(message);
+            case PUT:
+                return handlePUT(key, val);
+            default:
+                throw new IllegalArgumentException("Unknown Request Type");
+        }
+    }
+
+    private IMessage handlePUT(K key, V val) {
+        PUTStatus status = cm.put(key, val);
+        switch (status) {
+            case CREATE_SUCCESS:
+                return new Message(Status.PUT_SUCCESS, key, val);
+            case CREATE_ERROR:
+            case UPDATE_ERROR:
+                return new Message(Status.PUT_ERROR, key, val);
+            case UPDATE_SUCCESS:
+                return new Message(Status.PUT_UPDATE, key, val);
+            case DELETE_SUCCESS:
+                return new Message(Status.DELETE_SUCCESS, key);
+            case DELETE_ERROR:
+                return new Message(Status.DELETE_ERROR, key);
+            default:
+                throw new IllegalStateException("Unknown PUTStatus");
+        }
+    }
+
+    private IMessage handleGET(IMessage message) {
+        V val = cm.get(message.getKey());
+        return (val == null) ? new Message(Status.GET_ERROR, message.getKey())
+                : new Message(Status.GET_SUCCESS, message.getKey(), val);
     }
 
     public void send(IMessage message) throws IOException {
@@ -108,7 +156,8 @@ public class ClientConnection implements Runnable {
 
     private IMessage receive() throws IOException {
         int index = 0;
-        byte[] messageBytes = new byte[2 + 20 + 1024 * 120];;
+        byte[] messageBytes = new byte[2 + 20 + 1024 * 120];
+        ;
 
         /* read first char from stream */
         int bytesCopied = input.read(messageBytes);

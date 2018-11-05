@@ -1,4 +1,4 @@
-package server.storage.Cache;
+package server.storage.cache;
 
 import protocol.K;
 
@@ -6,7 +6,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-public class LFU implements ICacheDisplacementStrategy {
+public class LFU implements ICacheDisplacementTracker {
   private HashMap<K, Counter> registry = new HashMap<>(1000);
 
   private class Counter implements Comparable<Counter> {
@@ -37,7 +37,7 @@ public class LFU implements ICacheDisplacementStrategy {
   }
 
   @Override
-  public void register(K k) {
+  public K register(K k) {
     Counter c = registry.get(k);
 
     if (c == null) {
@@ -45,6 +45,7 @@ public class LFU implements ICacheDisplacementStrategy {
     } else {
       c.inc();
     }
+    return k;
   }
 
   @Override
@@ -53,12 +54,7 @@ public class LFU implements ICacheDisplacementStrategy {
   }
 
   @Override
-  public void put(K k) {
-    register(k);
-  }
-
-  @Override
-  public void get(K k) {
-    register(k);
+  public boolean containsKey(K key) {
+    return registry.containsKey(key);
   }
 }

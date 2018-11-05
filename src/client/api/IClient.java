@@ -48,7 +48,7 @@ public interface IClient {
     boolean isConnected();
 
     /**
-     * Inserts a key-value pair into the StorageServer.
+     * Inserts a key-value pair into the Server.
      *
      * @param key   the key that identifies the given value.
      * @param value the value that is indexed by the given key. if value is null
@@ -59,7 +59,7 @@ public interface IClient {
     public IMessage put(String key, String value) throws IOException;
 
     /**
-     * Retrieves the value for a given key from the StorageServer.
+     * Retrieves the value for a given key from the Server.
      *
      * @param key the key that identifies the value.
      * @return a server response, containing the value for the indexed key or an error.

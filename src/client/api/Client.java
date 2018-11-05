@@ -106,7 +106,7 @@ public class Client implements IClient {
     public byte[] receive() {
         byte[] data = new byte[2 + 20 + 1024 * 120];
         try {
-            socket.setSoTimeout(5000);
+            socket.setSoTimeout(50000);
             bis = new BufferedInputStream(socket.getInputStream());
             int bytesCopied = bis.read(data);
             LOG.info("received data from server" + bytesCopied + " bytes");
@@ -147,6 +147,8 @@ public class Client implements IClient {
 
     @Override
     public IMessage put(String key, String value) throws IOException {
+        if (value.equals("null"))
+            value = null;
         if (value != null) {
             return storeOnServer(key, value);
         } else {
@@ -155,7 +157,7 @@ public class Client implements IClient {
     }
 
     private IMessage removeOnServer(String key) throws IOException {
-        return sendWithoutValue(key, Status.DELETE);
+        return sendWithoutValue(key, Status.PUT);
     }
 
     @Override

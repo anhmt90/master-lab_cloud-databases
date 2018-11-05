@@ -1,10 +1,10 @@
-package server.storage.Cache;
+package server.storage.cache;
 
 import protocol.K;
 
 import java.util.LinkedHashSet;
 
-public class LRU implements ICacheDisplacementStrategy {
+public class LRU implements ICacheDisplacementTracker {
   private LinkedHashSet<K> registry = new LinkedHashSet<>(1000);
 
   @Override
@@ -16,9 +16,10 @@ public class LRU implements ICacheDisplacementStrategy {
   }
 
   @Override
-  public void register(K k) {
+  public K register(K k) {
     registry.remove(k);
     registry.add(k);
+    return k;
   }
 
   @Override
@@ -27,13 +28,8 @@ public class LRU implements ICacheDisplacementStrategy {
   }
 
   @Override
-  public void put(K k) {
-    registry.remove(k);
-    register(k);
+  public boolean containsKey(K key) {
+    return registry.contains(key);
   }
 
-  @Override
-  public void get(K k) {
-    register(k);
-  }
 }

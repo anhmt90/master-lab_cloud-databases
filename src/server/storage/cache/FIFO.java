@@ -1,25 +1,27 @@
-package server.storage.Cache;
+package server.storage.cache;
 
-import protocol.IMessage;
 import protocol.K;
 
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 
-public class FIFO implements ICacheDisplacementStrategy {
+public class FIFO implements ICacheDisplacementTracker {
   private LinkedHashSet<K> registry = new LinkedHashSet<>(1000);
 
   @Override
   public K evict() {
-    K k = registry.iterator().next();
-    registry.iterator().remove();
+    Iterator<K> iter = registry.iterator();
+    K k = iter.next();
+    iter.remove();
     registry.remove(k);
     return k;
   }
 
   @Override
-  public void register(K k) {
+  public K register(K k) {
     registry.remove(k);
     registry.add(k);
+    return k;
   }
 
   @Override
@@ -28,11 +30,7 @@ public class FIFO implements ICacheDisplacementStrategy {
   }
 
   @Override
-  public void put(K k) {
-    register(k);
+  public boolean containsKey(K key) {
+    return registry.contains(key);
   }
-
-  @Override
-  public void get(K k) {}
-
 }

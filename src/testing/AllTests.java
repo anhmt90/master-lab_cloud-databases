@@ -2,15 +2,15 @@ package testing;
 
 import junit.framework.Test;
 import junit.framework.TestSuite;
-import server.app.StorageServer;
-import server.storage.Cache.CacheDisplacementType;
+import server.app.Server;
+import server.storage.cache.CacheDisplacementStrategy;
 
 
 public class AllTests {
 
     static {
         try {
-            new StorageServer(50000, 10, CacheDisplacementType.FIFO);
+            new Server(50000, 10, CacheDisplacementStrategy.FIFO);
         } catch (Exception e) {
             e.printStackTrace();
         }

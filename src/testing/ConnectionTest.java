@@ -2,11 +2,7 @@ package testing;
 
 import client.api.Client;
 import junit.framework.TestCase;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
-import server.app.StorageServer;
-import server.storage.Cache.CacheDisplacementType;
 
 import java.net.UnknownHostException;
 

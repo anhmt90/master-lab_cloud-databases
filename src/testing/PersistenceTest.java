@@ -4,8 +4,8 @@
 //import org.junit.Test;
 //import protocol.K;
 //import protocol.V;
-//import server.storage.disk.IPersistentStorage.OpStatus;
-//import server.storage.disk.PersistentStorage;
+//import server.storage.disk.IPersistenceManager.PUTStatus;
+//import server.storage.disk.PersistenceManager;
 //
 //import java.nio.file.Files;
 //import java.nio.file.Path;
@@ -15,7 +15,7 @@
 //import static org.hamcrest.MatcherAssert.assertThat;
 //
 //public class PersistenceTest {
-//    PersistentStorage persistenceManager;
+//    PersistenceManager persistenceManager;
 //    private final String k = "Some\"Key=09";
 //    private final K key = new K(k.getBytes());
 ////    private String value = "==Abc\n09$8";
@@ -24,7 +24,7 @@
 //
 //    @Before
 //    public void init() {
-//        persistenceManager = new PersistentStorage();
+//        persistenceManager = new PersistenceManager();
 //    }
 //
 //    @Test
@@ -36,8 +36,8 @@
 //    }
 //
 //    private void testDeleteFile() {
-//        OpStatus status = persistenceManager.delete(key);
-//        assertThat(status, is(OpStatus.DELETE_SUCCESS));
+//        PUTStatus status = persistenceManager.delete(key);
+//        assertThat(status, is(PUTStatus.DELETE_SUCCESS));
 //
 //        Path filePath = persistenceManager.getFilePath(key);
 //        assertThat(!Files.exists(filePath) && !Files.isDirectory(filePath), equalTo(Boolean.TRUE));
@@ -48,8 +48,8 @@
 //        String newV = "New\"Key=10";
 //        V newValue = new V(newV.getBytes());
 //
-//        OpStatus status =  persistenceManager.write(key, newValue);
-//        assertThat(status, is(OpStatus.WRITE_SUCCESS));
+//        PUTStatus status =  persistenceManager.write(key, newValue);
+//        assertThat(status, is(PUTStatus.WRITE_SUCCESS));
 //
 //        String get = persistenceManager.read(key);
 //        assertThat(get, equalTo(newValue));
@@ -61,8 +61,8 @@
 //    }
 //
 //    private void testCreateFile() {
-//        OpStatus status =  persistenceManager.write(key, value);
-//        assertThat(status, is(OpStatus.WRITE_SUCCESS));
+//        PUTStatus status =  persistenceManager.write(key, value);
+//        assertThat(status, is(PUTStatus.WRITE_SUCCESS));
 //        Path filePath = persistenceManager.getFilePath(key);
 //        assertThat(Files.exists(filePath) && !Files.isDirectory(filePath), equalTo(Boolean.TRUE));
 //    }

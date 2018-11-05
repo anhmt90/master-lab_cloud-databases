@@ -3,7 +3,8 @@ package server.app;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import server.api.ClientConnection;
-import server.storage.Cache.CacheDisplacementType;
+import server.storage.cache.CacheDisplacementStrategy;
+import server.storage.CacheManager;
 
 import java.io.IOException;
 import java.net.BindException;
@@ -13,16 +14,17 @@ import java.net.Socket;
 /**
  * Represents a simple Echo Server implementation.
  */
-public class StorageServer extends Thread {
+public class Server extends Thread {
 
     private static Logger logger = LogManager.getLogger(ClientConnection.class);
 
     private int port;
     private ServerSocket serverSocket;
     private boolean running;
+    private CacheManager cm;
 
     /**
-     * Start KV StorageServer at given port
+     * Start KV Server at given port
      *
      * @param port      given port for disk server to operate
      * @param cacheSize specifies how many key-value pairs the server is allowed
@@ -32,8 +34,9 @@ public class StorageServer extends Thread {
      *                  currently not contained in the storage. Options are "FIFO", "LRU",
      *                  and "LFU".
      */
-    public StorageServer(int port, int cacheSize, CacheDisplacementType strategy) {
+    public Server(int port, int cacheSize, CacheDisplacementStrategy strategy) {
         this.port = port;
+        this.cm = new CacheManager(cacheSize, strategy);
         System.out.println("Server started on port " + this.port + " with cache size " + cacheSize + " and cache strategy " + strategy.name());
     }
 
@@ -48,7 +51,7 @@ public class StorageServer extends Thread {
             while (isRunning()) {
                 try {
                     Socket client = serverSocket.accept();
-                    ClientConnection connection = new ClientConnection(client);
+                    ClientConnection connection = new ClientConnection(client, cm);
                     new Thread(connection).start();
 
                     logger.info("Connected to "
@@ -111,7 +114,7 @@ public class StorageServer extends Thread {
                 System.out.println("Usage: Server <port>!");
             } else {
                 int port = Integer.parseInt(args[0]);
-                new StorageServer(port, 100, CacheDisplacementType.FIFO).start();
+                new Server(port, 100, CacheDisplacementStrategy.FIFO).start();
             }
         }
         /* TODO adapt logging with LogSetup

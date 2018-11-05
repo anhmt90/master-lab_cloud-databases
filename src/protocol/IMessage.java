@@ -13,9 +13,8 @@ public interface IMessage extends Serializable {
         PUT_SUCCESS(0x34),    /* Put - request successful, tuple inserted */
         PUT_UPDATE(0x35),    /* Put - request successful, i.e. value updated */
         PUT_ERROR(0x36),        /* Put - request not successful */
-        DELETE(0x37),        /* Delete - request */
-        DELETE_SUCCESS(0x38), /* Delete - request successful */
-        DELETE_ERROR(0x39)    /* Delete - request successful */;
+        DELETE_SUCCESS(0x37), /* Delete - request successful */
+        DELETE_ERROR(0x38)    /* Delete - request successful */;
 
         byte code;
 
