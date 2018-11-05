@@ -41,7 +41,7 @@ public class MessageMarshaller {
     }
 
     /**
-     * converts a byte array received from the network to an {@link IMessage} 
+     * converts a byte array received from the network to an {@link IMessage}
      * @param msgBytes
      * @return
      */
