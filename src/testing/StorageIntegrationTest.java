@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class StorageIntegrationTest extends TestCase {
+public class    StorageIntegrationTest extends TestCase {
     String KEY1 = "Key1";
     String VAL1 = "Val1";
     String KEY2 = "Key2";
