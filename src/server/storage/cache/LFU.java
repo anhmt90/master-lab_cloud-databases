@@ -5,12 +5,18 @@ import protocol.K;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Least Frequently Used strategy.
+ * Evicts ({@link ICacheDisplacementTracker#evict()}) the least accessed item;
+ * Access - put ot get operations.
+ */
 public class LFU implements ICacheDisplacementTracker {
-  private HashMap<K, Counter> registry;
+  private ConcurrentHashMap<K, Counter> registry;
 
   public LFU(int trackerCapacity) {
-    this.registry = new HashMap<>(trackerCapacity + 1, 1);
+    this.registry = new ConcurrentHashMap<>(trackerCapacity + 1, 1);
   }
 
   private class Counter implements Comparable<Counter> {

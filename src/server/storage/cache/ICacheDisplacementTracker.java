@@ -6,6 +6,10 @@ import protocol.K;
  * cache displacement strategy, that decides which entry to evict from the storage
  */
 public interface ICacheDisplacementTracker {
+    /**
+     * Chooses a key to remove from the cache to free up the space according to a chosen strategy
+     * @return evicted key
+     */
     K evict();
 
     /**
