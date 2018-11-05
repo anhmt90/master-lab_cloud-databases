@@ -44,7 +44,7 @@ public class StorageTest extends TestCase {
 
     public void init(int cacheSize, CacheDisplacementStrategy strategy) throws IOException {
         given_3_KV_pairs();
-        kvServer = new Server(50000, cacheSize, strategy);
+        kvServer = new Server(50000, cacheSize, strategy, "ERROR");
         kvServer.start();
         cacheManager = kvServer.getCacheManager();
         cache = cacheManager.getCache();

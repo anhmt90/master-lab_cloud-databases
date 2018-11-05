@@ -19,7 +19,7 @@ import java.net.Socket;
  */
 public class Server extends Thread {
 
-    private static Logger logger = LogManager.getLogger(ClientConnection.class);
+    private static Logger LOG = LogManager.getLogger(ClientConnection.class);
 
     private int port;
     private ServerSocket serverSocket;
@@ -61,14 +61,13 @@ public class Server extends Thread {
                     ClientConnection connection = new ClientConnection(client, cm);
                     new Thread(connection).start();
 
-                    logger.info(
-                            "Connected to " + client.getInetAddress().getHostName() + " on port " + client.getPort());
+                    LOG.info("Connected to " + client.getInetAddress().getHostName() + " on port " + client.getPort());
                 } catch (IOException e) {
-                    logger.error("Error! " + "Unable to establish connection. \n", e);
+                    LOG.error("Client disconnected! " + "Connection to client lost. \n", e);
                 }
             }
         }
-        logger.info("Server stopped.");
+        LOG.info("Server stopped.");
     }
 
     private boolean isRunning() {
@@ -83,20 +82,20 @@ public class Server extends Thread {
         try {
             serverSocket.close();
         } catch (IOException e) {
-            logger.error("Error! " + "Unable to close socket on port: " + port, e);
+            LOG.error("Error! " + "Unable to close socket on port: " + port, e);
         }
     }
 
     private boolean initializeServer() {
-        logger.info("Initialize server ...");
+        LOG.info("Initialize server ...");
         try {
             serverSocket = new ServerSocket(port);
-            logger.info("Server listening on port: " + serverSocket.getLocalPort());
+            LOG.info("Server listening on port: " + serverSocket.getLocalPort());
             return true;
         } catch (IOException e) {
-            logger.error("Error! Cannot open server socket:");
+            LOG.error("Error! Cannot open server socket:");
             if (e instanceof BindException) {
-                logger.error("Port " + port + " is already bound!");
+                LOG.error("Port " + port + " is already bound!");
             }
             return false;
         }
@@ -107,7 +106,7 @@ public class Server extends Thread {
      *
      * @param portAsString The port number in string format
      * @return boolean value indicating the {@param portAsString} is a valid port
-     *         number or not
+     * number or not
      */
     private static boolean isValidPortNumber(String portAsString) {
         if (portAsString == null || portAsString.equals("")) {
@@ -128,7 +127,7 @@ public class Server extends Thread {
      *
      * @param cacheSizeString The cache size number in string format
      * @return boolean value indicating the {@param cacheSizeString} is a valid cache
-     *         size or not
+     * size or not
      */
     private static boolean isValidCacheSize(String cacheSizeString) {
         try {
@@ -148,9 +147,9 @@ public class Server extends Thread {
      *
      * @param strategy Displacement Strategy in String format
      * @return CacheDisplacementStrategy corresponding to the given String
-     *         in {@param strategy}
+     * in {@param strategy}
      * @throws IllegalArgumentException if the {@param strategy} is not a
-     * 		   recognized Displacement Strategy
+     *                                  recognized Displacement Strategy
      */
     private static CacheDisplacementStrategy isValidDisplacementStrategy(String strategy)
             throws IllegalArgumentException {
@@ -171,10 +170,10 @@ public class Server extends Thread {
      *
      * @param logLevel The logging level in String format
      * @return boolean value indicating the {@param logLevel} is a valid logging
-     *         level or not
+     * level or not
      */
     private static boolean isValidLogLevel(String logLevel) {
-        String[] logLevels = { "ALL", "INFO", "DEBUG", "WARN", "ERROR", "FATAL", "OFF" };
+        String[] logLevels = {"ALL", "INFO", "DEBUG", "WARN", "ERROR", "FATAL", "OFF"};
         for (int i = 0; i < logLevels.length; i++) {
             if (logLevel.contentEquals(logLevels[i])) {
                 return true;

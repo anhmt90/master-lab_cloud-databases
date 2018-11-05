@@ -35,6 +35,6 @@ public class K implements Serializable {
 
     @Override
     public int hashCode() {
-        return key.hashCode();
+        return 19;
     }
 }

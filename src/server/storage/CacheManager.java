@@ -48,12 +48,15 @@ public class CacheManager implements IStorageCRUD {
      */
     @Override
     public V get(K key) {
+        V val;
         if(cache.containsKey(key)){
-            V val = cache.get(key);
+            val = cache.get(key);
             updateCache(key, val);
             return val;
         }
         byte[] res = pm.read(key.get());
+        val = new V(res);
+        updateCache(key, val);
         return (res != null) ? new V(res) : null;
     }
 
@@ -82,10 +85,9 @@ public class CacheManager implements IStorageCRUD {
     }
 
     private void updateCacheForDeleteOp(K key) {
-        Validate.isTrue(cacheTracker.containsKey(key), "cache and its tracker are out of sync");
+        Validate.isTrue(cacheTracker.containsKey(key), key.getString() + " is not in cache. Cache and its tracker are out of sync");
         cache.remove(key);
-        K evicted = cacheTracker.evict();
-        Validate.isTrue(key.equals(evicted), "Wrong key evicted");
+        cacheTracker.unregister(key);
     }
 
     private void updateCacheForReadWriteOp(K key, V val) {
