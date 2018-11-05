@@ -19,7 +19,9 @@ import java.net.Socket;
  */
 public class Server extends Thread {
 
-    private static Logger LOG = LogManager.getLogger(ClientConnection.class);
+    private static final String DEFAULT_LOG_LEVEL = "INFO";
+
+	private static Logger LOG = LogManager.getLogger(ClientConnection.class);
 
     private int port;
     private ServerSocket serverSocket;
@@ -43,7 +45,8 @@ public class Server extends Thread {
         this.cm = new CacheManager(cacheSize, strategy);
         Level level = Level.getLevel(logLevel);
         Configurator.setRootLevel(level);
-        System.out.println("Server started on port " + this.port + ", with cache size " + cacheSize
+        System.out.println("Server started.");
+        LOG.info("Server started at port " + this.port + ", with cache size " + cacheSize
                 + ", with cache strategy " + strategy.name() + " and with logging Level " + logLevel);
 
     }
@@ -61,9 +64,10 @@ public class Server extends Thread {
                     ClientConnection connection = new ClientConnection(client, cm);
                     new Thread(connection).start();
 
-                    LOG.info("Connected to " + client.getInetAddress().getHostName() + " on port " + client.getPort());
+                    LOG.info(
+                            "Connected to " + client.getInetAddress().getHostName() + " on port " + client.getPort());
                 } catch (IOException e) {
-                    LOG.error("Client disconnected! " + "Connection to client lost. \n", e);
+                    LOG.error("Error! " + "Unable to establish connection. \n", e);
                 }
             }
         }
@@ -106,7 +110,7 @@ public class Server extends Thread {
      *
      * @param portAsString The port number in string format
      * @return boolean value indicating the {@param portAsString} is a valid port
-     * number or not
+     *         number or not
      */
     private static boolean isValidPortNumber(String portAsString) {
         if (portAsString == null || portAsString.equals("")) {
@@ -127,7 +131,7 @@ public class Server extends Thread {
      *
      * @param cacheSizeString The cache size number in string format
      * @return boolean value indicating the {@param cacheSizeString} is a valid cache
-     * size or not
+     *         size or not
      */
     private static boolean isValidCacheSize(String cacheSizeString) {
         try {
@@ -147,9 +151,9 @@ public class Server extends Thread {
      *
      * @param strategy Displacement Strategy in String format
      * @return CacheDisplacementStrategy corresponding to the given String
-     * in {@param strategy}
+     *         in {@param strategy}
      * @throws IllegalArgumentException if the {@param strategy} is not a
-     *                                  recognized Displacement Strategy
+     * 		   recognized Displacement Strategy
      */
     private static CacheDisplacementStrategy isValidDisplacementStrategy(String strategy)
             throws IllegalArgumentException {
@@ -170,10 +174,10 @@ public class Server extends Thread {
      *
      * @param logLevel The logging level in String format
      * @return boolean value indicating the {@param logLevel} is a valid logging
-     * level or not
+     *         level or not
      */
     private static boolean isValidLogLevel(String logLevel) {
-        String[] logLevels = {"ALL", "INFO", "DEBUG", "WARN", "ERROR", "FATAL", "OFF"};
+        String[] logLevels = { "ALL", DEFAULT_LOG_LEVEL, "DEBUG", "WARN", "ERROR", "FATAL", "OFF" };
         for (int i = 0; i < logLevels.length; i++) {
             if (logLevel.contentEquals(logLevels[i])) {
                 return true;
@@ -190,31 +194,26 @@ public class Server extends Thread {
      * @param args contains the port number at args[0], the cache size at args[1], the cache displacement strategy at args[2] and the logging Level at args[3].
      */
     public static void main(String[] args) {
-
-        /*
-         * TODO adapt logging with LogSetup new LogSetup("logs/server.log", Level.ALL);
-         */
-
-        switch (args.length) {
+    	switch (args.length) {
             case 0:
-                new Server(50000, 100, CacheDisplacementStrategy.FIFO, "ERROR").start();
+                new Server(50000, 100, CacheDisplacementStrategy.FIFO, DEFAULT_LOG_LEVEL).start();
                 break;
             case 1:
                 if (isValidPortNumber(args[0])) {
-                    new Server(Integer.parseInt(args[0]), 100, CacheDisplacementStrategy.FIFO, "ERROR").start();
+                    new Server(Integer.parseInt(args[0]), 100, CacheDisplacementStrategy.FIFO, DEFAULT_LOG_LEVEL).start();
                 }
                 break;
             case 2:
                 if (isValidPortNumber(args[0]) && isValidCacheSize(args[1])) {
                     new Server(Integer.parseInt(args[0]), Integer.parseInt(args[1]), CacheDisplacementStrategy.FIFO,
-                            "ERROR").start();
+                            DEFAULT_LOG_LEVEL).start();
                 }
                 break;
             case 3:
                 if (isValidPortNumber(args[0]) && isValidCacheSize(args[1])) {
                     try {
                         new Server(Integer.parseInt(args[0]), Integer.parseInt(args[1]),
-                                isValidDisplacementStrategy(args[2]), "ERROR").start();;
+                                isValidDisplacementStrategy(args[2]), DEFAULT_LOG_LEVEL).start();;
                     } catch (IllegalArgumentException iaex) {
                         System.out.println(
                                 "Invalid Displacement Strategy. Please choose one of the following: 'FIFO', 'LRU', 'LFU'");
@@ -236,7 +235,7 @@ public class Server extends Thread {
                 System.out.println("Error! Invalid number of arguments!");
                 System.out.println("Usage: Server <port> <cache_size> <displacement_strategy> <log_level>!");
                 System.out.println(
-                        "Any arguments at that you do not provide will be filled with the default values {50000, 100, FIFO, ERROR}.");
+                        "Any arguments at that you do not provide will be filled with the default values {50000, 100, FIFO, INFO}.");
                 System.out.println(
                         "Please recognize that the structure of 'Usage' has to be kept intact, e.g. you can not declare a <cache_size> argument without providing a <port> argument beforehand.");
                 System.out.println(
@@ -251,9 +250,6 @@ public class Server extends Thread {
                 return;
         }
 
-        /*
-         * TODO adapt logging with LogSetup
-         */
     }
 
 

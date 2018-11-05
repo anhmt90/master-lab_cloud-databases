@@ -1,5 +1,6 @@
 package server.storage.disk;
 
+import server.api.ClientConnection;
 import server.storage.PUTStatus;
 
 import java.io.IOException;
@@ -9,10 +10,15 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import static util.StringUtils.PATH_SEP;
 
 public class PersistenceManager implements IPersistenceManager {
-    private static final String DB_PATH = System.getProperty("user.dir") + PATH_SEP + "db" + PATH_SEP;
+	private static Logger LOG = LogManager.getLogger(ClientConnection.class);
+	
+	private static final String DB_PATH = System.getProperty("user.dir") + PATH_SEP + "db" + PATH_SEP;
 
     public PersistenceManager() {
         createDBDir(DB_PATH);
@@ -23,10 +29,10 @@ public class PersistenceManager implements IPersistenceManager {
         if (!Files.exists(dbPath)) {
             try {
                 Files.createDirectories(dbPath);
-                System.out.println("New Directory Successfully Created !"); //TODO change to LOG
+                LOG.info("New Directory Successfully Created at " + dbPath);
                 return true;
             } catch (IOException ioe) {
-                System.out.println("Problem occured while creating 'db' directory = " + ioe.getMessage()); //TODO change to LOG
+                LOG.error("Problem occured while creating 'db' directory = " + ioe.getMessage());
             }
         }
         return false;
@@ -41,9 +47,9 @@ public class PersistenceManager implements IPersistenceManager {
             putStatus = createOrUpdate(file, value);
         } catch (FileAlreadyExistsException faee) {
             faee.printStackTrace();
-            System.out.println(faee);
+            LOG.error(faee);
         } catch (IOException e) {
-            System.out.println(e);
+            LOG.error(e);
             e.printStackTrace();
         }
         return putStatus;
@@ -73,7 +79,7 @@ public class PersistenceManager implements IPersistenceManager {
 			Files.write(file, fileContent);
 			return PUTStatus.UPDATE_SUCCESS;
 		} catch (IOException e) {
-			System.out.println(e);
+			LOG.error(e);
 			e.printStackTrace();
 		}
 		return (isExisted(file)) ? PUTStatus.UPDATE_ERROR : PUTStatus.CREATE_ERROR;
@@ -86,7 +92,7 @@ public class PersistenceManager implements IPersistenceManager {
             try {
                 return Files.readAllBytes(file);
             } catch (IOException e) {
-                System.out.println(e);
+                LOG.error(e);
                 e.printStackTrace();
             }
         }
@@ -101,7 +107,7 @@ public class PersistenceManager implements IPersistenceManager {
                 Files.delete(file);
                 return PUTStatus.DELETE_SUCCESS;
             } catch (IOException e) {
-                System.out.println(e);
+                LOG.error(e);
                 e.printStackTrace();
             }
         }

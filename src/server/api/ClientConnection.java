@@ -21,7 +21,7 @@ import java.net.Socket;
  */
 public class ClientConnection implements Runnable {
 
-    private static Logger logger = LogManager.getLogger(ClientConnection.class);
+    private static Logger LOG = LogManager.getLogger(ClientConnection.class);
 
     private boolean isOpen;
 
@@ -63,13 +63,13 @@ public class ClientConnection implements Runnable {
                     /* connection either terminated by the client or lost due to
                      * network problems*/
                 } catch (IOException ioe) {
-                    logger.error("Error! Connection lost!");
+                    LOG.error("Error! Connection lost!");
                     isOpen = false;
                 }
             }
 
         } catch (IOException ioe) {
-            logger.error("Error! Connection could not be established!", ioe);
+            LOG.error("Error! Connection could not be established!", ioe);
 
         } finally {
             try {
@@ -79,7 +79,7 @@ public class ClientConnection implements Runnable {
                     clientSocket.close();
                 }
             } catch (IOException ioe) {
-                logger.error("Error! Unable to tear down connection!", ioe);
+                LOG.error("Error! Unable to tear down connection!", ioe);
             }
         }
     }
@@ -147,7 +147,7 @@ public class ClientConnection implements Runnable {
     private void writeOutput(String object, byte[] messageBytes) throws IOException {
         output.write(messageBytes);
         output.flush();
-        logger.info("SEND \t<"
+        LOG.info("SEND \t<"
                 + clientSocket.getInetAddress().getHostAddress() + ":"
                 + clientSocket.getPort() + ">: '"
                 + object + "'");
