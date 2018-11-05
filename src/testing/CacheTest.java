@@ -41,7 +41,7 @@ public class CacheTest extends TestCase {
     }
   }
 
-  private void testCache(int capacity, CacheDisplacementStrategy strategy) throws NoSuchMethodException {
+  private void testCacheStrategySimplePut(int capacity, CacheDisplacementStrategy strategy) throws NoSuchMethodException {
     CacheManager cm = new CacheManager(capacity, strategy);
 
     Class<? extends CacheManager> cl = cm.getClass();
@@ -73,17 +73,17 @@ public class CacheTest extends TestCase {
   }
 
   @Test
-  public void testFIFO() throws NoSuchMethodException {
-    testCache(1000, CacheDisplacementStrategy.FIFO);
+  public void testFIFOsimplePut() throws NoSuchMethodException {
+    testCacheStrategySimplePut(1000, CacheDisplacementStrategy.FIFO);
   }
 
   @Test
-  public void testLRU() throws NoSuchMethodException {
-    testCache(1000, CacheDisplacementStrategy.LRU);
+  public void testLRUsimplePut() throws NoSuchMethodException {
+    testCacheStrategySimplePut(1000, CacheDisplacementStrategy.LRU);
   }
 
   @Test
-  public void testLFU() throws NoSuchMethodException {
-    testCache(1000, CacheDisplacementStrategy.LFU);
+  public void testLFUsimplePut() throws NoSuchMethodException {
+    testCacheStrategySimplePut(1000, CacheDisplacementStrategy.LFU);
   }
 }
