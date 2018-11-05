@@ -2,6 +2,7 @@ package protocol;
 
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.Objects;
 
 public class V implements Serializable {
     private byte[] value;
@@ -30,5 +31,10 @@ public class V implements Serializable {
             return Arrays.equals(value, other.get());
         }
         return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return value.hashCode();
     }
 }

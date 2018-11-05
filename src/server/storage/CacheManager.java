@@ -21,19 +21,19 @@ public class CacheManager implements IStorageCRUD {
 
     public CacheManager(int cacheCapacity, CacheDisplacementStrategy strategy) {
         this.cacheCapacity = cacheCapacity;
-        this.cache = new ConcurrentHashMap<>(cacheCapacity, 1);
+        this.cache = new ConcurrentHashMap<>(cacheCapacity + 1, 1);
         pm = new PersistenceManager();
-        cacheTracker = initTracker(strategy);
+        cacheTracker = initTracker(cacheCapacity, strategy);
     }
 
-    private ICacheDisplacementTracker initTracker(CacheDisplacementStrategy strategy) {
+    private ICacheDisplacementTracker initTracker(int cacheCapacity, CacheDisplacementStrategy strategy) {
         switch (strategy) {
             case FIFO:
-                return new FIFO();
+                return new FIFO(cacheCapacity);
             case LFU:
-                return new LFU();
+                return new LFU(cacheCapacity);
             case LRU:
-                return new LRU();
+                return new LRU(cacheCapacity);
             default:
                 throw new IllegalArgumentException("Strategy not found!");
         }
@@ -48,6 +48,11 @@ public class CacheManager implements IStorageCRUD {
      */
     @Override
     public V get(K key) {
+        if(cache.containsKey(key)){
+            V val = cache.get(key);
+            updateCache(key, val);
+            return val;
+        }
         byte[] res = pm.read(key.get());
         return (res != null) ? new V(res) : null;
     }
@@ -70,7 +75,7 @@ public class CacheManager implements IStorageCRUD {
 
     private void updateCache(K key, V val) {
         if (val != null) {
-            updateCacheForWriteOp(key, val);
+            updateCacheForReadWriteOp(key, val);
         } else if (val == null && cache.containsKey(key)) {
             updateCacheForDeleteOp(key);
         }
@@ -83,7 +88,7 @@ public class CacheManager implements IStorageCRUD {
         Validate.isTrue(key.equals(evicted), "Wrong key evicted");
     }
 
-    private void updateCacheForWriteOp(K key, V val) {
+    private void updateCacheForReadWriteOp(K key, V val) {
         if (isCacheFull()) {
             K evicted = cacheTracker.evict();
             Validate.isTrue(cache.containsKey(evicted), "cache and its tracker are out of sync");
@@ -98,4 +103,20 @@ public class CacheManager implements IStorageCRUD {
         return cache.mappingCount() >= this.cacheCapacity;
     }
 
+    public ConcurrentHashMap<K, V> getCache() {
+        return cache;
+    }
+
+    public PersistenceManager getPersistenceManager() {
+        return pm;
+    }
+
+
+    public int getCacheCapacity() {
+        return cacheCapacity;
+    }
+
+    public ICacheDisplacementTracker getCacheTracker() {
+        return cacheTracker;
+    }
 }

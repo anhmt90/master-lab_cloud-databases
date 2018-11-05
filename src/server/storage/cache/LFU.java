@@ -7,7 +7,11 @@ import java.util.Map;
 import java.util.Optional;
 
 public class LFU implements ICacheDisplacementTracker {
-  private HashMap<K, Counter> registry = new HashMap<>(1000);
+  private HashMap<K, Counter> registry;
+
+  public LFU(int trackerCapacity) {
+    this.registry = new HashMap<>(trackerCapacity + 1, 1);
+  }
 
   private class Counter implements Comparable<Counter> {
     private int value = 1;

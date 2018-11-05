@@ -123,8 +123,7 @@ public class ClientConnection implements Runnable {
         }
     }
 
-    // TODO: get from cache first
-    private IMessage handleGET(IMessage message) {
+    private synchronized IMessage handleGET(IMessage message) {
         V val = cm.get(message.getKey());
         return (val == null) ? new Message(Status.GET_ERROR, message.getKey())
                 : new Message(Status.GET_SUCCESS, message.getKey(), val);

@@ -6,31 +6,35 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 
 public class FIFO implements ICacheDisplacementTracker {
-  private LinkedHashSet<K> registry = new LinkedHashSet<>(1000);
+    private LinkedHashSet<K> registry;
 
-  @Override
-  public K evict() {
-    Iterator<K> iter = registry.iterator();
-    K k = iter.next();
-    iter.remove();
-    registry.remove(k);
-    return k;
-  }
+    public FIFO(int trackerCapacity) {
+        registry = new LinkedHashSet<K>(trackerCapacity + 1, 1);
+    }
 
-  @Override
-  public K register(K k) {
-    registry.remove(k);
-    registry.add(k);
-    return k;
-  }
+    @Override
+    public K evict() {
+        Iterator<K> iter = registry.iterator();
+        K k = iter.next();
+        iter.remove();
+        registry.remove(k);
+        return k;
+    }
 
-  @Override
-  public void unregister(K k) {
-    this.registry.remove(k);
-  }
+    @Override
+    public K register(K k) {
+        registry.remove(k);
+        registry.add(k);
+        return k;
+    }
 
-  @Override
-  public boolean containsKey(K key) {
-    return registry.contains(key);
-  }
+    @Override
+    public void unregister(K k) {
+        this.registry.remove(k);
+    }
+
+    @Override
+    public boolean containsKey(K key) {
+        return registry.contains(key);
+    }
 }

@@ -5,7 +5,11 @@ import protocol.K;
 import java.util.LinkedHashSet;
 
 public class LRU implements ICacheDisplacementTracker {
-  private LinkedHashSet<K> registry = new LinkedHashSet<>(1000);
+  private LinkedHashSet<K> registry;
+
+  public LRU(int trackerCapacity) {
+    this.registry = new LinkedHashSet<>(trackerCapacity + 1, 1);
+  }
 
   @Override
   public K evict() {
