@@ -449,6 +449,14 @@ public class CommandLineApp {
         return true;
     }
 
+    /**
+     * prints to console and log if user provided illegal arguments
+     * 
+     * @param commandNam    name of the command for which the user
+     *                      provided wrong arguments
+     * @param cmdComponents String array containing the user arguments
+     * @return false
+     */
     private static boolean handleInvalidArgs(String commandName, String[] cmdComponents) {
         print("Invalid argument for '" + commandName + "' command");
         LOG.info("Invalid argument. " + cmdComponents);
