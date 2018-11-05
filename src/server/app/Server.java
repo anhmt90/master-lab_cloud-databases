@@ -76,6 +76,10 @@ public class Server extends Thread {
         LOG.info("Server stopped.");
     }
 
+    /**
+     * Checks if server is running
+     * @return true if server is running
+     */
     private boolean isRunning() {
         return this.running;
     }
@@ -92,6 +96,11 @@ public class Server extends Thread {
         }
     }
 
+    /**
+     * Initializes the server socket
+     * 
+     * @return true if socket was successfully set up
+     */
     private boolean initializeServer() {
         LOG.info("Initialize server ...");
         try {
@@ -254,7 +263,10 @@ public class Server extends Thread {
 
     }
 
-
+    /**
+     * Get cache manager
+     * @return Cache Manager
+     */
     public CacheManager getCacheManager() {
         return cm;
     }

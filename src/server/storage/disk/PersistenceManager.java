@@ -26,6 +26,13 @@ public class PersistenceManager implements IPersistenceManager {
         createDBDir(DB_PATH);
     }
 
+    /**
+     * Creates a directory structure from a given path
+     * 
+     * @param path the directory path that should be
+     *             constructed
+     * @return true if the creation was successful
+     */
     public boolean createDBDir(String path) {
         Path dbPath = Paths.get(path);
         if (!Files.exists(dbPath)) {
@@ -57,20 +64,46 @@ public class PersistenceManager implements IPersistenceManager {
         return putStatus;
     }
 
+    /**
+     * constructs a directory path for a key
+     * 
+     * @param key key from which the path is constructed
+     * @return a directory path corresponding to the key
+     */
 	public Path getFilePath(byte[] key) {
 		String path = DB_PATH + PATH_SEP + parseFilePath(key) + PATH_SEP + parseFileName(key);
 		return Paths.get(path);
 	}
 
+	/**
+	 * Parses a file path from a key
+	 * 
+	 * @param key key from which path is parsed
+	 * @return file path in String format
+	 */
     private String parseFilePath(byte[] key) {
         return Arrays.toString(key).replaceAll("[\\[ \\]]", "")
                 .replaceAll(",", "/");
     }
 
+    /**
+     * Parses a file name from a key
+     * 
+     * @param key key from which file name is parsed
+     * @return file name in String format
+     */
     private String parseFileName(byte[] key) {
         return Arrays.toString(key).replaceAll("\\W", "");
     }
 
+    /**
+     * Handles creating or updating a value in a given path
+     * 
+     * @param file        path in which the value is supposed
+     *                    to be stored
+     * @param fileContent value being stored in a file
+     * @return Status if operation was successful or failed 
+     */
 	private PUTStatus createOrUpdate(Path file, byte[] fileContent) {
 		try {
 			if (!isExisted(file)) {
@@ -116,12 +149,25 @@ public class PersistenceManager implements IPersistenceManager {
         return null;
     }
 
+    /**
+     * Checks if a file path is valid
+     * 
+     * @param filePath Path to a given file
+     * @return true if the path exists
+     */
     private boolean isExisted(Path filePath) {
         return !Files.isDirectory(filePath) && Files.exists(filePath);
     }
 
+    /**
+     * Checks if a file name exists
+     * 
+     * @param fileName name of the file that is checked
+     * @return true if file exists
+     */
     public boolean isExisted(String fileName) {
         Path filePath = getFilePath(fileName.getBytes());
         return !Files.isDirectory(filePath) && Files.exists(filePath);
     }
 }
+

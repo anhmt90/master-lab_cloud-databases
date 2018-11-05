@@ -20,10 +20,10 @@ public interface ICacheDisplacementTracker {
     K register(K key);
 
     /**
-     *
-     * @param key
+     * Stop tracking a use of key {@link K}
+     * @param k key stop tracking for
      */
-    void unregister(K key);
+    void unregister(K k);
 
     boolean containsKey(K key);
 }

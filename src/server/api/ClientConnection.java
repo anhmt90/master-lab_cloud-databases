@@ -105,6 +105,13 @@ public class ClientConnection implements Runnable {
         }
     }
 
+    /**
+     * Handles and creates a suitable response for a put request
+     * 
+     * @param key key of the key-value pair
+     * @param val value of the key-value pair
+     * @return server response
+     */
     private synchronized IMessage handlePUT(K key, V val) {
         PUTStatus status = cm.put(key, val);
         switch (status) {
@@ -124,12 +131,24 @@ public class ClientConnection implements Runnable {
         }
     }
 
+    /**
+     * Handles and creates response for a get request
+     * 
+     * @param message the get-request message sent by a client
+     * @return server response to client request
+     */
     private synchronized IMessage handleGET(IMessage message) {
         V val = cm.get(message.getKey());
         return (val == null) ? new Message(Status.GET_ERROR, message.getKey())
                 : new Message(Status.GET_SUCCESS, message.getKey(), val);
     }
 
+    /**
+     * Sends out a message
+     * 
+     * @param message Message that is sent
+     * @throws IOException
+     */
     public void send(IMessage message) throws IOException {
         writeOutput(message.toString(), MessageMarshaller.marshall(message));
     }
@@ -145,6 +164,13 @@ public class ClientConnection implements Runnable {
         writeOutput(text, messageBytes);
     }
 
+    /**
+     * Send a marshalled message out through the server socket
+     * 
+     * @param object	   Message in String format for logging
+     * @param messageBytes The marshalled message
+     * @throws IOException
+     */
     private void writeOutput(String object, byte[] messageBytes) throws IOException {
         output.write(messageBytes);
         output.flush();
@@ -155,6 +181,12 @@ public class ClientConnection implements Runnable {
     }
 
 
+    /**
+     * Receives a message sent by a client
+     * 
+     * @return the received message
+     * @throws IOException
+     */
     private IMessage receive() throws IOException {
         int index = 0;
         byte[] messageBytes = new byte[2 + 20 + 1024 * 120];
@@ -165,14 +197,15 @@ public class ClientConnection implements Runnable {
 
 
         IMessage message = MessageMarshaller.unmarshall(messageBytes);
-        /* TODO
-        logger.info("RECEIVE \t<"
+        
+        LOG.info("RECEIVE \t<"
                 + clientSocket.getInetAddress().getHostAddress() + ":"
                 + clientSocket.getPort() + ">: '"
-                + message.getMessage().trim() + "'");*/
+                + message.toString().trim() + "'");
         return message;
     }
 
+    
     private byte[] copy(int size, byte[] messageBytes, byte[] bufferBytes) {
         byte[] tmp;
         if (messageBytes == null) {
