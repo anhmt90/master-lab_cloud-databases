@@ -5,6 +5,10 @@ import protocol.K;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 
+/**
+ * First In First Out strategy.
+ * Evicts ({@link ICacheDisplacementTracker#evict()}) the oldest item in the insert order.
+ */
 public class FIFO implements ICacheDisplacementTracker {
     private LinkedHashSet<K> registry;
 

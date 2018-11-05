@@ -4,6 +4,11 @@ import protocol.K;
 
 import java.util.LinkedHashSet;
 
+/**
+ * Least Recently Used strategy.
+ * Evicts ({@link ICacheDisplacementTracker#evict()}) the oldest item in the access order.
+ * Access - put ot get operations.
+ */
 public class LRU implements ICacheDisplacementTracker {
   private LinkedHashSet<K> registry;
 
