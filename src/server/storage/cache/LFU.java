@@ -35,7 +35,9 @@ public class LFU implements ICacheDisplacementTracker {
         .min(Map.Entry.comparingByValue());
 
     if (min.isPresent()) {
-      return min.get().getKey();
+      K k = min.get().getKey();
+      this.registry.remove(k);
+      return k;
     }
     return null;
   }

@@ -1,17 +1,16 @@
 package testing;
 
 import junit.framework.TestCase;
-import org.junit.Before;
 import org.junit.Test;
 import protocol.K;
 import protocol.V;
 import server.storage.CacheManager;
 import server.storage.cache.CacheDisplacementStrategy;
-import server.storage.cache.FIFO;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.ArrayList;
+import java.util.List;
 
 public class CacheTest extends TestCase {
 
@@ -19,11 +18,13 @@ public class CacheTest extends TestCase {
     private final int from;
     private final int to;
     private final Method updateCache;
+    private final CacheManager cm;
 
-    public TestClient(int from, int to, Method updateCache) {
+    TestClient(int from, int to, CacheManager cm, Method updateCache) {
       this.from = from;
       this.to = to;
       this.updateCache = updateCache;
+      this.cm = cm;
     }
 
     public void run() {
@@ -32,48 +33,92 @@ public class CacheTest extends TestCase {
         String valStr = "test" + Integer.toString(i);
         V val = new V(valStr.getBytes());
         try {
-          this.updateCache.invoke(key, val);
-        } catch (IllegalAccessException e) {
-          e.printStackTrace();
-        } catch (InvocationTargetException e) {
+          this.updateCache.invoke(cm, key, val);
+        } catch (IllegalAccessException | InvocationTargetException e) {
           e.printStackTrace();
         }
       }
     }
   }
 
-  private void testCache(int capacity, CacheDisplacementStrategy strategy) throws NoSuchMethodException {
-    CacheManager cm = new CacheManager(capacity, strategy);
-
+  private Method getUpdateCacheMethod(CacheManager cm) throws NoSuchMethodException {
     Class<? extends CacheManager> cl = cm.getClass();
     Method updateCache = cl.getDeclaredMethod("updateCache", K.class, V.class);
     updateCache.setAccessible(true);
 
+    return updateCache;
+  }
+
+  private void testCacheStrategySimplePut(int capacity, CacheDisplacementStrategy strategy) throws NoSuchMethodException, InterruptedException {
+    CacheManager cm = new CacheManager(capacity, strategy);
+
+    Method updateCache = getUpdateCacheMethod(cm);
+
+    List<TestClient> clients = new ArrayList<>();
     int keysPerClient = 10;
     for (int i = 0; i < cm.getCacheCapacity() / keysPerClient; i++) {
-      new TestClient(i * keysPerClient, (i + 1) * keysPerClient, updateCache).start();
+      TestClient c = new TestClient(i * keysPerClient, (i + 1) * keysPerClient, cm, updateCache);
+      clients.add(c);
+      c.start();
+    }
+
+    for (TestClient c: clients){
+      c.join();
     }
 
     int to = cm.getCacheCapacity() / keysPerClient;
     to *= keysPerClient;
     for (int i = 0; i < to; i++) {
       K key = new K(Integer.toString(i).getBytes());
-      assertTrue(cm.getCache().contains(key));
+      assertTrue(String.format("Key \"%d\" is missing", i), cm.getCache().containsKey(key));
     }
   }
 
   @Test
-  public void testFIFO() throws NoSuchMethodException {
-    testCache(1000, CacheDisplacementStrategy.FIFO);
+  public void testFIFOsimplePut() throws NoSuchMethodException, InterruptedException {
+    testCacheStrategySimplePut(1000, CacheDisplacementStrategy.FIFO);
   }
 
   @Test
-  public void testLRU() throws NoSuchMethodException {
-    testCache(1000, CacheDisplacementStrategy.LRU);
+  public void testLRUsimplePut() throws NoSuchMethodException, InterruptedException {
+    testCacheStrategySimplePut(1000, CacheDisplacementStrategy.LRU);
   }
 
   @Test
-  public void testLFU() throws NoSuchMethodException {
-    testCache(1000, CacheDisplacementStrategy.LFU);
+  public void testLFUsimplePut() throws NoSuchMethodException, InterruptedException {
+    testCacheStrategySimplePut(1000, CacheDisplacementStrategy.LFU);
+  }
+
+  private void testCacheOneItemEvict(CacheDisplacementStrategy strategy) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+    CacheManager cm = new CacheManager(1, strategy);
+    Method updateCache = getUpdateCacheMethod(cm);
+
+    V v = new V("testValue".getBytes());
+    String k1Str = "Test1";
+    String k2Str = "Test2";
+    K k1 = new K(k1Str.getBytes());
+    K k2 = new K(k2Str.getBytes());
+
+    updateCache.invoke(cm, k1, v);
+    assertEquals(1, cm.getCache().size());
+    assertTrue(String.format("Added key \"%s\" is missing", k1Str), cm.getCache().containsKey(k1));
+    updateCache.invoke(cm, k2, v);
+    assertEquals(1, cm.getCache().size());
+    assertTrue(String.format("Added key \"%s\" is missing", k2Str), cm.getCache().containsKey(k2));
+  }
+
+  @Test
+  public void testFIFOoneItemEvict() throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+    testCacheOneItemEvict(CacheDisplacementStrategy.FIFO);
+  }
+
+  @Test
+  public void testLRUoneItemEvict() throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+    testCacheOneItemEvict(CacheDisplacementStrategy.LRU);
+  }
+
+  @Test
+  public void testLFUoneItemEvict() throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+    testCacheOneItemEvict(CacheDisplacementStrategy.LFU);
   }
 }
