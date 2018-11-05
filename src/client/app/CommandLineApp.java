@@ -6,6 +6,7 @@ import java.util.*;
 
 import client.api.Client;
 import protocol.IMessage;
+import protocol.IMessage.Status;
 import protocol.Message;
 
 import org.apache.logging.log4j.Logger;
@@ -33,8 +34,8 @@ public class CommandLineApp {
     private static final String QUIT = "quit";
 
     /**
-     * The EchoClient as an instance of {@link Client} to communicate with the
-     * EchoServer
+     * The StorageClient as an instance of {@link Client} to communicate with the
+     * StorageServer
      */
     private static Client kvClient = new Client();
 
@@ -240,8 +241,8 @@ public class CommandLineApp {
                     LOG.info("Server response: ");
                     break;
                 case GET_SUCCESS:
-                    print("Value stored on server for key " + key + " is: " + serverResponse.getKey().get());
-                    LOG.info("Server response: GET_SUCCESS");
+                    print("Value stored on server for key " + key + " is: " + serverResponse.getKey().getString());
+                    LOG.info("Server response: " + Status.GET_SUCCESS.name());
                     break;
                 default:
                     print("Wrong server response. Please try again");
@@ -253,13 +254,13 @@ public class CommandLineApp {
     }
 
     /**
-     * Disconnects the connection to EchoServer
+     * Disconnects the connection to StorageServer
      */
     private static void handleDisconnect() {
         if (!isClientConnected())
             return;
         kvClient.disconnect();
-        String msg = "Echo client disconnected.";
+        String msg = "Storage client disconnected.";
         print(msg);
         LOG.info(msg);
 
@@ -300,9 +301,9 @@ public class CommandLineApp {
     }
 
     /**
-     * Receives and format message from EchoServer
+     * Receives and format text message from StorageServer
      *
-     * @return The message received from EchoServer in string format
+     * @return The message received from StorageServer in string format
      */
     private static String receiveTextFromServer() {
         byte[] bytes = kvClient.receive();
@@ -317,7 +318,7 @@ public class CommandLineApp {
      * application
      */
     public static void printHelp() {
-        print("This application works as an echo client. The command set is as follows:\n" + getUsage(CONNECT)
+        print("This application works as an storage client. The command set is as follows:\n" + getUsage(CONNECT)
                 + getUsage(DISCONNECT) + getUsage(PUT) + getUsage(GET) + getUsage(LOG_LEVEL) + getUsage(HELP)
                 + getUsage(QUIT)
 
@@ -359,10 +360,10 @@ public class CommandLineApp {
     }
 
     /**
-     * Prints the command prompt 'EchoClient>' to System.out
+     * Prints the command prompt 'StorageClient>' to System.out
      */
     private static void printCommandPrompt() {
-        System.out.print("\nEchoClient> ");
+        System.out.print("\nStorageClient> ");
     }
 
     /**
@@ -375,8 +376,8 @@ public class CommandLineApp {
     }
 
     /**
-     * @return boolean value indicating the EchoClient is still connected with the
-     * EchoServer or not
+     * @return boolean value indicating the StorageClient is still connected with the
+     * StorageServer or not
      */
     private static boolean isClientConnected() {
         if (kvClient.isClosed() || !kvClient.isConnected()) {
