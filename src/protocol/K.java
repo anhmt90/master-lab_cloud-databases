@@ -14,6 +14,10 @@ public class K implements Serializable {
         return key;
     }
 
+    public String getString() {
+        return new String(key);
+    }
+
     @Override
     public String toString() {
         return Arrays.toString(key);

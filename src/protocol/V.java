@@ -14,6 +14,10 @@ public class V implements Serializable {
         return value;
     }
 
+    public String getString() {
+        return new String(value);
+    }
+
     @Override
     public String toString() {
         return Arrays.toString(value);

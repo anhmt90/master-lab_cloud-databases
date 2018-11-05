@@ -104,7 +104,7 @@ public class ClientConnection implements Runnable {
         }
     }
 
-    private IMessage handlePUT(K key, V val) {
+    private synchronized IMessage handlePUT(K key, V val) {
         PUTStatus status = cm.put(key, val);
         switch (status) {
             case CREATE_SUCCESS:
@@ -123,6 +123,7 @@ public class ClientConnection implements Runnable {
         }
     }
 
+    // TODO: get from cache first
     private IMessage handleGET(IMessage message) {
         V val = cm.get(message.getKey());
         return (val == null) ? new Message(Status.GET_ERROR, message.getKey())
