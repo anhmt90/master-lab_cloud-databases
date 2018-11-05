@@ -156,6 +156,10 @@ public class Client implements IClient {
         }
     }
 
+    public IMessage put(String key) throws IOException {
+        return put(key, null);
+    }
+
     private IMessage removeOnServer(String key) throws IOException {
         return sendWithoutValue(key, Status.PUT);
     }

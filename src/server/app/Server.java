@@ -149,4 +149,8 @@ public class Server extends Thread {
             System.exit(1);
         }
     }
+
+    public CacheManager getCacheManager() {
+        return cm;
+    }
 }

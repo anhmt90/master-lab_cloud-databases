@@ -50,19 +50,25 @@ public class PersistenceManager implements IPersistenceManager {
     }
 
     public Path getFilePath(byte[] key) {
-        String path = DB_PATH + PATH_SEP + formatFilePath(key) + PATH_SEP + formatFileName(key);
+        String path = DB_PATH + PATH_SEP + parseFilePath(key) + PATH_SEP + parseFileName(key);
         return Paths.get(path);
     }
 
-    private String formatFilePath(byte[] key) {
+    private String parseFilePath(byte[] key) {
         return Arrays.toString(key).replaceAll("[\\[ \\]]", "")
                 .replaceAll(",", "/");
     }
 
-    private String formatFileName(byte[] key) {
+    private String parseFileName(byte[] key) {
         return Arrays.toString(key).replaceAll("\\W", "");
     }
 
+    /**
+     *
+     * @param file
+     * @param fileContent
+     * @return
+     */
     private PUTStatus createOrUpdate(Path file, byte[] fileContent) {
         try {
             if (!isExisted(file)) {
@@ -110,6 +116,11 @@ public class PersistenceManager implements IPersistenceManager {
     }
 
     private boolean isExisted(Path filePath) {
+        return !Files.isDirectory(filePath) && Files.exists(filePath);
+    }
+
+    public boolean isExisted(String fileName) {
+        Path filePath = getFilePath(fileName.getBytes());
         return !Files.isDirectory(filePath) && Files.exists(filePath);
     }
 }
