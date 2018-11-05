@@ -10,22 +10,33 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Manages the cache and plays as an coordinator between {@link server.api.ClientConnection} and {@link PersistenceManager}.
- * This class handles client's put and get requests by maintaning a {@see cache} for quick access. In case the requested key
- * does not reside in the cache, {@see CacheManager} will forward the request to {@see PersistenceManager} to lookup the key
- * in persistence lay e.g. disk.
- * If the {@see cache} reach its {@see cacheCapacity}, {@see CacheManager} will replace a <{@see K}, {@see V}> pair in {@see cache}
- * by the pair having the currently requested key according to the current {@see CacheDisplacementStrategy}, which is implemented
- * by the {@see cacheTracker}
+ * This class handles client's put and get requests by maintaning a {@link this.cache} for quick access. In case the requested key
+ * does not reside in the cache, {@link CacheManager} will forward the request to {@link PersistenceManager} to lookup the key
+ * in persistence layer e.g. file system.
+ * If the {@link this.cache} reach its {@link this.cacheCapacity}, {@link CacheManager} will replace a <{@link K}, {@link V}> pair in {@link cache}
+ * by the pair having the currently requested key according to the current {@link CacheDisplacementStrategy}, which is implemented
+ * by the {@link this.cacheTracker}
  */
 public class CacheManager implements IStorageCRUD {
     public static final String ERROR = "ERROR";
     /**
-     * Keeps track of the
+     * Keeps track of the order in which the elements in {@link this.cache} should be replaced
      */
     private ICacheDisplacementTracker cacheTracker;
+
+    /**
+     * Store <K,V> pairs for quick access. It helps avoid disk I/O for each request.
+     */
     private ConcurrentHashMap<K, V> cache;
+
+    /**
+     * Maximum number of elements the {@link this.cache} can hold
+     */
     private int cacheCapacity;
 
+    /**
+     * Interface to persistence layer
+     */
     private PersistenceManager pm;
 
     public CacheManager(int cacheCapacity, CacheDisplacementStrategy strategy) {
@@ -35,6 +46,14 @@ public class CacheManager implements IStorageCRUD {
         cacheTracker = initTracker(cacheCapacity, strategy);
     }
 
+    /**
+     * Initializes an approriate instance of {@link ICacheDisplacementTracker} according to the provided
+     * {@link CacheDisplacementStrategy}
+     *
+     * @param cacheCapacity Maximum number of elements the {@link this.cacheTracker} can hold
+     * @param strategy
+     * @return
+     */
     private ICacheDisplacementTracker initTracker(int cacheCapacity, CacheDisplacementStrategy strategy) {
         switch (strategy) {
             case FIFO:
@@ -50,15 +69,16 @@ public class CacheManager implements IStorageCRUD {
 
 
     /**
-     * Get a message from Key-Value cache
+     * Get a <K,V> pair in cache to response to the client request. If the provided parameter {@link this.key} is not found
+     * in cache, the request is forwarded to {@link PersistenceManager} to lookup in file system.
      *
-     * @param key Key of a ke-value entry
-     * @return Key-value entry as a message
+     * @param key is used to search for the relevant pair in file system or in cache
+     * @return a value associated with the {@link this.key}.
      */
     @Override
     public V get(K key) {
         V val;
-        if(cache.containsKey(key)){
+        if (cache.containsKey(key)) {
             val = cache.get(key);
             updateCache(key, val);
             return val;
@@ -70,11 +90,13 @@ public class CacheManager implements IStorageCRUD {
     }
 
     /**
-     * Stores a key-value entry in the key-value cache
+     * Stores or deletes a <K,V> pair in file system by calling {@link PersistenceManager} according to response to the client request.
+     * After a successful update in file system, the <K,V> is brought to cache and a cache displacement can happen if the cache reaches
+     * its {@link this.cacheCapacity}.
      *
-     * @param key key of a new entry
-     * @param val value of a new entry
-     * @return A key-value entry stored
+     * @param key key in <K,V> pair. Being used to search for the relevant pair in file system
+     * @param val key in <K,V> pair. The value that should be stored or deleted on the server.
+     * @return {@link PUTStatus} as exit code of the function. This will be used to send an appropriate response back to the client.
      */
     @Override
     public PUTStatus put(K key, V val) {
@@ -85,6 +107,13 @@ public class CacheManager implements IStorageCRUD {
         return status;
     }
 
+    /**
+     *  Updates the {@link this.cache} with the given <K,V> pair. A cache displacement can happen if the cache reaches
+     *  its {@link this.cacheCapacity}.
+     *
+     * @param key key in <K,V> pair. Being used to search for the relevant pair in {@link this.cache}
+     * @param val key in <K,V> pair. The value that should be stored/updated on the {@link this.cache}.
+     */
     private void updateCache(K key, V val) {
         if (val != null) {
             updateCacheForReadWriteOp(key, val);

@@ -9,6 +9,7 @@
     <property name="build.dir" value="bin"/>
     <property name="src.dir" value="src"/>
     <property name="lib.dir" value="libs"/>
+    <property name="doc.dir" value="doc"/>
 
     <!-- Configuration for client application -->
     <property name="clientjar.file" value="ms2-client.jar"/>
@@ -49,6 +50,7 @@
 
     <target name="clean">
         <delete dir="${build.dir}"/>
+        <delete dir="${doc.dir}"/>
         <delete file="${clientjar.file}"/>
         <delete file="${clientmanifest.file}"/>
         <delete file="${serverjar.file}"/>
@@ -58,7 +60,7 @@
     <target name="cleanall" depends="clean"/>
 
     <!-- build complete project -->
-    <target name="build" depends="init">
+    <target name="build" depends="init, doc">
         <echo message="${ant.project.name}: ${ant.file}"/>
         <javac debug="true" debuglevel="${debuglevel}" destdir="bin"
                source="${source}" target="${target}"
@@ -113,6 +115,15 @@
             <formatter type="brief" usefile="false"/>
             <test name="testing.AllTests"/>
         </junit>
+    </target>
+
+    <!-- ##################### java doc ##################### -->
+    <target name="doc" depends="init" description="generate documentation">
+        <delete dir="${doc.dir}" />
+        <mkdir dir="${doc.dir}" />
+        <javadoc destdir="${doc.dir}" protected="true">
+            <fileset dir="${src.dir}" />
+        </javadoc>
     </target>
 
     <target name="run">
