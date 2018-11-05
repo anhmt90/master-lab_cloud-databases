@@ -18,7 +18,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 
 public class PersistenceTest extends TestCase {
     PersistenceManager persistenceManager = new PersistenceManager();
-    private final K key = new K("Some\"Key=09".getBytes());
+    private final K key = new K("SomeKey=09".getBytes());
     //    private String value = "==Abc\n09$8";
     private V value = new V("==Abc09$8".getBytes());
 
