@@ -48,7 +48,7 @@ public class PersistenceManager implements IPersistenceManager {
     }
 
     @Override
-    public PUTStatus write(byte[] key, byte[] value) {
+    public synchronized PUTStatus write(byte[] key, byte[] value) {
         Path file = getFilePath(key);
         PUTStatus putStatus = isExisted(file) ? PUTStatus.UPDATE_ERROR : PUTStatus.CREATE_ERROR;
         try {
@@ -104,7 +104,7 @@ public class PersistenceManager implements IPersistenceManager {
      * @param fileContent value being stored in a file
      * @return Status if operation was successful or failed 
      */
-	private PUTStatus createOrUpdate(Path file, byte[] fileContent) {
+	private synchronized PUTStatus createOrUpdate(Path file, byte[] fileContent) {
 		try {
 			if (!isExisted(file)) {
 				Files.createFile(file);
