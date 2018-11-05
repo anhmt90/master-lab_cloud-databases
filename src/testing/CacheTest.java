@@ -1,17 +1,16 @@
 package testing;
 
 import junit.framework.TestCase;
-import org.junit.Before;
 import org.junit.Test;
 import protocol.K;
 import protocol.V;
 import server.storage.CacheManager;
 import server.storage.cache.CacheDisplacementStrategy;
-import server.storage.cache.FIFO;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.ArrayList;
+import java.util.List;
 
 public class CacheTest extends TestCase {
 
@@ -19,11 +18,13 @@ public class CacheTest extends TestCase {
     private final int from;
     private final int to;
     private final Method updateCache;
+    private final CacheManager cm;
 
-    public TestClient(int from, int to, Method updateCache) {
+    public TestClient(int from, int to, CacheManager cm, Method updateCache) {
       this.from = from;
       this.to = to;
       this.updateCache = updateCache;
+      this.cm = cm;
     }
 
     public void run() {
@@ -32,10 +33,8 @@ public class CacheTest extends TestCase {
         String valStr = "test" + Integer.toString(i);
         V val = new V(valStr.getBytes());
         try {
-          this.updateCache.invoke(key, val);
-        } catch (IllegalAccessException e) {
-          e.printStackTrace();
-        } catch (InvocationTargetException e) {
+          this.updateCache.invoke(cm, key, val);
+        } catch (IllegalAccessException | InvocationTargetException e) {
           e.printStackTrace();
         }
       }
@@ -49,16 +48,27 @@ public class CacheTest extends TestCase {
     Method updateCache = cl.getDeclaredMethod("updateCache", K.class, V.class);
     updateCache.setAccessible(true);
 
+    List<TestClient> clients = new ArrayList<>();
     int keysPerClient = 10;
     for (int i = 0; i < cm.getCacheCapacity() / keysPerClient; i++) {
-      new TestClient(i * keysPerClient, (i + 1) * keysPerClient, updateCache).start();
+      TestClient c = new TestClient(i * keysPerClient, (i + 1) * keysPerClient, cm, updateCache);
+      clients.add(c);
+      c.start();
+    }
+
+    for (TestClient c: clients){
+      try {
+        c.join();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
     }
 
     int to = cm.getCacheCapacity() / keysPerClient;
     to *= keysPerClient;
     for (int i = 0; i < to; i++) {
       K key = new K(Integer.toString(i).getBytes());
-      assertTrue(cm.getCache().contains(key));
+      assertTrue(String.format("Key \"%d\" is missing", i), cm.getCache().contains(key));
     }
   }
 
