@@ -17,14 +17,11 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
 
 public class PersistenceTest extends TestCase {
-    PersistenceManager persistenceManager;
-    private final K key = new K("Some\"Key=\r09".getBytes());
+    PersistenceManager persistenceManager = new PersistenceManager();
+    private final K key = new K("Some\"Key=09".getBytes());
     //    private String value = "==Abc\n09$8";
     private V value = new V("==Abc09$8".getBytes());
 
-    public void init() {
-        persistenceManager = new PersistenceManager();
-    }
 
     @Test
     public void testCRUDFile() {
@@ -33,6 +30,11 @@ public class PersistenceTest extends TestCase {
         testReadFile();
         testUpdateFile();
         testDeleteFile();
+    }
+
+    private void init() {
+        if (persistenceManager.isExisted(key.getString()))
+            persistenceManager.delete(key.get());
     }
 
     public void testCreateFile() {
@@ -49,8 +51,7 @@ public class PersistenceTest extends TestCase {
 
 
     public void testUpdateFile() {
-//        String newValue = "New\"Key=10\r";
-        String newString = "New\"Val=10\r";
+        String newString = "New\"Val=10";
         V newValue = new V(newString.getBytes());
 
         PUTStatus status = persistenceManager.write(key.get(), newValue.get());

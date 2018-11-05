@@ -15,11 +15,15 @@ public interface ICacheDisplacementTracker {
     /**
      * Register a use (get, put) of a key-value entry in storage
      *
-     * @param k
+     * @param key
      */
-    K register(K k);
+    K register(K key);
 
-    void unregister(K k);
+    /**
+     *
+     * @param key
+     */
+    void unregister(K key);
 
     boolean containsKey(K key);
 }

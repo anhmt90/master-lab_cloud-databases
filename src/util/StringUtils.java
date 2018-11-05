@@ -7,8 +7,14 @@ public class StringUtils {
     private static final String EMPTY_STRING = "";
 
 
-    public static byte[] toByteArray(String s){
-        byte[] bytes = s.getBytes();
+    /**
+     * Convert a string to its byte array representation with a line feed and carriage return at the end
+     *
+     * @param string string to be converted
+     * @return
+     */
+    public static byte[] toByteArray(String string) {
+        byte[] bytes = string.getBytes();
         byte[] ctrBytes = new byte[]{LINE_FEED, RETURN};
         byte[] tmp = new byte[bytes.length + ctrBytes.length];
 
@@ -18,7 +24,13 @@ public class StringUtils {
         return tmp;
     }
 
-    public static boolean isEmpty (String s){
-        return s == null || s.equals(EMPTY_STRING);
+    /**
+     * Check if the string is null or empty
+     *
+     * @param string string to be checked
+     * @return
+     */
+    public static boolean isEmpty(String string) {
+        return string == null || string.equals(EMPTY_STRING);
     }
 }
