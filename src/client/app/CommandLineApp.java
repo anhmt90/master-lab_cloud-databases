@@ -171,6 +171,16 @@ public class CommandLineApp {
                 case PUT_SUCCESS:
                     print("Key-value pair stored successfully.");
                     break;
+                case PUT_UPDATE:
+                	print("Value for " + key + "was updated.");
+                case DELETE_ERROR:
+                    print("Fail to remove entry. No value for key " + key + " found on server.");
+                    LOG.info("Server response: " + serverResponse.getStatus().name());
+                    break;
+                case DELETE_SUCCESS:
+                    print("Value stored on server for key " + key + " was deleted.");
+                    LOG.info("Server response: " + serverResponse.getStatus().name());
+                    break;
                 default:
                     print("Wrong server response. Please try again");
                     LOG.info("Incompatible server response", serverResponse);
@@ -241,7 +251,7 @@ public class CommandLineApp {
                     LOG.info("Server response: ");
                     break;
                 case GET_SUCCESS:
-                    print("Value stored on server for key " + key + " is: " + serverResponse.getKey().getString());
+                    print("Value stored on server for key '" + key + "' is: " + serverResponse.getValue().getString());
                     LOG.info("Server response: " + Status.GET_SUCCESS.name());
                     break;
                 default:
