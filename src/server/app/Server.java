@@ -1,11 +1,15 @@
 package server.app;
 
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.config.Configurator;
+
 import server.api.ClientConnection;
 import server.storage.cache.CacheDisplacementStrategy;
 import server.storage.CacheManager;
 
+import java.util.Arrays;
 import java.io.IOException;
 import java.net.BindException;
 import java.net.ServerSocket;

@@ -147,7 +147,7 @@ public class Client implements IClient {
 
     @Override
     public IMessage put(String key, String value) throws IOException {
-        if (value.equals("null"))
+        if (value != null && value.equals("null"))
             value = null;
         if (value != null) {
             return storeOnServer(key, value);

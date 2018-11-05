@@ -49,10 +49,10 @@ public class PersistenceManager implements IPersistenceManager {
         return putStatus;
     }
 
-    public Path getFilePath(byte[] key) {
-        String path = DB_PATH + PATH_SEP + parseFilePath(key) + PATH_SEP + parseFileName(key);
-        return Paths.get(path);
-    }
+	public Path getFilePath(byte[] key) {
+		String path = DB_PATH + PATH_SEP + formatFilePath(key) + PATH_SEP + formatFileName(key);
+		return Paths.get(path);
+	}
 
     private String parseFilePath(byte[] key) {
         return Arrays.toString(key).replaceAll("[\\[ \\]]", "")
@@ -63,28 +63,21 @@ public class PersistenceManager implements IPersistenceManager {
         return Arrays.toString(key).replaceAll("\\W", "");
     }
 
-    /**
-     *
-     * @param file
-     * @param fileContent
-     * @return
-     */
-    private PUTStatus createOrUpdate(Path file, byte[] fileContent) {
-        try {
-            if (!isExisted(file)) {
-                Files.createFile(file);
-                Files.write(file, fileContent);
-                return PUTStatus.CREATE_SUCCESS;
-            }
-            Files.write(file, fileContent);
-            return PUTStatus.UPDATE_SUCCESS;
-        } catch (IOException e) {
-            System.out.println(e);
-            e.printStackTrace();
-        }
-        return null;
-    }
-
+	private PUTStatus createOrUpdate(Path file, byte[] fileContent) {
+		try {
+			if (!isExisted(file)) {
+				Files.createFile(file);
+				Files.write(file, fileContent);
+				return PUTStatus.CREATE_SUCCESS;
+			}
+			Files.write(file, fileContent);
+			return PUTStatus.UPDATE_SUCCESS;
+		} catch (IOException e) {
+			System.out.println(e);
+			e.printStackTrace();
+		}
+		return (isExisted(file)) ? PUTStatus.UPDATE_ERROR : PUTStatus.CREATE_ERROR;
+	}
 
     @Override
     public byte[] read(byte[] key) {
