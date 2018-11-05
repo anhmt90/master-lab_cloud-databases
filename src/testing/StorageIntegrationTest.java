@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class StorageTest extends TestCase {
+public class StorageIntegrationTest extends TestCase {
     String KEY1 = "Key1";
     String VAL1 = "Val1";
     String KEY2 = "Key2";
@@ -88,7 +88,6 @@ public class StorageTest extends TestCase {
     @Test
     public void testFIFOSingleThread() throws IOException {
         init(CACHE_SIZE, CacheDisplacementStrategy.FIFO);
-
 
         assertThat(cacheManager.getCacheCapacity(), is(CACHE_SIZE));
         assertThat(cacheManager.getCacheTracker() instanceof FIFO, is(true));
