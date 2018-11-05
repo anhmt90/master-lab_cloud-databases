@@ -14,6 +14,11 @@ import util.Validate;
 
 public class MessageMarshaller {
 
+    /**
+     * converts a {@link IMessage}  to an byte array to send over the network
+     * @param message
+     * @return
+     */
     public static byte[] marshall(IMessage message) {
         if (message == null) {
             return null;
@@ -35,6 +40,11 @@ public class MessageMarshaller {
         return output;
     }
 
+    /**
+     * converts a byte array received from the network to an {@link IMessage} 
+     * @param msgBytes
+     * @return
+     */
     public static IMessage unmarshall(byte[] msgBytes) {
         if (msgBytes == null) {
             return null;
