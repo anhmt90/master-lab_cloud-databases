@@ -14,7 +14,6 @@ public class LRU implements ICacheDisplacementTracker {
   @Override
   public K evict() {
     K k = registry.iterator().next();
-    registry.iterator().remove();
     registry.remove(k);
     return k;
   }

@@ -100,8 +100,10 @@ public class CacheTest extends TestCase {
     K k2 = new K(k2Str.getBytes());
 
     updateCache.invoke(cm, k1, v);
+    assertEquals(1, cm.getCache().size());
     assertTrue(String.format("Added key \"%s\" is missing", k1Str), cm.getCache().containsKey(k1));
     updateCache.invoke(cm, k2, v);
+    assertEquals(1, cm.getCache().size());
     assertTrue(String.format("Added key \"%s\" is missing", k2Str), cm.getCache().containsKey(k2));
   }
 
