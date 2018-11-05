@@ -9,7 +9,6 @@ import server.api.ClientConnection;
 import server.storage.cache.CacheDisplacementStrategy;
 import server.storage.CacheManager;
 
-import java.util.Arrays;
 import java.io.IOException;
 import java.net.BindException;
 import java.net.ServerSocket;
