@@ -198,24 +198,24 @@ public class Server extends Thread {
 
         switch (args.length) {
             case 0:
-                new Server(50000, 100, CacheDisplacementStrategy.FIFO, "ERROR");
+                new Server(50000, 100, CacheDisplacementStrategy.FIFO, "ERROR").start();
                 break;
             case 1:
                 if (isValidPortNumber(args[0])) {
-                    new Server(Integer.parseInt(args[0]), 100, CacheDisplacementStrategy.FIFO, "ERROR");
+                    new Server(Integer.parseInt(args[0]), 100, CacheDisplacementStrategy.FIFO, "ERROR").start();
                 }
                 break;
             case 2:
                 if (isValidPortNumber(args[0]) && isValidCacheSize(args[1])) {
                     new Server(Integer.parseInt(args[0]), Integer.parseInt(args[1]), CacheDisplacementStrategy.FIFO,
-                            "ERROR");
+                            "ERROR").start();
                 }
                 break;
             case 3:
                 if (isValidPortNumber(args[0]) && isValidCacheSize(args[1])) {
                     try {
                         new Server(Integer.parseInt(args[0]), Integer.parseInt(args[1]),
-                                isValidDisplacementStrategy(args[2]), "ERROR");
+                                isValidDisplacementStrategy(args[2]), "ERROR").start();;
                     } catch (IllegalArgumentException iaex) {
                         System.out.println(
                                 "Invalid Displacement Strategy. Please choose one of the following: 'FIFO', 'LRU', 'LFU'");
@@ -226,7 +226,7 @@ public class Server extends Thread {
                 if (isValidPortNumber(args[0]) && isValidCacheSize(args[1]) && isValidLogLevel(args[3])) {
                     try {
                         new Server(Integer.parseInt(args[0]), Integer.parseInt(args[1]),
-                                isValidDisplacementStrategy(args[2]), args[3]);
+                                isValidDisplacementStrategy(args[2]), args[3]).start();;
                     } catch (IllegalArgumentException iaex) {
                         System.out.println(
                                 "Invalid Displacement Strategy. Please choose one of the following: 'FIFO', 'LRU', 'LFU'");
