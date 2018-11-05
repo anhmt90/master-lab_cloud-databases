@@ -40,6 +40,16 @@ public class Server extends Thread {
         System.out.println("Server started on port " + this.port + " with cache size " + cacheSize + " and cache strategy " + strategy.name());
     }
 
+    public Server() {
+        this.port = 50000;
+        this.cm = new CacheManager(100, CacheDisplacementStrategy.FIFO);
+        printStartingLog(100, CacheDisplacementStrategy.FIFO);
+    }
+
+    private void printStartingLog(int cacheSize, CacheDisplacementStrategy strategy) {
+        System.out.println("Server started on port " + this.port + " with cache size " + cacheSize + " and cache strategy " + strategy.name());
+    }
+
 
     /**
      * Initializes and starts the server.
@@ -109,11 +119,22 @@ public class Server extends Thread {
             /*TODO adapt logging with LogSetup
             new LogSetup("logs/server.log", Level.ALL);*/
 
-            if (args.length != 1) {
+            //TODO: add checks for invalid args
+            if (args.length == 4) {
                 System.out.println("Error! Invalid number of arguments!");
-                System.out.println("Usage: Server <port>!");
+                System.out.println("Usage: Server <port> <cache_size> <displacement_strategy> <log_level>!");
+                System.out.println("<port>: \t port number that the server should listen to. An integer in range [1024, 49151]");
+                System.out.println("<cach_size>: \t maximum number of <K,V> pairs can be cached at the same time. An interger in range [1, 2^30]");
+                System.out.println("<displacement_strategy>: \t specifies the order in which <K,V> pairs should be removed from cache when the cache has reache its <cache_size>. " +
+                        "\n\t\t This can be one of the following values {'FIFO', 'LRU', 'LFU'}");
+                System.out.println("<log_level>: \t specifies logging level on server. This can be one of the following values {'INFO', 'DEBUG', 'ERROR', 'FATAL'}");
             } else {
+
                 int port = Integer.parseInt(args[0]);
+                int cacheSize = Integer.parseInt(args[1]);
+                CacheDisplacementStrategy strategy = CacheDisplacementStrategy.valueOf(args[2].toUpperCase());
+                String logLevel = args[3];
+
                 new Server(port, 100, CacheDisplacementStrategy.FIFO).start();
             }
         }
