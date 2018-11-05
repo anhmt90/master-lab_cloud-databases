@@ -21,7 +21,7 @@ import util.StringUtils;
 public class CommandLineApp {
 
     private static final String WHITESPACE = " ";
-    static Logger LOG = LogManager.getLogger(CommandLineApp.class);
+    static Logger LOG = LogManager.getLogger(Client.CLIENT_LOG);
 
     private static final int MAX_VALUE_SIZE = (120 * 1024) - 1;
     private static final int MAX_KEY_LENGTH = 20;
@@ -449,6 +449,14 @@ public class CommandLineApp {
         return true;
     }
 
+    /**
+     * prints to console and log if user provided illegal arguments
+     * 
+     * @param commandNam    name of the command for which the user
+     *                      provided wrong arguments
+     * @param cmdComponents String array containing the user arguments
+     * @return false
+     */
     private static boolean handleInvalidArgs(String commandName, String[] cmdComponents) {
         print("Invalid argument for '" + commandName + "' command");
         LOG.info("Invalid argument. " + cmdComponents);

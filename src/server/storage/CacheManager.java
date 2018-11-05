@@ -9,10 +9,19 @@ import util.Validate;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Manages available pm options by their capacities
+ * Manages the cache and plays as an coordinator between {@link server.api.ClientConnection} and {@link PersistenceManager}.
+ * This class handles client's put and get requests by maintaning a {@see cache} for quick access. In case the requested key
+ * does not reside in the cache, {@see CacheManager} will forward the request to {@see PersistenceManager} to lookup the key
+ * in persistence lay e.g. disk.
+ * If the {@see cache} reach its {@see cacheCapacity}, {@see CacheManager} will replace a <{@see K}, {@see V}> pair in {@see cache}
+ * by the pair having the currently requested key according to the current {@see CacheDisplacementStrategy}, which is implemented
+ * by the {@see cacheTracker}
  */
 public class CacheManager implements IStorageCRUD {
     public static final String ERROR = "ERROR";
+    /**
+     * Keeps track of the
+     */
     private ICacheDisplacementTracker cacheTracker;
     private ConcurrentHashMap<K, V> cache;
     private int cacheCapacity;

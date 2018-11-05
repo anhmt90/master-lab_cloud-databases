@@ -16,8 +16,8 @@ import protocol.*;
 import protocol.IMessage.*;
 
 public class Client implements IClient {
-
-    private static Logger LOG = LogManager.getLogger(Client.class);
+    public static final String CLIENT_LOG = "CloudDB";
+    private static Logger LOG = LogManager.getLogger(Client.CLIENT_LOG);
     /**
      * The client socket
      */
@@ -67,6 +67,13 @@ public class Client implements IClient {
         }
     }
 
+    /**
+     * Logging of errors
+     * 
+     * @param exception the exception that was thrown in the error
+     * @param message   the error message
+     * @return exception
+     */
     private <E> E printLogError(E exception, String message) {
         print(message + "\n");
         LOG.error(message, exception);
@@ -160,15 +167,31 @@ public class Client implements IClient {
         return put(key, null);
     }
 
+    /**
+     * Intermediary method for deletion of key-value pairs on server
+     * 
+     * @param  key key for the value that is supposed to be deleted
+     * @return the server response
+     * @throws IOException
+     */
     private IMessage removeOnServer(String key) throws IOException {
         return sendWithoutValue(key, Status.PUT);
     }
-
+    
+    
     @Override
     public IMessage get(String key) throws IOException {
         return sendWithoutValue(key, Status.GET);
     }
 
+    /**
+     * Handles delivery of Messages without a value
+     * 
+     * @param key    key for the value that is accessed
+     * @param status message specification
+     * @return the server response
+     * @throws IOException
+     */
     private IMessage sendWithoutValue(String key, Status status) throws IOException {
         byte[] keyBytes = key.getBytes(StandardCharsets.US_ASCII);
         IMessage toSend = new Message(status, new K(keyBytes));
@@ -178,6 +201,13 @@ public class Client implements IClient {
         return response;
     }
 
+    /**
+     * Handles delivery of put messages for storage
+     * @param key   key for the key-value pair
+     * @param value value for the key-value pair
+     * @return the server response
+     * @throws IOException
+     */
     private IMessage storeOnServer(String key, String value) throws IOException {
         byte[] keyBytes = key.getBytes(StandardCharsets.US_ASCII);
         byte[] valueBytes = value.getBytes(StandardCharsets.US_ASCII);

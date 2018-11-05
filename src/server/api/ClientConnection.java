@@ -4,6 +4,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 import protocol.*;
 import protocol.IMessage.Status;
+import server.app.Server;
 import server.storage.PUTStatus;
 import server.storage.CacheManager;
 import util.StringUtils;
@@ -21,7 +22,7 @@ import java.net.Socket;
  */
 public class ClientConnection implements Runnable {
 
-    private static Logger LOG = LogManager.getLogger(ClientConnection.class);
+    private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
 
     private boolean isOpen;
 

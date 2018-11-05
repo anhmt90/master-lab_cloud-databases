@@ -1,6 +1,9 @@
 package testing;
 
 import junit.framework.TestCase;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.junit.Test;
 import protocol.K;
 import protocol.V;
@@ -13,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CacheTest extends TestCase {
+	private static Logger LOG = LogManager.getLogger(AllTests.TEST_LOG);
 
   private class TestClient extends Thread {
     private final int from;
@@ -35,6 +39,7 @@ public class CacheTest extends TestCase {
         try {
           this.updateCache.invoke(cm, key, val);
         } catch (IllegalAccessException | InvocationTargetException e) {
+        	LOG.error(e);
           e.printStackTrace();
         }
       }

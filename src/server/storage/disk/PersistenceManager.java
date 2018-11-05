@@ -1,9 +1,11 @@
 package server.storage.disk;
 
 import server.api.ClientConnection;
+import server.app.Server;
 import server.storage.PUTStatus;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -16,7 +18,7 @@ import org.apache.logging.log4j.Logger;
 import static util.StringUtils.PATH_SEP;
 
 public class PersistenceManager implements IPersistenceManager {
-	private static Logger LOG = LogManager.getLogger(ClientConnection.class);
+	private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
 	
 	private static final String DB_PATH = System.getProperty("user.dir") + PATH_SEP + "db" + PATH_SEP;
 
