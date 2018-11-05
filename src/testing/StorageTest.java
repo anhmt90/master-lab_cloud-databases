@@ -151,4 +151,6 @@ public class StorageTest extends TestCase {
         boolean res = message.getStatus().equals(Status.PUT_SUCCESS) || message.getStatus().equals(Status.PUT_UPDATE);
         assertThat(res, is(true));
     }
+
+
 }

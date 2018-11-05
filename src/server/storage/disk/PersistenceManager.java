@@ -50,7 +50,7 @@ public class PersistenceManager implements IPersistenceManager {
     }
 
 	public Path getFilePath(byte[] key) {
-		String path = DB_PATH + PATH_SEP + formatFilePath(key) + PATH_SEP + formatFileName(key);
+		String path = DB_PATH + PATH_SEP + parseFilePath(key) + PATH_SEP + parseFileName(key);
 		return Paths.get(path);
 	}
 
