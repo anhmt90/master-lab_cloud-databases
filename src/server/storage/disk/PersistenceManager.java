@@ -170,3 +170,4 @@ public class PersistenceManager implements IPersistenceManager {
         return !Files.isDirectory(filePath) && Files.exists(filePath);
     }
 }
+
