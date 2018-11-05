@@ -164,4 +164,49 @@ public class CacheTest extends TestCase {
   public void testLFUoneItemEvict() throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
     testCacheOneItemEvict(CacheDisplacementStrategy.LFU);
   }
+
+  /**
+   * Test removing an item from the cache when value of put operations is null
+   * @param cm {@link CacheManager} to test
+   */
+  private void testDelete(CacheManager cm) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+    Method updateCache = getUpdateCacheMethod(cm);
+
+    V v = new V("testValue".getBytes());
+    String kStr = "Test1";
+    K k = new K(kStr.getBytes());
+
+    updateCache.invoke(cm, k, v);
+    assertEquals(1, cm.getCache().size());
+    updateCache.invoke(cm, k, null);
+    assertEquals(0, cm.getCache().size());
+  }
+
+  /**
+   * Cache item remove operation for cache {@link #testDelete(CacheManager)} with {@link server.storage.cache.FIFO} strategy
+   */
+  @Test
+  public void testFIFODelete() throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+    CacheManager cm = new CacheManager(100, CacheDisplacementStrategy.FIFO);
+    testDelete(cm);
+  }
+
+  /**
+   * Cache item remove operation for cache {@link #testDelete(CacheManager)} with {@link server.storage.cache.LRU} strategy
+   */
+  @Test
+  public void testLRUDelete() throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+    CacheManager cm = new CacheManager(100, CacheDisplacementStrategy.LRU);
+    testDelete(cm);
+  }
+
+  /**
+   * Cache item remove operation for cache {@link #testDelete(CacheManager)} with {@link server.storage.cache.LFU} strategy
+   */
+  @Test
+  public void testLFUDelete() throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+    CacheManager cm = new CacheManager(100, CacheDisplacementStrategy.LFU);
+    testDelete(cm);
+  }
+
 }
