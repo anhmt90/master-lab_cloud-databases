@@ -2,13 +2,17 @@ package testing;
 
 import client.api.Client;
 import junit.framework.TestCase;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.junit.Test;
 
 import java.net.UnknownHostException;
 
 
 public class ConnectionTest extends TestCase {
-
+	private static Logger LOG = LogManager.getLogger(AllTests.TEST_LOG);
+	
     @Test
     public void testConnectionSuccess() {
         Exception ex = null;
@@ -17,6 +21,7 @@ public class ConnectionTest extends TestCase {
         try {
             kvClient.connect();
         } catch (Exception e) {
+        	LOG.error(e);
             ex = e;
         }
 
@@ -31,6 +36,7 @@ public class ConnectionTest extends TestCase {
         try {
             kvClient.connect();
         } catch (Exception e) {
+        	LOG.error(e);
             ex = e;
         }
 
@@ -46,6 +52,7 @@ public class ConnectionTest extends TestCase {
         try {
             kvClient.connect();
         } catch (Exception e) {
+        	LOG.error(e);
             ex = e;
         }
 

@@ -2,6 +2,9 @@ package testing;
 
 import client.api.Client;
 import junit.framework.TestCase;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -13,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 
 
 public class InteractionTest extends TestCase {
+	private static Logger LOG = LogManager.getLogger(AllTests.TEST_LOG);
 
     private Client kvClient;
 
@@ -25,6 +29,7 @@ public class InteractionTest extends TestCase {
             String welcomeMessage = new String(bytes, StandardCharsets.US_ASCII).trim();
             System.out.println(welcomeMessage);
         } catch (Exception e) {
+        	LOG.error(e);
         }
     }
 
@@ -44,6 +49,7 @@ public class InteractionTest extends TestCase {
         try {
             response = kvClient.put(key, value);
         } catch (Exception e) {
+        	LOG.error(e);
             ex = e;
             throw e;
         }
@@ -61,6 +67,7 @@ public class InteractionTest extends TestCase {
         try {
             kvClient.put(key, value);
         } catch (Exception e) {
+        	LOG.error(e);
             ex = e;
         }
 
@@ -81,6 +88,7 @@ public class InteractionTest extends TestCase {
             response = kvClient.put(key, updatedValue);
 
         } catch (Exception e) {
+        	LOG.error(e);
             ex = e;
         }
 
@@ -101,6 +109,7 @@ public class InteractionTest extends TestCase {
             response = kvClient.put(key, "null");
 
         } catch (Exception e) {
+        	LOG.error(e);
             ex = e;
         }
 
@@ -118,6 +127,7 @@ public class InteractionTest extends TestCase {
             kvClient.put(key, value);
             response = kvClient.get(key);
         } catch (Exception e) {
+        	LOG.error(e);
             ex = e;
         }
 
@@ -133,6 +143,7 @@ public class InteractionTest extends TestCase {
         try {
             response = kvClient.get(key);
         } catch (Exception e) {
+        	LOG.error(e);
             ex = e;
         }
 
