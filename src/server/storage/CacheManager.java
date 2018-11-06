@@ -84,9 +84,11 @@ public class CacheManager implements IStorageCRUD {
             return val;
         }
         byte[] res = pm.read(key.get());
+        if (res == null)
+            return null;
         val = new V(res);
         updateCache(key, val);
-        return (res != null) ? new V(res) : null;
+        return val;
     }
 
     /**
@@ -108,8 +110,8 @@ public class CacheManager implements IStorageCRUD {
     }
 
     /**
-     *  Updates the {@link this.cache} with the given <K,V> pair. A cache displacement can happen if the cache reaches
-     *  its {@link this.cacheCapacity}.
+     * Updates the {@link this.cache} with the given <K,V> pair. A cache displacement can happen if the cache reaches
+     * its {@link this.cacheCapacity}.
      *
      * @param key key in <K,V> pair. Being used to search for the relevant pair in {@link this.cache}
      * @param val key in <K,V> pair. The value that should be stored/updated on the {@link this.cache}.
