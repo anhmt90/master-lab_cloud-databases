@@ -251,7 +251,7 @@ public class CommandLineApp {
                     LOG.info("Server response: ");
                     break;
                 case GET_SUCCESS:
-                    print("Value stored on server for key '" + key + "' is: " + serverResponse.getValue().getString());
+                    print("Value stored on server for key '" + key + "' is: " + serverResponse.getValue());
                     LOG.info("Server response: " + Status.GET_SUCCESS.name());
                     break;
                 default:
@@ -452,7 +452,7 @@ public class CommandLineApp {
     /**
      * prints to console and log if user provided illegal arguments
      * 
-     * @param commandNam    name of the command for which the user
+     * @param commandName    name of the command for which the user
      *                      provided wrong arguments
      * @param cmdComponents String array containing the user arguments
      * @return false

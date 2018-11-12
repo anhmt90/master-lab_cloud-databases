@@ -1,9 +1,5 @@
 package protocol;
 
-import util.Validate;
-
-import java.io.Serializable;
-
 public class Message implements IMessage {
     Status status;
     K key;
@@ -35,12 +31,21 @@ public class Message implements IMessage {
     }
 
     @Override
-    public K getKey() {
+    public String getKey() {
+        return key.getString();
+    }
+
+
+    @Override
+    public String getValue() {
+        return value.getString();
+    }
+
+    public K getK() {
         return key;
     }
 
-    @Override
-    public V getValue() {
+    public V getV() {
         return value;
     }
 
@@ -51,6 +56,6 @@ public class Message implements IMessage {
 
     @Override
     public String toString() {
-        return status.name() +"<" + key + ", " + value + '>';
+        return status.name() + "<" + key + ", " + value + '>';
     }
 }

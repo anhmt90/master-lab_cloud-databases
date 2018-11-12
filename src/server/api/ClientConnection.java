@@ -93,8 +93,8 @@ public class ClientConnection implements Runnable {
      * @return a response message to the client
      */
     private IMessage handleRequest(IMessage message) {
-        K key = message.getKey();
-        V val = message.getValue();
+        K key = message.getK();
+        V val = message.getV();
         switch (message.getStatus()) {
             case GET:
                 return handleGET(message);
@@ -138,9 +138,9 @@ public class ClientConnection implements Runnable {
      * @return server response to client request
      */
     private synchronized IMessage handleGET(IMessage message) {
-        V val = cm.get(message.getKey());
-        return (val == null) ? new Message(Status.GET_ERROR, message.getKey())
-                : new Message(Status.GET_SUCCESS, message.getKey(), val);
+        V val = cm.get(message.getK());
+        return (val == null) ? new Message(Status.GET_ERROR, message.getK())
+                : new Message(Status.GET_SUCCESS, message.getK(), val);
     }
 
     /**

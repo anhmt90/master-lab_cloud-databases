@@ -1,7 +1,6 @@
 package protocol;
 
 import java.io.Serializable;
-import java.util.Arrays;
 
 public interface IMessage extends Serializable {
 
@@ -34,36 +33,34 @@ public interface IMessage extends Serializable {
                 return null;
             return all[i];
         }
-
-
-//        @Override
-//        public boolean equals(Object o) {
-//            if (this == o) return true;
-//            if (o == null || getClass() != o.getClass()) return false;
-//            K k = (K) o;
-//            return Arrays.equals(key, k.key);
-//        }
-//
-//        @Override
-//        public int hashCode() {
-//            return Arrays.hashCode(key);
-//        }
     }
 
 
 
 
     /**
-     * @return the key that is associated with this message,
+     * @return the key as String that is associated with this message,
      * null if not key is associated.
      */
-    public K getKey();
+    public String getKey();
 
     /**
-     * @return the value that is associated with this message,
+     * @return the value as String that is associated with this message,
      * null if not value is associated.
      */
-    public V getValue();
+    public String getValue();
+
+    /**
+     * @return the key as byte array wrapped by type K that is associated with this message,
+     * null if not key is associated.
+     */
+    public K getK();
+
+    /**
+     * @return the value as byte array wrapped by type V that is associated with this message,
+     * null if not value is associated.
+     */
+    public V getV();
 
     /**
      * @return a status string that is used to identify request types,

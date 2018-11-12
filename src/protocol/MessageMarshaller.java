@@ -23,8 +23,8 @@ public class MessageMarshaller {
         if (message == null) {
             return null;
         }
-        byte[] keyBytes = message.getKey().get();
-        byte[] valueBytes = message.getValue() != null ? message.getValue().get() : new byte[]{};
+        byte[] keyBytes = message.getK().get();
+        byte[] valueBytes = message.getV() != null ? message.getV().get() : new byte[]{};
         byte[] output = new byte[1 + 1 + 3 + keyBytes.length + valueBytes.length];
 
         final short BUFFER_CAPACITY = 4;
