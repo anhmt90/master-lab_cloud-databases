@@ -7,6 +7,7 @@ import java.util.*;
 import ecs.client.api.ECSClient;
 import protocol.IMessage;
 import protocol.IMessage.Status;
+import server.storage.cache.CacheDisplacementStrategy;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
@@ -16,10 +17,10 @@ import util.StringUtils;
 
 public class ECSApplication {
 
-	 private static final String WHITESPACE = " ";
+	 	private static final String WHITESPACE = " ";
 	    static Logger LOG = LogManager.getLogger("ECS");
 
-	    private static final String INIT = "initate";
+	    private static final String INIT = "initiate";
 	    private static final String START = "start";
 	    private static final String STOP = "stop";
 	    private static final String SHUTDOWN = "shutdown";
@@ -30,8 +31,8 @@ public class ECSApplication {
 	
 	
 	    /**
-	     * The StorageClient as an instance of {@link Client} to communicate with the
-	     * StorageServer
+	     * The ECSClient as an instance of {@link Client} to communicate with the
+	     * Storage Service
 	     */
 	    private static ECSClient ecsClient = new ECSClient();
 	    
@@ -81,44 +82,93 @@ public class ECSApplication {
 	    }
 
 
+	    /**
+		 * Handles the command {@see ADD}
+		 * 
+		 * @param cmdComponents User input separated by the first whitespace. The
+		 *                      command name is the first component and the remaining as
+		 *                      the second
+		 */
 		private static void handleAddNode(String[] cmdComponents) {
 			if (!isValidArgs(ADD, cmdComponents)) {
 	            return;
 	        }
 			String[] cmdArgs = cmdComponents[1].split(" ");
-			int cacheSize = Integer.parseInt(cmdArgs[0]);
-			ecsClient.addNode(cacheSize, cmdArgs[1]);
+			if(!isValidCacheSize(cmdArgs[0]) || !isValidDisplacementStrategy(cmdArgs[1])) {
+				return;
+			}
+			ecsClient.addNode(Integer.parseInt(cmdArgs[0]), cmdArgs[1]);
 		}
 
 
+		/**
+		 * Handles the command {@see SHUTDOWN}
+		 */
 		private static void handleShutdown() {
 			ecsClient.shutDown();
 		}
 
 
+		/**
+		 * Handles the command {@see STOP}
+		 */
 		private static void handleStop() {
+//			if (ecsClient.isRunning()) {
+//				print("Storage service is not currently running.");
+//				return;
+//			}
 			ecsClient.stop();
 			
 		}
 
 
+		/**
+		 * Handles the command {@see INIT}
+		 * 
+		 * @param cmdComponents User input separated by the first whitespace. The
+		 *                      command name is the first component and the remaining as
+		 *                      the second
+		 */
 		private static void handleInitiateService(String[] cmdComponents) {
 			if (!isValidArgs(INIT, cmdComponents)) {
 	            return;
 	        }
 			String[] cmdArgs = cmdComponents[1].split(" ");
-			int cacheSize = Integer.parseInt(cmdArgs[1]);
-			int numberOfNodes = Integer.parseInt(cmdArgs[0]);
-			ecsClient.initService(numberOfNodes, cacheSize, cmdArgs[2]);
+			int serverNumber = 0;
+			try {
+				serverNumber = Integer.parseInt(cmdArgs[0]);
+				if (serverNumber > 10 && serverNumber < 1) {
+					String msg = "Not a valid number of servers.";
+					print(msg);
+		            LOG.info(msg);
+		            return;
+				}
+			}
+			catch (NumberFormatException e){
+				String msg = "Not a valid number of servers.";
+				print(msg);
+	            LOG.info(msg);
+	            return;
+			}
+			if(!isValidCacheSize(cmdArgs[1]) || !isValidDisplacementStrategy(cmdArgs[2])) {
+				return;
+			}
+			ecsClient.initService(serverNumber, Integer.parseInt(cmdArgs[1]), cmdArgs[2]);
 		}
 
 
+		/**
+		 * Handles the command {@see REMOVE}
+		 */
 		private static void handleRemoveNode() {
 			ecsClient.removeNode();
 			
 		}
 
 
+		/**
+		 * Handles the command {@see START}
+		 */
 		private static void handleStart() {
 			ecsClient.start();
 			
@@ -185,7 +235,7 @@ public class ECSApplication {
 	    }
 
 	    /**
-	     * Prints the command prompt 'StorageClient>' to System.out
+	     * Prints the command prompt 'ECSClient>' to System.out
 	     */
 	    private static void printCommandPrompt() {
 	        System.out.print("\nECSClient> ");
@@ -218,11 +268,52 @@ public class ECSApplication {
 	                    return handleInvalidArgs(commandName, cmdComponents);
 	                break;
 	            case ADD:
-	                if (cmdComponents.length != 2 || cmdComponents[1].split(WHITESPACE).length > 2)
+	                if (cmdComponents.length != 2 || cmdComponents[1].split(WHITESPACE).length != 2)
 	                    return handleInvalidArgs(commandName, cmdComponents);
 	                break;
 	        }
 	        return true;
+	    }
+	    
+	    /**
+	     * Checks whether the {@param cacheSizeString} is a valid cache size
+	     *
+	     * @param cacheSizeString The cache size number in string format
+	     * @return boolean value indicating the {@param cacheSizeString} is a valid cache
+	     *         size or not
+	     */
+	    private static boolean isValidCacheSize(String cacheSizeString) {
+	        try {
+	            int cacheSizeInt = Integer.parseInt(cacheSizeString);
+	            if (cacheSizeInt > 1 && cacheSizeInt < 1073741824) {
+	                return true;
+	            }
+	        } catch (NumberFormatException nex) {
+
+	        }
+	        print("Invalid cache size. Cache Size has to be a number between 1 and 1073741824.");
+	        return false;
+	    }
+	    
+	    /**
+	     * Checks if a String is a valid Displacement Strategy
+	     *
+	     * @param strategy Displacement Strategy in String format
+	     * @return boolean indicating if {@param strategy} is a valid
+	     *                 displacement strategy
+	     */
+	    private static boolean isValidDisplacementStrategy(String strategy) {
+	        switch (strategy) {
+	            case "FIFO":
+	                return true;
+	            case "LRU":
+	                return true;
+	            case "LFU":
+	                return true;
+	            default:
+	                print("Illegal Displacement Strategy. Please choose either 'FIFO', 'LRU' or 'LFU'.");
+	                return false;
+	        }
 	    }
 	    
 	    /**
