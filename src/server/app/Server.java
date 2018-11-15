@@ -5,9 +5,11 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
 
+import server.api.AdminConnection;
 import server.api.ClientConnection;
 import server.storage.cache.CacheDisplacementStrategy;
 import server.storage.CacheManager;
+import util.Validate;
 
 import java.io.IOException;
 import java.net.BindException;
@@ -20,13 +22,19 @@ import java.net.Socket;
 public class Server extends Thread {
     public static final String SERVER_LOG = "kvServer";
     private static final String DEFAULT_LOG_LEVEL = "INFO";
+    private static final int DEFAULT_CACHE_SIZE = 100;
+    private static final int DEFAULT_PORT = 50000;
+    private static final int ADMIN_PORT = 9867;
 
-	private static Logger LOG = LogManager.getLogger("SERVER_LOG");
+    private static Logger LOG = LogManager.getLogger("SERVER_LOG");
 
     private int port;
-    private ServerSocket serverSocket;
-    private boolean running;
+    private ServerSocket kvSocket;
+    private ServerSocket mgmtSocket;
     private CacheManager cm;
+
+    NodeState state;
+
 
     /**
      * Start KV Server at given port
@@ -46,10 +54,10 @@ public class Server extends Thread {
         Level level = Level.getLevel(logLevel);
         Configurator.setRootLevel(level);
 
-        String toPrint = "Server started at port " + this.port + ", with cache size " + cacheSize
-                + ", with cache strategy " + strategy.name() + " and with logging Level " + logLevel;
-        LOG.info(toPrint);
-        System.out.println(toPrint);
+        state = NodeState.STOPPED;
+
+        LOG.info("Server started at port " + this.port + ", with cache size " + cacheSize
+                + ", with cache strategy " + strategy.name() + " and with logging Level " + logLevel);
 
     }
 
@@ -58,11 +66,21 @@ public class Server extends Thread {
      * closed.
      */
     public void run() {
-        running = initializeServer();
-        if (serverSocket != null) {
+        initAdminTunnel();
+        if(mgmtSocket != null) {
+            try {
+                Socket ecsSocket =  mgmtSocket.accept();
+                AdminConnection adminConnection = new AdminConnection(ecsSocket);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        state = initServer();
+        if (kvSocket != null) {
             while (isRunning()) {
                 try {
-                    Socket client = serverSocket.accept();
+                    Socket client = kvSocket.accept();
                     ClientConnection connection = new ClientConnection(client, cm);
                     new Thread(connection).start();
 
@@ -76,21 +94,46 @@ public class Server extends Thread {
         LOG.info("Server stopped.");
     }
 
+
+    /**
+     * Gets cache manager
+     *
+     * @return Cache Manager
+     */
+    public CacheManager getCacheManager() {
+        return cm;
+    }
+
+    /**
+     * Gets current service state of the server
+     *
+     * @return the one of the state listed in {@link NodeState}
+     */
+    public NodeState getNodeState() {
+        return state;
+    }
+
+    public void setNodeState(NodeState state) {
+        this.state = state;
+    }
+
     /**
      * Checks if server is running
+     *
      * @return true if server is running
      */
     private boolean isRunning() {
-        return this.running;
+        return state.equals(NodeState.RUNNING);
     }
 
     /**
      * Stops the server insofar that it won't listen at the given port any more.
      */
     public void stopServer() {
-        running = false;
+        state = NodeState.STOPPING;
         try {
-            serverSocket.close();
+            kvSocket.close();
+            state = NodeState.STOPPED;
         } catch (IOException e) {
             LOG.error("Error! " + "Unable to close socket on port: " + port, e);
         }
@@ -98,21 +141,21 @@ public class Server extends Thread {
 
     /**
      * Initializes the server socket
-     * 
-     * @return true if socket was successfully set up
+     *
+     * @return {@link } if socket was successfully set up
      */
-    private boolean initializeServer() {
+    private NodeState initServer() {
         LOG.info("Initialize server ...");
         try {
-            serverSocket = new ServerSocket(port);
-            LOG.info("Server listening on port: " + serverSocket.getLocalPort());
-            return true;
+            kvSocket = new ServerSocket(port);
+            LOG.info("Server listening on port: " + kvSocket.getLocalPort());
+            return NodeState.RUNNING;
         } catch (IOException e) {
             LOG.error("Error! Cannot open server socket:");
             if (e instanceof BindException) {
                 LOG.error("Port " + port + " is already bound!");
             }
-            return false;
+            return state;
         }
     }
 
@@ -121,7 +164,7 @@ public class Server extends Thread {
      *
      * @param portAsString The port number in string format
      * @return boolean value indicating the {@param portAsString} is a valid port
-     *         number or not
+     * number or not
      */
     private static boolean isValidPortNumber(String portAsString) {
         if (portAsString == null || portAsString.equals("")) {
@@ -142,7 +185,7 @@ public class Server extends Thread {
      *
      * @param cacheSizeString The cache size number in string format
      * @return boolean value indicating the {@param cacheSizeString} is a valid cache
-     *         size or not
+     * size or not
      */
     private static boolean isValidCacheSize(String cacheSizeString) {
         try {
@@ -162,9 +205,9 @@ public class Server extends Thread {
      *
      * @param strategy Displacement Strategy in String format
      * @return CacheDisplacementStrategy corresponding to the given String
-     *         in {@param strategy}
+     * in {@param strategy}
      * @throws IllegalArgumentException if the {@param strategy} is not a
-     * 		   recognized Displacement Strategy
+     *                                  recognized Displacement Strategy
      */
     private static CacheDisplacementStrategy isValidDisplacementStrategy(String strategy)
             throws IllegalArgumentException {
@@ -185,10 +228,10 @@ public class Server extends Thread {
      *
      * @param logLevel The logging level in String format
      * @return boolean value indicating the {@param logLevel} is a valid logging
-     *         level or not
+     * level or not
      */
     private static boolean isValidLogLevel(String logLevel) {
-        String[] logLevels = { "ALL", DEFAULT_LOG_LEVEL, "DEBUG", "WARN", "ERROR", "FATAL", "OFF" };
+        String[] logLevels = {"ALL", DEFAULT_LOG_LEVEL, "DEBUG", "WARN", "ERROR", "FATAL", "OFF"};
         for (int i = 0; i < logLevels.length; i++) {
             if (logLevel.contentEquals(logLevels[i])) {
                 return true;
@@ -205,26 +248,24 @@ public class Server extends Thread {
      * @param args contains the port number at args[0], the cache size at args[1], the cache displacement strategy at args[2] and the logging Level at args[3].
      */
     public static void main(String[] args) {
-    	switch (args.length) {
+        switch (args.length) {
             case 0:
-                new Server(50000, 100, CacheDisplacementStrategy.FIFO, DEFAULT_LOG_LEVEL).start();
+                new Server(DEFAULT_PORT, DEFAULT_CACHE_SIZE, CacheDisplacementStrategy.FIFO, DEFAULT_LOG_LEVEL).start();
                 break;
             case 1:
-                if (isValidPortNumber(args[0])) {
-                    new Server(Integer.parseInt(args[0]), 100, CacheDisplacementStrategy.FIFO, DEFAULT_LOG_LEVEL).start();
-                }
+                if (isValidPortNumber(args[0]))
+                    new Server(Integer.parseInt(args[0]), DEFAULT_CACHE_SIZE, CacheDisplacementStrategy.FIFO, DEFAULT_LOG_LEVEL).start();
                 break;
             case 2:
-                if (isValidPortNumber(args[0]) && isValidCacheSize(args[1])) {
+                if (isValidPortNumber(args[0]) && isValidCacheSize(args[1]))
                     new Server(Integer.parseInt(args[0]), Integer.parseInt(args[1]), CacheDisplacementStrategy.FIFO,
                             DEFAULT_LOG_LEVEL).start();
-                }
                 break;
             case 3:
                 if (isValidPortNumber(args[0]) && isValidCacheSize(args[1])) {
                     try {
                         new Server(Integer.parseInt(args[0]), Integer.parseInt(args[1]),
-                                isValidDisplacementStrategy(args[2]), DEFAULT_LOG_LEVEL).start();;
+                                isValidDisplacementStrategy(args[2]), DEFAULT_LOG_LEVEL).start();
                     } catch (IllegalArgumentException iaex) {
                         System.out.println(
                                 "Invalid Displacement Strategy. Please choose one of the following: 'FIFO', 'LRU', 'LFU'");
@@ -235,7 +276,7 @@ public class Server extends Thread {
                 if (isValidPortNumber(args[0]) && isValidCacheSize(args[1]) && isValidLogLevel(args[3])) {
                     try {
                         new Server(Integer.parseInt(args[0]), Integer.parseInt(args[1]),
-                                isValidDisplacementStrategy(args[2]), args[3]).start();;
+                                isValidDisplacementStrategy(args[2]), args[3]).start();
                     } catch (IllegalArgumentException iaex) {
                         System.out.println(
                                 "Invalid Displacement Strategy. Please choose one of the following: 'FIFO', 'LRU', 'LFU'");
@@ -263,11 +304,17 @@ public class Server extends Thread {
 
     }
 
-    /**
-     * Get cache manager
-     * @return Cache Manager
-     */
-    public CacheManager getCacheManager() {
-        return cm;
+    private void initAdminTunnel() {
+        LOG.info("Initialize admin tunnel  ...");
+        try {
+            mgmtSocket = new ServerSocket(ADMIN_PORT);
+            LOG.info("Server listening to ECS on port: " + mgmtSocket.getLocalPort());
+        } catch (IOException e) {
+            LOG.error("Error! Cannot open server socket:");
+            if (e instanceof BindException) {
+                LOG.error("Port " + ADMIN_PORT + " is already bound!");
+            }
+            e.printStackTrace();
+        }
     }
 }

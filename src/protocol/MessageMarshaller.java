@@ -1,16 +1,6 @@
 package protocol;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutput;
-import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
-
-import protocol.IMessage;
-import util.Validate;
 
 public class MessageMarshaller {
 
@@ -46,7 +36,7 @@ public class MessageMarshaller {
      * @return
      */
     public static IMessage unmarshall(byte[] msgBytes) {
-        if (msgBytes == null) {
+        if (msgBytes == null || msgBytes[0] == 0x00) {
             return null;
         }
         IMessage.Status status = IMessage.Status.getByCode(msgBytes[0]);

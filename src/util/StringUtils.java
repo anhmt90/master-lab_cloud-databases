@@ -1,10 +1,11 @@
 package util;
 
 public class StringUtils {
-    public static final String PATH_SEP = "/";
-    private static final char LINE_FEED = 0x0A;
-    private static final char RETURN = 0x0D;
-    private static final String EMPTY_STRING = "";
+
+    public static final char LINE_FEED = 0x0A;
+    public static final char RETURN = 0x0D;
+    public static final String EMPTY_STRING = "";
+    public static final String WHITE_SPACE = " ";
 
 
     /**

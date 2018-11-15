@@ -2,7 +2,6 @@ package protocol;
 
 import java.io.Serializable;
 import java.util.Arrays;
-import java.util.Objects;
 
 public class K implements Serializable {
     private final byte[] key;

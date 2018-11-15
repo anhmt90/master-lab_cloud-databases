@@ -7,7 +7,6 @@ import java.util.*;
 import client.api.Client;
 import protocol.IMessage;
 import protocol.IMessage.Status;
-import protocol.Message;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
@@ -20,7 +19,7 @@ import util.StringUtils;
  */
 public class CommandLineApp {
 
-    private static final String WHITESPACE = " ";
+    private static final String WHITESPACE = StringUtils.WHITE_SPACE;
     static Logger LOG = LogManager.getLogger(Client.CLIENT_LOG);
 
     private static final int MAX_VALUE_SIZE = (120 * 1024) - 1;
@@ -53,7 +52,7 @@ public class CommandLineApp {
             if(StringUtils.isEmpty(userInput))
                 continue;
             LOG.info("User input: " + userInput);
-            String[] cmdComponents = userInput.split(" ", 2);
+            String[] cmdComponents = userInput.split(StringUtils.WHITE_SPACE, 2);
             String commandName = cmdComponents[0];
 
             switch (commandName) {
@@ -134,7 +133,7 @@ public class CommandLineApp {
         if (!isValidArgs(PUT, cmdComponents))
             return;
 
-        String[] keyValue = cmdComponents[1].split(" ", 2);
+        String[] keyValue = cmdComponents[1].split(StringUtils.WHITE_SPACE, 2);
         String key = keyValue[0];
         if (key.length() < 1) {
             print("Key needs to be at least one non whitespace character.");
@@ -295,7 +294,7 @@ public class CommandLineApp {
             return;
         }
         String commandArgs = cmdComponents[1];
-        String[] connectionInfo = commandArgs.split(" ");
+        String[] connectionInfo = commandArgs.split(StringUtils.WHITE_SPACE);
         if (!isValidArgs(CONNECT, connectionInfo) || !isValidPortNumber(connectionInfo[1]))
             return;
 

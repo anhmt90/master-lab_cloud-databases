@@ -2,7 +2,6 @@ package protocol;
 
 import java.io.Serializable;
 import java.util.Arrays;
-import java.util.Objects;
 
 public class V implements Serializable {
     private byte[] value;

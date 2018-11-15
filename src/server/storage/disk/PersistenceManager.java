@@ -14,6 +14,7 @@ import java.util.Arrays;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import util.FileUtils;
 
 import static util.StringUtils.PATH_SEP;
 
@@ -50,7 +51,7 @@ public class PersistenceManager implements IPersistenceManager {
     @Override
     public synchronized PUTStatus write(byte[] key, byte[] value) {
         Path file = getFilePath(key);
-        PUTStatus putStatus = isExisted(file) ? PUTStatus.UPDATE_ERROR : PUTStatus.CREATE_ERROR;
+        PUTStatus putStatus = FileUtils.isExisted(file) ? PUTStatus.UPDATE_ERROR : PUTStatus.CREATE_ERROR;
         try {
             Files.createDirectories(file.getParent());
             putStatus = createOrUpdate(file, value);
@@ -106,7 +107,7 @@ public class PersistenceManager implements IPersistenceManager {
      */
 	private synchronized PUTStatus createOrUpdate(Path file, byte[] fileContent) {
 		try {
-			if (!isExisted(file)) {
+			if (!FileUtils.isExisted(file)) {
 				Files.createFile(file);
 				Files.write(file, fileContent);
 				return PUTStatus.CREATE_SUCCESS;
@@ -117,13 +118,13 @@ public class PersistenceManager implements IPersistenceManager {
 			LOG.error(e);
 			e.printStackTrace();
 		}
-		return (isExisted(file)) ? PUTStatus.UPDATE_ERROR : PUTStatus.CREATE_ERROR;
+		return (FileUtils.isExisted(file)) ? PUTStatus.UPDATE_ERROR : PUTStatus.CREATE_ERROR;
 	}
 
     @Override
     public byte[] read(byte[] key) {
         Path file = getFilePath(key);
-        if (isExisted(file)) {
+        if (FileUtils.isExisted(file)) {
             try {
                 return Files.readAllBytes(file);
             } catch (IOException e) {
@@ -147,27 +148,6 @@ public class PersistenceManager implements IPersistenceManager {
             }
         }
         return null;
-    }
-
-    /**
-     * Checks if a file path is valid
-     * 
-     * @param filePath Path to a given file
-     * @return true if the path exists
-     */
-    private boolean isExisted(Path filePath) {
-        return !Files.isDirectory(filePath) && Files.exists(filePath);
-    }
-
-    /**
-     * Checks if a file name exists
-     * 
-     * @param fileName name of the file that is checked
-     * @return true if file exists
-     */
-    public boolean isExisted(String fileName) {
-        Path filePath = getFilePath(fileName.getBytes());
-        return !Files.isDirectory(filePath) && Files.exists(filePath);
     }
 }
 

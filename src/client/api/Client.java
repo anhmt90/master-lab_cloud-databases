@@ -16,7 +16,7 @@ import protocol.*;
 import protocol.IMessage.*;
 
 public class Client implements IClient {
-    public static final String CLIENT_LOG = "CloudDB";
+    public static final String CLIENT_LOG = "kvClient";
     private static Logger LOG = LogManager.getLogger(Client.CLIENT_LOG);
     /**
      * The client socket

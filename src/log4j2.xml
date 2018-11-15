@@ -4,10 +4,13 @@
         <Console name="Console" target="SYSTEM_OUT">
             <PatternLayout pattern="%d{DEFAULT} [%t] %-5level %logger{36} %l - %msg%n"/>
         </Console>
-        <File name="CloudDB" filename="logs/client.log">
+        <File name="kvClient" filename="logs/client.log">
             <PatternLayout pattern="%d{DEFAULT} [%t] %-5level %logger{36} %l - %msg%n"/>
         </File>
         <File name="kvServer" filename="logs/server.log">
+            <PatternLayout pattern="%d{DEFAULT} [%t] %-5level %logger{36} %l - %msg%n"/>
+        </File>
+        <File name="ECS" filename="logs/management-ecs.log">
             <PatternLayout pattern="%d{DEFAULT} [%t] %-5level %logger{36} %l - %msg%n"/>
         </File>
         <File name="tests" filename="logs/tests.log">
@@ -19,13 +22,17 @@
             <!--<AppenderRef ref="Console"/>-->
             <!--<AppenderRef ref="CloudDB" />-->
         </Root>
-        <Logger name="CloudDB" level="all" additivity="false">
+        <Logger name="kvClient" level="all" additivity="false">
             <AppenderRef ref="Console" />
-            <appender-ref ref="CloudDB" />
+            <appender-ref ref="kvClient" />
         </Logger>
         <Logger name="kvServer" level="all" additivity="false">
             <AppenderRef ref="Console" />
             <appender-ref ref="kvServer" />
+        </Logger>
+        <Logger name="ECS" level="all" additivity="false">
+            <AppenderRef ref="Console" />
+            <appender-ref ref="ECS" />
         </Logger>
         <Logger name="tests" level="all" additivity="false">
             <AppenderRef ref="Console" />
