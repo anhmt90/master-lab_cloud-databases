@@ -5,15 +5,22 @@ import java.io.Serializable;
 public interface IMessage extends Serializable {
 
     enum Status {
-        GET(0x30),            /* Get - request */
-        GET_ERROR(0x31),        /* requested tuple (i.e. value) not found */
-        GET_SUCCESS(0x32),    /* requested tuple (i.e. value) found */
-        PUT(0x33),            /* Put - request */
-        PUT_SUCCESS(0x34),    /* Put - request successful, tuple inserted */
-        PUT_UPDATE(0x35),    /* Put - request successful, i.e. value updated */
-        PUT_ERROR(0x36),        /* Put - request not successful */
-        DELETE_SUCCESS(0x37), /* Delete - request successful */
-        DELETE_ERROR(0x38)    /* Delete - request successful */;
+        GET(0x00),            /* Get - request */
+        GET_ERROR(0x01),        /* requested tuple (i.e. value) not found */
+        GET_SUCCESS(0x02),    /* requested tuple (i.e. value) found */
+        PUT(0x03),            /* Put - request */
+        PUT_SUCCESS(0x04),    /* Put - request successful, tuple inserted */
+        PUT_UPDATE(0x05),    /* Put - request successful, i.e. value updated */
+        PUT_ERROR(0x06),        /* Put - request not successful */
+        DELETE_SUCCESS(0x07), /* Delete - request successful */
+        DELETE_ERROR(0x08),    /* Delete - request successful */
+
+        SERVER_STOPPED(0x09),           /* Server is stopped, no requests are processed */
+        SERVER_WRITE_LOCK(0x0A),        /* Server locked for out, only get possible */
+        SERVER_NOT_RESPONSIBLE(0x0B)    /* Request not successful, server not responsible for key */
+        ;
+
+
 
         byte code;
 

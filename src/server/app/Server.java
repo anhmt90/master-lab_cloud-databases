@@ -1,5 +1,7 @@
 package server.app;
 
+import management.ConfigStatus;
+import management.IExternalConfigurationService;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -9,7 +11,6 @@ import server.api.AdminConnection;
 import server.api.ClientConnection;
 import server.storage.cache.CacheDisplacementStrategy;
 import server.storage.CacheManager;
-import util.Validate;
 
 import java.io.IOException;
 import java.net.BindException;
@@ -19,7 +20,7 @@ import java.net.Socket;
 /**
  * Represents a simple Echo Server implementation.
  */
-public class Server extends Thread {
+public class Server extends Thread implements IExternalConfigurationService {
     public static final String SERVER_LOG = "kvServer";
     private static final String DEFAULT_LOG_LEVEL = "INFO";
     private static final int DEFAULT_CACHE_SIZE = 100;
@@ -34,6 +35,7 @@ public class Server extends Thread {
     private CacheManager cm;
 
     NodeState state;
+    boolean running;
 
 
     /**
@@ -55,6 +57,7 @@ public class Server extends Thread {
         Configurator.setRootLevel(level);
 
         state = NodeState.STOPPED;
+        running = true;
 
         LOG.info("Server started at port " + this.port + ", with cache size " + cacheSize
                 + ", with cache strategy " + strategy.name() + " and with logging Level " + logLevel);
@@ -66,22 +69,12 @@ public class Server extends Thread {
      * closed.
      */
     public void run() {
-        initAdminTunnel();
-        if(mgmtSocket != null) {
-            try {
-                Socket ecsSocket =  mgmtSocket.accept();
-                AdminConnection adminConnection = new AdminConnection(ecsSocket);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
         state = initServer();
         if (kvSocket != null) {
-            while (isRunning()) {
+            while (isStarted()) {
                 try {
                     Socket client = kvSocket.accept();
-                    ClientConnection connection = new ClientConnection(client, cm);
+                    ClientConnection connection = new ClientConnection(this, client, cm);
                     new Thread(connection).start();
 
                     LOG.info(
@@ -95,6 +88,21 @@ public class Server extends Thread {
     }
 
 
+    private void initAdminTunnel() {
+        LOG.info("Initialize admin tunnel  ...");
+        try {
+            mgmtSocket = new ServerSocket(ADMIN_PORT);
+            LOG.info("Server listening to ECS on port: " + mgmtSocket.getLocalPort());
+        } catch (IOException e) {
+            LOG.error("Error! Cannot open server socket:");
+            if (e instanceof BindException) {
+                LOG.error("Port " + ADMIN_PORT + " is already bound!");
+            }
+            e.printStackTrace();
+        }
+    }
+
+
     /**
      * Gets cache manager
      *
@@ -102,6 +110,10 @@ public class Server extends Thread {
      */
     public CacheManager getCacheManager() {
         return cm;
+    }
+
+    public ServerSocket getMgmtSocket() {
+        return mgmtSocket;
     }
 
     /**
@@ -123,20 +135,71 @@ public class Server extends Thread {
      * @return true if server is running
      */
     private boolean isRunning() {
-        return state.equals(NodeState.RUNNING);
+        return running;
     }
+
+    public boolean isStarted() {
+        return state.equals(NodeState.STARTED);
+    }
+
+    public boolean isStopped() {
+        return state.equals(NodeState.STOPPED);
+    }
+
+    @Override
+    public void initKVServer() {
+
+    }
+
 
     /**
      * Stops the server insofar that it won't listen at the given port any more.
      */
-    public void stopServer() {
-        state = NodeState.STOPPING;
-        try {
-            kvSocket.close();
-            state = NodeState.STOPPED;
-        } catch (IOException e) {
-            LOG.error("Error! " + "Unable to close socket on port: " + port, e);
+    @Override
+    public boolean stopService() {
+        if (isStarted()) {
+            state = NodeState.STOPPING;
+            try {
+                kvSocket.close();
+                state = NodeState.STOPPED;
+                return true;
+            } catch (IOException e) {
+                LOG.error("Error! " + "Unable to close socket on port: " + port, e);
+                return false;
+            }
         }
+        return false;
+    }
+
+    @Override
+    public boolean startService() {
+        if (isStopped()) {
+            state = NodeState.STARTED;
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean shutdown() {
+        if (stopService())
+            running = false;
+        return !running;
+    }
+
+    @Override
+    public void lockWrite() {
+
+    }
+
+    @Override
+    public void unlockWrite() {
+
+    }
+
+    @Override
+    public void update(String metadata) {
+
     }
 
     /**
@@ -149,7 +212,7 @@ public class Server extends Thread {
         try {
             kvSocket = new ServerSocket(port);
             LOG.info("Server listening on port: " + kvSocket.getLocalPort());
-            return NodeState.RUNNING;
+            return NodeState.STARTED;
         } catch (IOException e) {
             LOG.error("Error! Cannot open server socket:");
             if (e instanceof BindException) {
@@ -248,24 +311,40 @@ public class Server extends Thread {
      * @param args contains the port number at args[0], the cache size at args[1], the cache displacement strategy at args[2] and the logging Level at args[3].
      */
     public static void main(String[] args) {
+        Server server = createServer(args);
+
+        server.initAdminTunnel();
+        if (server.getMgmtSocket() != null && server.isStopped()) {
+            while (server.isRunning()) {
+                try {
+                    Socket ecsSocket = server.getMgmtSocket().accept();
+                    AdminConnection adminConnection = new AdminConnection(ecsSocket, server);
+                    adminConnection.poll();
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+    }
+
+    private static Server createServer(String[] args) {
         switch (args.length) {
             case 0:
-                new Server(DEFAULT_PORT, DEFAULT_CACHE_SIZE, CacheDisplacementStrategy.FIFO, DEFAULT_LOG_LEVEL).start();
-                break;
+                return new Server(DEFAULT_PORT, DEFAULT_CACHE_SIZE, CacheDisplacementStrategy.FIFO, DEFAULT_LOG_LEVEL);
             case 1:
                 if (isValidPortNumber(args[0]))
-                    new Server(Integer.parseInt(args[0]), DEFAULT_CACHE_SIZE, CacheDisplacementStrategy.FIFO, DEFAULT_LOG_LEVEL).start();
-                break;
+                    return new Server(Integer.parseInt(args[0]), DEFAULT_CACHE_SIZE, CacheDisplacementStrategy.FIFO, DEFAULT_LOG_LEVEL);
             case 2:
                 if (isValidPortNumber(args[0]) && isValidCacheSize(args[1]))
-                    new Server(Integer.parseInt(args[0]), Integer.parseInt(args[1]), CacheDisplacementStrategy.FIFO,
-                            DEFAULT_LOG_LEVEL).start();
-                break;
+                    return new Server(Integer.parseInt(args[0]), Integer.parseInt(args[1]), CacheDisplacementStrategy.FIFO, DEFAULT_LOG_LEVEL);
             case 3:
                 if (isValidPortNumber(args[0]) && isValidCacheSize(args[1])) {
                     try {
-                        new Server(Integer.parseInt(args[0]), Integer.parseInt(args[1]),
-                                isValidDisplacementStrategy(args[2]), DEFAULT_LOG_LEVEL).start();
+                        return new Server(Integer.parseInt(args[0]), Integer.parseInt(args[1]),
+                                isValidDisplacementStrategy(args[2]), DEFAULT_LOG_LEVEL);
+
                     } catch (IllegalArgumentException iaex) {
                         System.out.println(
                                 "Invalid Displacement Strategy. Please choose one of the following: 'FIFO', 'LRU', 'LFU'");
@@ -275,8 +354,9 @@ public class Server extends Thread {
             case 4:
                 if (isValidPortNumber(args[0]) && isValidCacheSize(args[1]) && isValidLogLevel(args[3])) {
                     try {
-                        new Server(Integer.parseInt(args[0]), Integer.parseInt(args[1]),
-                                isValidDisplacementStrategy(args[2]), args[3]).start();
+                        return new Server(Integer.parseInt(args[0]), Integer.parseInt(args[1]),
+                                isValidDisplacementStrategy(args[2]), args[3]);
+
                     } catch (IllegalArgumentException iaex) {
                         System.out.println(
                                 "Invalid Displacement Strategy. Please choose one of the following: 'FIFO', 'LRU', 'LFU'");
@@ -299,22 +379,7 @@ public class Server extends Thread {
                                 + "\n\t\t This can be one of the following values {'FIFO', 'LRU', 'LFU'}");
                 System.out.println(
                         "<log_level>: \t specifies logging level on server. This can be one of the following values {'ALL', 'INFO', 'DEBUG', 'WARN', 'ERROR', 'FATAL', 'OFF'}");
-                return;
         }
-
-    }
-
-    private void initAdminTunnel() {
-        LOG.info("Initialize admin tunnel  ...");
-        try {
-            mgmtSocket = new ServerSocket(ADMIN_PORT);
-            LOG.info("Server listening to ECS on port: " + mgmtSocket.getLocalPort());
-        } catch (IOException e) {
-            LOG.error("Error! Cannot open server socket:");
-            if (e instanceof BindException) {
-                LOG.error("Port " + ADMIN_PORT + " is already bound!");
-            }
-            e.printStackTrace();
-        }
+        throw new IllegalArgumentException("Invalid arguments");
     }
 }

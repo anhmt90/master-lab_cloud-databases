@@ -22,10 +22,12 @@ import java.net.Socket;
  */
 public class ClientConnection implements Runnable {
 
+    private static final int MAX_MESSAGE_LENGTH = 2 + 20 + 1024 * 120;
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
 
     private boolean isOpen;
 
+    private final Server server;
     private Socket clientSocket;
     private BufferedInputStream input;
     private BufferedOutputStream output;
@@ -37,7 +39,8 @@ public class ClientConnection implements Runnable {
      *
      * @param clientSocket the Socket object for the client connection.
      */
-    public ClientConnection(Socket clientSocket, CacheManager cm) {
+    public ClientConnection(Server server, Socket clientSocket, CacheManager cm) {
+        this.server = server;
         this.clientSocket = clientSocket;
         this.cm = cm;
         this.isOpen = true;
@@ -93,6 +96,9 @@ public class ClientConnection implements Runnable {
      * @return a response message to the client
      */
     private IMessage handleRequest(IMessage message) {
+        if (server.isStopped())
+            return new Message(Status.SERVER_STOPPED);
+
         K key = message.getK();
         V val = message.getV();
         switch (message.getStatus()) {
@@ -107,7 +113,7 @@ public class ClientConnection implements Runnable {
 
     /**
      * Handles and creates a suitable response for a put request
-     * 
+     *
      * @param key key of the key-value pair
      * @param val value of the key-value pair
      * @return server response
@@ -133,7 +139,7 @@ public class ClientConnection implements Runnable {
 
     /**
      * Handles and creates response for a get request
-     * 
+     *
      * @param message the get-request message sent by a client
      * @return server response to client request
      */
@@ -145,7 +151,7 @@ public class ClientConnection implements Runnable {
 
     /**
      * Sends out a message
-     * 
+     *
      * @param message Message that is sent
      * @throws IOException
      */
@@ -166,8 +172,8 @@ public class ClientConnection implements Runnable {
 
     /**
      * Send a marshalled message out through the server socket
-     * 
-     * @param object	   Message in String format for logging
+     *
+     * @param object       Message in String format for logging
      * @param messageBytes The marshalled message
      * @throws IOException
      */
@@ -183,21 +189,19 @@ public class ClientConnection implements Runnable {
 
     /**
      * Receives a message sent by a client
-     * 
+     *
      * @return the received message
      * @throws IOException
      */
     private IMessage receive() throws IOException {
         int index = 0;
-        byte[] messageBytes = new byte[2 + 20 + 1024 * 120];
-        ;
+        byte[] messageBytes = new byte[MAX_MESSAGE_LENGTH];
 
-        /* read first char from stream */
         int bytesCopied = input.read(messageBytes);
-
+        LOG.info("Read " + bytesCopied + " from input stream");
 
         IMessage message = MessageMarshaller.unmarshall(messageBytes);
-        
+
         LOG.info("RECEIVE \t<"
                 + clientSocket.getInetAddress().getHostAddress() + ":"
                 + clientSocket.getPort() + ">: '"
@@ -205,7 +209,7 @@ public class ClientConnection implements Runnable {
         return message;
     }
 
-    
+
     private byte[] copy(int size, byte[] messageBytes, byte[] bufferBytes) {
         byte[] tmp;
         if (messageBytes == null) {

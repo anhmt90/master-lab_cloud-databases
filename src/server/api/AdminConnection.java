@@ -1,5 +1,9 @@
 package server.api;
 
+import management.ConfigMessage;
+import management.ConfigMessageMarshaller;
+import management.ConfigStatus;
+import management.IExternalConfigurationService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import protocol.IMessage;
@@ -13,17 +17,20 @@ import java.io.IOException;
 import java.net.Socket;
 
 public class AdminConnection {
+    private static final int MAX_MESSAGE_LENGTH = 2 + 20 + 1024 * 120;
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
 
     private boolean isOpen;
 
     private Socket ecsSocket;
+    private Server server;
     private BufferedInputStream input;
     private BufferedOutputStream output;
 
 
-    public AdminConnection(Socket ecsSocket) {
+    public AdminConnection(Socket ecsSocket, Server server) {
         this.ecsSocket = ecsSocket;
+        this.server = server;
         isOpen = true;
     }
 
@@ -31,7 +38,7 @@ public class AdminConnection {
      * Initializes and starts the connection with ECS.
      * Loops until the connection is closed or aborted by the ECS.
      */
-    public void run() {
+    public void poll() {
         try {
             output = new BufferedOutputStream(ecsSocket.getOutputStream());
             input = new BufferedInputStream(ecsSocket.getInputStream());
@@ -42,7 +49,9 @@ public class AdminConnection {
 
             while (isOpen) {
                 try {
-                    IMessage kvMessage = receive();
+                    ConfigMessage configMessage = receive();
+                    handleAdminRequest(configMessage);
+
 //                    send(handleRequest(kvMessage));
 
                     /* connection either terminated by the client or lost due to
@@ -68,6 +77,19 @@ public class AdminConnection {
         }
     }
 
+    private boolean handleAdminRequest(ConfigMessage configMessage) {
+        switch (configMessage.getStatus()) {
+            case STOP:
+                return server.stopService();
+            case START:
+                return server.startService();
+            case SHUTDOWN:
+                   return server.shutdown();
+            default:
+                throw new IllegalArgumentException("Invalid request from ECS!");
+        }
+    }
+
     /**
      * Method sends a TextMessage using this socket.
      *
@@ -82,7 +104,7 @@ public class AdminConnection {
     /**
      * Send a marshalled message out through the server socket
      *
-     * @param object	   Message in String format for logging
+     * @param object       Message in String format for logging
      * @param messageBytes The marshalled message
      * @throws IOException
      */
@@ -101,21 +123,20 @@ public class AdminConnection {
      * @return the received message
      * @throws IOException
      */
-    private IMessage receive() throws IOException {
+    private ConfigMessage receive() throws IOException {
         int index = 0;
-        byte[] messageBytes = new byte[2 + 20 + 1024 * 120];
-        ;
+        byte[] messageBytes = new byte[MAX_MESSAGE_LENGTH];
 
-        /* read first char from stream */
         int bytesCopied = input.read(messageBytes);
+        LOG.info("Read " + bytesCopied + " from input stream");
 
-
-        IMessage message = MessageMarshaller.unmarshall(messageBytes);
+        ConfigMessage message = ConfigMessageMarshaller.unmarshall(messageBytes);
 
         LOG.info("RECEIVE \t<"
                 + ecsSocket.getInetAddress().getHostAddress() + ":"
                 + ecsSocket.getPort() + ">: '"
                 + message.toString().trim() + "'");
+
         return message;
     }
 

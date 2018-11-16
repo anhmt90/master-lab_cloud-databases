@@ -12,14 +12,9 @@ public enum NodeState {
     STOPPING,
 
     /**
-     * Server is starting the storage service
-     */
-    STARTING,
-
-    /**
      * Server has been started and is in service
      */
-    RUNNING
+    STARTED
     ;
 
 }

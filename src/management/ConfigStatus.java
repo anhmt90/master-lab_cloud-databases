@@ -1,7 +1,6 @@
 package management;
 
-public interface IConfigMessage {
-    enum ConfigStatus {
+public enum ConfigStatus {
         START,
         STOP,
         SHUTDOWN,
@@ -12,7 +11,7 @@ public interface IConfigMessage {
 
         START_ERROR,
         STOP_ERROR,
-        SHUTDOWN_ERROR
-    }
-}
+        SHUTDOWN_ERROR,
 
+        NO_TRANSITION
+}
