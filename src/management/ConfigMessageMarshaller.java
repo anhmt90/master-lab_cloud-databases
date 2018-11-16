@@ -53,6 +53,7 @@ public class ConfigMessageMarshaller {
                 LOG.error("Error when casting Object to ConfigMessage: " + e);
             }
         }
+        return null;
     }
 
 }

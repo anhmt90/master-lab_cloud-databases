@@ -1,7 +1,8 @@
 package management;
 
 public interface IExternalConfigurationService {
-    void initKVServer();
+    boolean initKVServer(String metadata, int cacheSize, String strategy);
+
     boolean stopService();
     boolean startService();
     boolean shutdown();

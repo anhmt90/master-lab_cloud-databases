@@ -50,7 +50,7 @@ public class AdminConnection {
             while (isOpen) {
                 try {
                     ConfigMessage configMessage = receive();
-                    handleAdminRequest(configMessage);
+                    boolean success = handleAdminRequest(configMessage);
 
 //                    send(handleRequest(kvMessage));
 
@@ -79,6 +79,8 @@ public class AdminConnection {
 
     private boolean handleAdminRequest(ConfigMessage configMessage) {
         switch (configMessage.getStatus()) {
+            case INIT:
+                return server.initKVServer(configMessage.getMetadata(), configMessage.getCacheSize(), configMessage.getStrategy());
             case STOP:
                 return server.stopService();
             case START:

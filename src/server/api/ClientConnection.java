@@ -61,8 +61,9 @@ public class ClientConnection implements Runnable {
 
             while (isOpen) {
                 try {
-                    IMessage kvMessage = receive();
-                    send(handleRequest(kvMessage));
+                    IMessage requestMessage = receive();
+                    IMessage responseMessage = handleRequest(requestMessage);
+                    send(responseMessage);
 
                     /* connection either terminated by the client or lost due to
                      * network problems*/
