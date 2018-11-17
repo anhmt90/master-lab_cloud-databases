@@ -18,7 +18,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import util.HashUtils;
 
-public class KVServer implements Runnable, Comparable<KVServer> {
+public class KVServer implements Comparable<KVServer> {
   private static final String ECS_LOG = "ECS";
   private static Logger LOG = LogManager.getLogger(ECS_LOG);
 
@@ -37,6 +37,15 @@ public class KVServer implements Runnable, Comparable<KVServer> {
     this(host, Integer.parseInt(port));
   }
 
+  public KVServer(Socket socket) {
+    this.socket = socket;
+    this.address = (InetSocketAddress) socket.getRemoteSocketAddress();
+    this.sshCMD = String.format("ssh -n %s -p %d nohup java -jar " + WORKING_DIR + SEP + "ms3-server.jar %d &",
+        this.address.getAddress(), sshPort,
+        this.address.getPort());
+    this.hashKey = HashUtils.getHash(String.format("%s:%d", this.address.getAddress(), this.address.getPort()));
+  }
+
   public KVServer(String host, int port) throws IOException, InterruptedException, NoSuchAlgorithmException {
     this.address = new InetSocketAddress(host, port);
     this.socket = new Socket();
@@ -44,7 +53,6 @@ public class KVServer implements Runnable, Comparable<KVServer> {
         host, sshPort,
         port);
     this.hashKey = HashUtils.getHash(String.format("%s:%d", host, port));
-    launch();
   }
 
   public void send(ConfigMessage msg) throws IOException {
@@ -142,15 +150,6 @@ public class KVServer implements Runnable, Comparable<KVServer> {
     try {
       this.send(msg);
     } catch (IOException e) {
-      e.printStackTrace();
-    }
-  }
-
-  @Override
-  public void run() {
-    try {
-      this.launch();
-    } catch (IOException | InterruptedException e) {
       e.printStackTrace();
     }
   }

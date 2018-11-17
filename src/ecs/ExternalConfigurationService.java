@@ -6,6 +6,7 @@ import server.storage.cache.CacheDisplacementStrategy;
 
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.NoSuchAlgorithmException;
@@ -18,10 +19,11 @@ public class ExternalConfigurationService extends Thread implements IECS {
   public static final String ECS_LOG = "ECS";
   private static Logger LOG = LogManager.getLogger(ECS_LOG);
 
-  private ServerSocket serverSocker;
+  private ServerSocket serverSocket;
   private List<KVServer> idle = new ArrayList<>();
   private List<KVServer> active = new ArrayList<>();
   private Metadata metadata;
+  private boolean running;
 
   private void updateMetadata() {
     Metadata md = new Metadata();
@@ -87,6 +89,20 @@ public class ExternalConfigurationService extends Thread implements IECS {
 
   @Override
   public void shutDown() {
+    for (KVServer kvS: this.active) {
+      kvS.shutDown();
+    }
+
+    for (KVServer kvS: this.idle) {
+      kvS.shutDown();
+    }
+
+    this.running = false;
+    try {
+      this.serverSocket.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
 
   @Override
@@ -129,13 +145,31 @@ public class ExternalConfigurationService extends Thread implements IECS {
     publishMetada();
   }
 
-  public ExternalConfigurationService(int port, String configFile) {
+  @Override
+  public void run() {
+    this.running = true;
+
+    if (serverSocket != null) {
+      while (this.running) {
+        try {
+          Socket client = serverSocket.accept();
+          KVServer kvS = new KVServer(client);
+          this.idle.add(kvS);
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+      }
+    }
+  }
+
+  public ExternalConfigurationService(int port, String configFile) throws IOException {
     List<String> lines = null;
     try {
       lines = Files.readAllLines(Paths.get(configFile));
     } catch (IOException e) {
       e.printStackTrace();
     }
+    this.serverSocket = new ServerSocket(port);
 
     for (String line: lines) {
       String[] serverParams = line.split(" ");
@@ -144,11 +178,13 @@ public class ExternalConfigurationService extends Thread implements IECS {
       KVServer kvS = null;
       try {
         kvS = new KVServer(serverHost, serverPort);
+        kvS.launch();
       } catch (IOException | InterruptedException | NoSuchAlgorithmException e) {
         e.printStackTrace();
       }
-      this.idle.add(kvS);
     }
+
+    this.start();
   }
 
 }
