@@ -6,8 +6,12 @@ public class KVServerMeta {
   private KeyHashRange range;
 
   public KVServerMeta(String host, int port, String start, String end) {
+    this(host, port, new KeyHashRange(start, end));
+  }
+
+  public KVServerMeta(String host, int port, KeyHashRange range) {
     this.host = host;
     this.port = port;
-    this.range = new KeyHashRange(start, end);
+    this.range = range;
   }
 }

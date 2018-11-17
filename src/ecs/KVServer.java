@@ -1,8 +1,12 @@
 package ecs;
 
+import management.ConfigMessage;
+import management.ConfigStatus;
 import server.storage.cache.CacheDisplacementStrategy;
 
+import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.security.NoSuchAlgorithmException;
@@ -43,6 +47,16 @@ public class KVServer implements Runnable, Comparable<KVServer> {
     launch();
   }
 
+  public void send(ConfigMessage msg) throws IOException {
+    try {
+      ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
+      oos.writeObject(msg);
+      oos.flush();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
   public String getHost() {
     return this.address.getHostString();
   }
@@ -60,32 +74,85 @@ public class KVServer implements Runnable, Comparable<KVServer> {
   }
 
   void init(Metadata metadata, int cacheSize, CacheDisplacementStrategy strategy) {
+    ConfigMessage msg = new ConfigMessage(ConfigStatus.INIT, cacheSize, strategy, metadata);
+    try {
+      this.send(msg);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
 
   void startServer() {
+    ConfigMessage msg = new ConfigMessage(ConfigStatus.START);
+    try {
+      this.send(msg);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
 
   void stopServer() {
+    ConfigMessage msg = new ConfigMessage(ConfigStatus.STOP);
+    try {
+      this.send(msg);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
 
   void shutDown() {
+    ConfigMessage msg = new ConfigMessage(ConfigStatus.SHUTDOWN);
+    try {
+      this.send(msg);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
 
   void lockWrite() {
+    ConfigMessage msg = new ConfigMessage(ConfigStatus.LOCKWRITE);
+    try {
+      this.send(msg);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
 
   void unLockWrite() {
+    ConfigMessage msg = new ConfigMessage(ConfigStatus.UNLOCKWRITE);
+    try {
+      this.send(msg);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
 
   void moveData(KeyHashRange range, KVServer anotherServer) {
+    KVServerMeta meta = new KVServerMeta(anotherServer.getHost(), anotherServer.getPort(), range);
+    ConfigMessage msg = new ConfigMessage(ConfigStatus.MOVEDATA, meta);
+    try {
+      this.send(msg);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
 
   void update(Metadata metadata) {
+    ConfigMessage msg = new ConfigMessage(ConfigStatus.UPDATEMETA, metadata);
+    try {
+      this.send(msg);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
 
   @Override
   public void run() {
-    this.launch();
+    try {
+      this.launch();
+    } catch (IOException | InterruptedException e) {
+      e.printStackTrace();
+    }
   }
 
   @Override
