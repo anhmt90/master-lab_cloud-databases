@@ -340,7 +340,7 @@ public class Server extends Thread implements IExternalConfigurationService {
 
     private static Server createServer(String[] args) {
         if (args.length == 0)
-            throw new IllegalArgumentException("Port number must be provided to start the server");
+            throw new IllegalArgumentException("Port number must be provided to startService the server");
         int port = -1;
         if (isValidPortNumber(args[0]))
             port = Integer.parseInt(args[0]);

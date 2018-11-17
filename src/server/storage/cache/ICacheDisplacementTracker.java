@@ -21,7 +21,7 @@ public interface ICacheDisplacementTracker {
 
     /**
      * Stop tracking a use of key {@link K}
-     * @param k key stop tracking for
+     * @param k key stopService tracking for
      */
     void unregister(K k);
 

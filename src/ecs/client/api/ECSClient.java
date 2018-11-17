@@ -1,6 +1,9 @@
 package ecs.client.api;
 
-public class ECSClient implements IECSClient{
+import ecs.IECS;
+import server.storage.cache.CacheDisplacementStrategy;
+
+public class ECSClient implements IECS {
 
 	
 	public ECSClient() {
@@ -8,19 +11,19 @@ public class ECSClient implements IECSClient{
 	}
 
 	@Override
-	public void initService(int numberOfNodes, int cacheSize, String displacementStrategy) {
+	public void initService(int numberOfNodes, int cacheSize, CacheDisplacementStrategy displacementStrategy) {
 		// TODO Auto-generated method stub
 		
 	}
 
 	@Override
-	public void start() {
+	public void startService() {
 		// TODO Auto-generated method stub
 		
 	}
 
 	@Override
-	public void stop() {
+	public void stopService() {
 		// TODO Auto-generated method stub
 		
 	}
@@ -32,7 +35,7 @@ public class ECSClient implements IECSClient{
 	}
 
 	@Override
-	public void addNode(int cacheSize, String displacementStrategy) {
+	public void addNode(int cacheSize, CacheDisplacementStrategy displacementStrategy) {
 		// TODO Auto-generated method stub
 		
 	}

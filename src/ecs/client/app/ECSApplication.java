@@ -1,18 +1,12 @@
 package ecs.client.app;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 import ecs.client.api.ECSClient;
-import protocol.IMessage;
-import protocol.IMessage.Status;
-import server.storage.cache.CacheDisplacementStrategy;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.core.config.Configurator;
-import org.apache.logging.log4j.Level;
 import util.StringUtils;
 
 public class ECSApplication {
@@ -21,8 +15,8 @@ public class ECSApplication {
 	    static Logger LOG = LogManager.getLogger("ECS");
 
 	    private static final String INIT = "initiate";
-	    private static final String START = "start";
-	    private static final String STOP = "stop";
+	    private static final String START = "startService";
+	    private static final String STOP = "stopService";
 	    private static final String SHUTDOWN = "shutdown";
 	    private static final String ADD = "add";
 	    private static final String REMOVE = "remove";
@@ -117,7 +111,7 @@ public class ECSApplication {
 //				print("Storage service is not currently running.");
 //				return;
 //			}
-			ecsClient.stop();
+			ecsClient.stopService();
 			
 		}
 
@@ -170,7 +164,7 @@ public class ECSApplication {
 		 * Handles the command {@see START}
 		 */
 		private static void handleStart() {
-			ecsClient.start();
+			ecsClient.startService();
 			
 		}
 		
@@ -207,13 +201,13 @@ public class ECSApplication {
 	    private static String getUsage(String commandName) {
 	        switch (commandName) {
 	            case START:
-	                return "'start' - starts service on all storage server instances participating in the service\n";
+	                return "'startService' - starts service on all storage server instances participating in the service\n";
 	            case STOP:
-	                return "'stop' - servers stop processing client requests\n";
+	                return "'stopService' - servers stopService processing client requests\n";
 	            case INIT:
 	                return "'initiate <numberOfNodes> <cacheSize> <displacementStrategy>' - starts the storage service with the given parameters\n";
 	            case SHUTDOWN:
-	                return "'shutdown' - stop all servers and exit the remote process\n";
+	                return "'shutdown' - stopService all servers and exit the remote process\n";
 	            case ADD:
 	                return "'add <cacheSize> <displacementStrategy> - create a storage server and add it to storage service at arbitrary position\n";
 	            case REMOVE:
@@ -221,7 +215,7 @@ public class ECSApplication {
 	            case HELP:
 	                return "'help' - display list of commands\n";
 	            case QUIT:
-	                return "'quit' - end any ongoing connections and stop the application\n";
+	                return "'quit' - end any ongoing connections and stopService the application\n";
 	            default:
 	                return ("Unknown command");
 	        }
