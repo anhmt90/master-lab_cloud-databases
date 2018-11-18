@@ -2,6 +2,8 @@ package protocol;
 
 import java.io.Serializable;
 
+import ecs.Metadata;
+
 public interface IMessage extends Serializable {
 
     enum Status {
@@ -74,7 +76,10 @@ public interface IMessage extends Serializable {
      * response types and error types associated to the message.
      */
     public Status getStatus();
+    
+    /**
+     * @return the metadata containing the hash ranges and addresses of each server
+     */
+    public Metadata getMetadata();
 
 }
-
-
