@@ -4,7 +4,6 @@ import management.ConfigMessage;
 import management.ConfigStatus;
 import server.storage.cache.CacheDisplacementStrategy;
 
-import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
@@ -81,7 +80,7 @@ public class KVServer implements Comparable<KVServer> {
     LOG.info(String.format("Started server %s:%d via ssh", this.address.getHostString(), this.address.getPort()));
   }
 
-  void init(Metadata metadata, int cacheSize, CacheDisplacementStrategy strategy) {
+  void init(Metadata metadata, int cacheSize, String strategy) {
     ConfigMessage msg = new ConfigMessage(ConfigStatus.INIT, cacheSize, strategy, metadata);
     try {
       this.send(msg);
@@ -146,7 +145,7 @@ public class KVServer implements Comparable<KVServer> {
   }
 
   void update(Metadata metadata) {
-    ConfigMessage msg = new ConfigMessage(ConfigStatus.UPDATEMETA, metadata);
+    ConfigMessage msg = new ConfigMessage(ConfigStatus.UPDATE_METADATA, metadata);
     try {
       this.send(msg);
     } catch (IOException e) {

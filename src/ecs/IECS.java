@@ -5,7 +5,7 @@ import server.storage.cache.CacheDisplacementStrategy;
 public interface IECS {
 	
 	
-	void initService (int numberOfNodes, int cacheSize, CacheDisplacementStrategy displacementStrategy);
+	void initService (int numberOfNodes, int cacheSize, String displacementStrategy);
 	
 	void startService();
 	
@@ -13,7 +13,7 @@ public interface IECS {
 	
 	void shutDown();
 	
-	void addNode(int cacheSize, CacheDisplacementStrategy displacementStrategy);
+	void addNode(int cacheSize, String displacementStrategy);
 	
 	void removeNode();
 }

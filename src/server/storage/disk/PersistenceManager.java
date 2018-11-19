@@ -16,12 +16,12 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import util.FileUtils;
 
-import static util.StringUtils.PATH_SEP;
+import static util.FileUtils.SEP;
 
 public class PersistenceManager implements IPersistenceManager {
 	private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
 	
-	private static final String DB_PATH = System.getProperty("user.dir") + PATH_SEP + "db" + PATH_SEP;
+	private static final String DB_PATH = System.getProperty("user.dir") + SEP + "db" + SEP;
 
     public PersistenceManager() {
         createDBDir(DB_PATH);
@@ -72,7 +72,7 @@ public class PersistenceManager implements IPersistenceManager {
      * @return a directory path corresponding to the key
      */
 	public Path getFilePath(byte[] key) {
-		String path = DB_PATH + PATH_SEP + parseFilePath(key) + PATH_SEP + parseFileName(key);
+		String path = DB_PATH  + SEP + parseFilePath(key) + SEP + parseFileName(key);
 		return Paths.get(path);
 	}
 

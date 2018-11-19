@@ -106,6 +106,8 @@ public class ClientConnection implements Runnable {
             case GET:
                 return handleGET(message);
             case PUT:
+                if(server.isWriteLocked())
+                    return new Message(Status.SERVER_WRITE_LOCK);
                 return handlePUT(key, val);
             default:
                 throw new IllegalArgumentException("Unknown Request Type");

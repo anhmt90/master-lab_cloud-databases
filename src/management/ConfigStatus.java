@@ -5,28 +5,28 @@ public enum ConfigStatus {
         START,
         STOP,
         SHUTDOWN,
-        LOCKWRITE,
-        UNLOCKWRITE,
-        MOVEDATA,
-        UPDATEMETA,
+        LOCK_WRITE,
+        UNLOCK_WRITE,
+        MOVE_DATA,
+        UPDATE_METADATA,
 
+        BOOT_SUCCESS, /*Reply the SSH command*/
         INIT_SUCCESS,
         START_SUCCESS,
         STOP_SUCCESS,
         SHUTDOWN_SUCCESS,
-        LOCKWRITE_SUCCESS,
-        UNLOCKWRITE_SUCCESS,
-        MOVEDATA_SUCCESS,
-        UPDATEMETA_SUCCESS,
+        LOCK_WRITE_SUCCESS,
+        UNLOCK_WRITE_SUCCESS,
+        MOVE_DATA_SUCCESS,
+        UPDATE_METADATA_SUCCESS,
 
-        INIT_ERRO,
+        INIT_ERROR,
         START_ERROR,
         STOP_ERROR,
         SHUTDOWN_ERROR,
-        LOCKWRITE_ERROR,
-        UNLOCKWRITE_ERROR,
-        MOVEDATA_ERROR,
-        UPDATEMETA_ERROR,
+        LOCK_WRITE_ERROR,
+        UNLOCK_WRITE_ERROR,
+        MOVE_DATA_ERROR,
+        UPDATE_METADATA_ERROR
 
-        NO_TRANSITION
 }

@@ -1,12 +1,13 @@
 package server.app;
 
+import ecs.Metadata;
 import management.IExternalConfigurationService;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
 
-import server.api.AdminConnection;
+import server.api.ManagementConnection;
 import server.api.ClientConnection;
 import server.storage.cache.CacheDisplacementStrategy;
 import server.storage.CacheManager;
@@ -25,11 +26,15 @@ public class Server extends Thread implements IExternalConfigurationService {
     private static final String DEFAULT_LOG_LEVEL = "INFO";
     private static final int DEFAULT_CACHE_SIZE = 100;
     private static final int DEFAULT_PORT = 50000;
-    private static final int ADMIN_PORT = 9867;
+
+    private static final String DEFAULT_ECS_ADDRESS = "127.0.0.1";
+
+    private static final int MGMT_PORT = 9867;
+
 
     private static Logger LOG = LogManager.getLogger("SERVER_LOG");
 
-    private String metadata;
+    private Metadata metadata;
     private int port;
     private CacheManager cm;
 
@@ -38,14 +43,14 @@ public class Server extends Thread implements IExternalConfigurationService {
     boolean running;
 
     private ServerSocket kvSocket;
-    private static ServerSocket mgmtSocket;
+    //mgmtSocket;
 
 
     /**
      * Start KV Server at given port
      *
-     * @param port      given port for disk server to operate
-     * @param logLevel  specifies the logging Level on the server
+     * @param port     given port for disk server to operate
+     * @param logLevel specifies the logging Level on the server
      */
     public Server(int port, String logLevel) {
         this.port = port;
@@ -57,7 +62,6 @@ public class Server extends Thread implements IExternalConfigurationService {
     }
 
     /**
-     *
      * @param metadata
      * @param cacheSize specifies how many key-value pairs the server is allowed to
      *                  keep in-memory
@@ -68,18 +72,23 @@ public class Server extends Thread implements IExternalConfigurationService {
      * @return
      */
     @Override
-    public boolean initKVServer(String metadata, int cacheSize, String strategy) {
-        if (!isValidCacheSize(cacheSize))
-            throw new IllegalArgumentException("Invalid cache size");
-        if(!isValidDisplacementStrategy(strategy))
-            throw new IllegalArgumentException("Invalid displacement strategy");
+    public boolean initKVServer(Metadata metadata, int cacheSize, String strategy) {
+        if (!isValidCacheSize(cacheSize)) {
+            LOG.error("Invalid cache size");
+            return false;
+        }
+
+        if (!isValidDisplacementStrategy(strategy)) {
+            LOG.error("Invalid displacement strategy");
+            return false;
+        }
 
         this.cm = new CacheManager(cacheSize, getDisplacementStrategyByName(strategy));
         this.metadata = metadata;
 
         LOG.info("Server initialized with cache size " + cacheSize
-                + " and displacement strategy " + strategy );
-        return false;
+                + " and displacement strategy " + strategy);
+        return true;
     }
 
 
@@ -88,15 +97,13 @@ public class Server extends Thread implements IExternalConfigurationService {
      */
     @Override
     public boolean stopService() {
-        if (isStarted()) {
-            state = NodeState.STOPPING;
+        if (isStarted() || isWriteLocked()) {
             try {
                 kvSocket.close();
                 state = NodeState.STOPPED;
                 return true;
             } catch (IOException e) {
                 LOG.error("Error! " + "Unable to close socket on port: " + port, e);
-                return false;
             }
         }
         return false;
@@ -104,11 +111,10 @@ public class Server extends Thread implements IExternalConfigurationService {
 
     @Override
     public boolean startService() {
-        if (isStopped()) {
-            state = NodeState.STARTED;
-            return true;
-        }
-        return false;
+        if (!isStopped())
+            return false;
+        state = NodeState.STARTED;
+        return true;
     }
 
     @Override
@@ -119,20 +125,26 @@ public class Server extends Thread implements IExternalConfigurationService {
     }
 
     @Override
-    public void lockWrite() {
-
+    public boolean lockWrite() {
+        if (!isStarted())
+            return false;
+        state = NodeState.WRITE_LOCKED;
+        return true;
     }
 
     @Override
-    public void unlockWrite() {
-
+    public boolean unlockWrite() {
+        if (!isWriteLocked())
+            return false;
+        state = NodeState.STARTED;
+        return true;
     }
 
     @Override
-    public void update(String metadata) {
+    public boolean update(Metadata metadata) {
 
+        return false;
     }
-
 
 
     /**
@@ -218,6 +230,10 @@ public class Server extends Thread implements IExternalConfigurationService {
         return state.equals(NodeState.STOPPED);
     }
 
+    public boolean isWriteLocked() {
+        return state.equals(NodeState.WRITE_LOCKED);
+    }
+
     /**
      * Checks whether the {@param portAsString} is a valid port number
      *
@@ -226,15 +242,10 @@ public class Server extends Thread implements IExternalConfigurationService {
      * number or not
      */
     private static boolean isValidPortNumber(String portAsString) {
-        if (portAsString == null || portAsString.equals("")) {
-            LOG.error("Port number not provided");
-            return false;
-        }
-        if (!portAsString.matches("^([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$")) {
-            LOG.error("Invalid port number. Port number should contain only digits and range from 0 to 65535.");
-            return false;
-        }
-        return true;
+        if (portAsString.matches("^([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$"))
+            return true;
+        LOG.error("Invalid port number. Port number should contain only digits and range from 0 to 65535.");
+        return false;
     }
 
     /**
@@ -253,7 +264,7 @@ public class Server extends Thread implements IExternalConfigurationService {
         }
     }
 
-    private boolean isValidDisplacementStrategy(String strategy){
+    private boolean isValidDisplacementStrategy(String strategy) {
         String[] validStrategies = {"FIFO", "LRU", "LFU"};
         return Arrays.stream(validStrategies).anyMatch(strategy::equals);
     }
@@ -306,41 +317,24 @@ public class Server extends Thread implements IExternalConfigurationService {
      * @param args contains the port number at args[0], the cache size at args[1], the cache displacement strategy at args[2] and the logging Level at args[3].
      */
     public static void main(String[] args) {
-        Server server = createServer(args);
+        String ecsAddress = DEFAULT_ECS_ADDRESS;
+        Server server = createServer(args, ecsAddress);
         server.start();
-        initAdminTunnel();
 
-        if (mgmtSocket != null && server.isStopped()) {
+        ManagementConnection mgmtConnection = new ManagementConnection(ecsAddress, server);
+
+        if (mgmtConnection.isOpen() && server.isStopped()) {
             while (server.isRunning()) {
-                try {
-                    Socket ecsSocket = mgmtSocket.accept();
-                    AdminConnection adminConnection = new AdminConnection(ecsSocket, server);
-                    adminConnection.poll();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+                mgmtConnection.pollRequests();
             }
         }
 
     }
 
-    private static void initAdminTunnel() {
-        LOG.info("Initialize admin tunnel  ...");
-        try {
-            mgmtSocket = new ServerSocket(ADMIN_PORT);
-            LOG.info("Server listening to ECS on port: " + mgmtSocket.getLocalPort());
-        } catch (IOException e) {
-            LOG.error("Error! Cannot open server socket:");
-            if (e instanceof BindException) {
-                LOG.error("Port " + ADMIN_PORT + " is already bound!");
-            }
-            e.printStackTrace();
-        }
-    }
 
-    private static Server createServer(String[] args) {
-        if (args.length == 0)
-            throw new IllegalArgumentException("Port number must be provided to startService the server");
+    private static Server createServer(String[] args, String ecsAddress) {
+        if (args.length == 0 || args.length >= 3)
+            throw new IllegalArgumentException("Port number must be provided to start the server");
         int port = -1;
         if (isValidPortNumber(args[0]))
             port = Integer.parseInt(args[0]);
@@ -351,8 +345,21 @@ public class Server extends Thread implements IExternalConfigurationService {
             case 2:
                 if (isValidLogLevel(args[1]))
                     return new Server(port, args[1]);
+            case 3:
+                if (isValidAddress(args[2])) {
+                    ecsAddress = args[2];
+                    return new Server(port, args[1]);
+                }
+                throw new IllegalArgumentException("Invalid ECS IP address");
             default:
                 throw new IllegalArgumentException("Error! Invalid number of arguments! Number of args provided: " + args.length);
         }
+    }
+
+    private static boolean isValidAddress(String address) {
+        if (address.matches("^((0|1\\d?\\d?|2[0-4]?\\d?|25[0-5]?|[3-9]\\d?)\\.){3}(0|1\\d?\\d?|2[0-4]?\\d?|25[0-5]?|[3-9]\\d?)$"))
+            return true;
+        LOG.error("Invalid IP address. IP address should contain 4 octets separated by '.' (dot). Each octet comprises only digits and ranges from 0 to 255.");
+        return false;
     }
 }

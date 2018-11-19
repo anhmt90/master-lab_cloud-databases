@@ -35,7 +35,7 @@ public class ConfigMessageMarshaller {
     }
 
     /**
-     * converts a byte array received from the network to a {@link ConfigMessage}
+     * converts a byte array received fSerrom the network to a {@link ConfigMessage}
      *
      * @param msgBytes the byte array to be converted
      * @return the {@link ConfigMessage} corresponding to the byte array msgBytes

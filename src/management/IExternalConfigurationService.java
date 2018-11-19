@@ -1,14 +1,16 @@
 package management;
 
+import ecs.Metadata;
+
 public interface IExternalConfigurationService {
-    boolean initKVServer(String metadata, int cacheSize, String strategy);
+    boolean initKVServer(Metadata metadata, int cacheSize, String strategy);
 
     boolean stopService();
     boolean startService();
     boolean shutdown();
 
-    void lockWrite();
-    void unlockWrite();
-    void update(String metadata);
+    boolean lockWrite();
+    boolean unlockWrite();
+    boolean update(Metadata metadata);
 }
 

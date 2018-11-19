@@ -2,30 +2,25 @@ package management;
 
 import ecs.KVServerMeta;
 import ecs.Metadata;
-import server.storage.cache.CacheDisplacementStrategy;
 
 import java.io.Serializable;
 
 public class ConfigMessage implements Serializable {
-    public KVServerMeta getTargetServer() {
-        return targetServer;
-    }
-
+    private ConfigStatus status;
+    private int cacheSize;
+    private String strategy;
+    private Metadata metadata;
     private KVServerMeta targetServer;
-    ConfigStatus status;
-    int cacheSize;
-    CacheDisplacementStrategy strategy;
-    Metadata metadata;
 
-    public ConfigMessage(ConfigStatus adminStatus) {
-        this.status = adminStatus;
+    public ConfigMessage(ConfigStatus status) {
+        this.status = status;
     }
 
     public ConfigStatus getStatus() {
         return status;
     }
 
-    public ConfigMessage(ConfigStatus status, int cacheSize, CacheDisplacementStrategy strategy, Metadata metadata) {
+    public ConfigMessage(ConfigStatus status, int cacheSize, String strategy, Metadata metadata) {
         this.status = status;
         this.cacheSize = cacheSize;
         this.strategy = strategy;
@@ -46,11 +41,16 @@ public class ConfigMessage implements Serializable {
         return cacheSize;
     }
 
-    public CacheDisplacementStrategy getStrategy() {
+    public String getStrategy() {
         return strategy;
     }
 
     public Metadata getMetadata() {
         return metadata;
     }
+
+    public KVServerMeta getTargetServer() {
+        return targetServer;
+    }
+
 }

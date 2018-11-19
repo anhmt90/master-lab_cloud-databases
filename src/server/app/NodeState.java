@@ -6,15 +6,16 @@ public enum NodeState {
      */
     STOPPED,
 
-    /**
-     * Server is stopping but still has to finish ongoing requests
-     */
-    STOPPING,
 
     /**
      * Server has been started and is in service
      */
-    STARTED
+    STARTED,
+
+    /**
+     * Server is rearranging keys and does not serve PUT-requests
+     */
+    WRITE_LOCKED
     ;
 
 }
