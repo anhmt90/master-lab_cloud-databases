@@ -203,11 +203,11 @@ public class ECSApplication {
 	            case START:
 	                return "'startService' - starts service on all storage server instances participating in the service\n";
 	            case STOP:
-	                return "'stopService' - servers stopService processing client requests\n";
+	                return "'stopService' - servers stop processing client requests\n";
 	            case INIT:
 	                return "'initiate <numberOfNodes> <cacheSize> <displacementStrategy>' - starts the storage service with the given parameters\n";
 	            case SHUTDOWN:
-	                return "'shutdown' - stopService all servers and exit the remote process\n";
+	                return "'shutdown' - stop all servers and exit the remote process\n";
 	            case ADD:
 	                return "'add <cacheSize> <displacementStrategy> - create a storage server and add it to storage service at arbitrary position\n";
 	            case REMOVE:
@@ -215,7 +215,7 @@ public class ECSApplication {
 	            case HELP:
 	                return "'help' - display list of commands\n";
 	            case QUIT:
-	                return "'quit' - end any ongoing connections and stopService the application\n";
+	                return "'quit' - end any ongoing connections and stop the application\n";
 	            default:
 	                return ("Unknown command");
 	        }

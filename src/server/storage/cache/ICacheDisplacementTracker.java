@@ -21,7 +21,7 @@ public interface ICacheDisplacementTracker {
 
     /**
      * Stop tracking a use of key {@link K}
-     * @param k key stopService tracking for
+     * @param k key of tuple that should be omitted out of cache
      */
     void unregister(K k);
 

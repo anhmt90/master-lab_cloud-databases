@@ -355,7 +355,7 @@ public class CommandLineApp {
             case HELP:
                 return "'help' - display list of commands\n";
             case QUIT:
-                return "'quit' - end any ongoing connections and stopService the application\n";
+                return "'quit' - end any ongoing connections and stop the application\n";
             default:
                 return ("Unknown command");
         }
