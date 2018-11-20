@@ -12,6 +12,8 @@ import java.nio.charset.StandardCharsets;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import ecs.KVServerMeta;
+import ecs.KeyHashRange;
 import ecs.Metadata;
 import protocol.*;
 import protocol.IMessage.*;
@@ -45,6 +47,11 @@ public class Client implements IClient {
 	 * List of the storage servers with their addresses
 	 */
 	private Metadata metadata;
+	
+	/**
+	 * Range of keys which the server the client is currently connected to handles
+	 */
+	private KeyHashRange connectedServerHashRange;
 
 	/**
 	 * Creates a new client and opens a client socket to immediately connect to the
@@ -151,6 +158,26 @@ public class Client implements IClient {
 		else
 			return false;
 	}
+	
+	private void reroute(String key) throws IOException{
+		print("Server miss. Reconnecting to appropriate server.");
+		KVServerMeta meta = metadata.findMatchingServer(key);
+		if(meta == null) {
+			print("No server found as responsible for the key.");
+			throw printLogError(new IOException(), "No server found responsible for key can't route request.");
+		}
+		disconnect();
+		this.address = meta.getHost();
+		this.port = meta.getPort();
+		this.connectedServerHashRange = meta.getRange();
+		connect();
+		if (isConnected()) {
+			byte[] bytes = receive();
+			String message = new String(bytes, StandardCharsets.US_ASCII).trim();
+			LOG.info("Message from server: " + message);
+			print(message);
+		}
+	}
 
 	/**
 	 * Prints an output string to System.out
@@ -164,6 +191,9 @@ public class Client implements IClient {
 	@Override
 	public IMessage put(String key, String value) throws IOException {
 		IMessage serverResponse;
+		if(!connectedServerHashRange.inRange(key)) {
+			reroute(key);
+		}
 		if (value != null && value.equals("null"))
 			value = null;
 		if (value != null) {
@@ -183,35 +213,26 @@ public class Client implements IClient {
 	 * @param key used in the storage operation
 	 * @param value used in the storage operation
 	 * @param serverResponse the server response that indicated the server miss
-	 * @param command the command in which the server miss occured
+	 * @param command the command in which the server miss occurred
 	 * @return the server response
 	 * @throws IOException
 	 */
 	private IMessage handleServerMiss(String key, String value, IMessage serverResponse, String command)
 			throws IOException {
-		print("Server miss. Retrying.");
-		this.metadata = serverResponse.getMetadata();
-		String newAddress = metadata.findMatchingServer(HashUtils.getHash(key));
-		String[] splitAddress = newAddress.split(" ");
-		disconnect();
-		this.address = splitAddress[0];
-		this.port = Integer.parseInt(splitAddress[1]);
-		connect();
-		if (isConnected()) {
-			byte[] bytes = receive();
-			String message = new String(bytes, StandardCharsets.US_ASCII).trim();
-			LOG.info("Message from server: " + message);
-			print(message);
+		if(serverResponse.getMetadata() != null) {
+			this.metadata = serverResponse.getMetadata();
+			switch (command) {
+			case PUT:
+				return put(key, value);
+			case GET:
+				return get(key);
+			default:
+				throw printLogError(new IOException(), "Illegal request while handling server miss");
+			}
 		}
-		switch (command) {
-		case PUT:
-			return put(key, value);
-		case GET:
-			return get(key);
-		default:
-			return serverResponse;
+		else {
+			throw printLogError(new IOException(), "Server metadata empty");
 		}
-
 	}
 
 	public IMessage put(String key) throws IOException {
@@ -231,6 +252,9 @@ public class Client implements IClient {
 
 	@Override
 	public IMessage get(String key) throws IOException {
+		if(!connectedServerHashRange.inRange(key)) {
+			reroute(key);
+		}
 		IMessage serverResponse = sendWithoutValue(key, Status.GET);
 		if (serverResponse.getStatus() == Status.SERVER_NOT_RESPONSIBLE) {
 			serverResponse = handleServerMiss(key, null, serverResponse, GET);

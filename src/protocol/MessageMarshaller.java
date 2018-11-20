@@ -2,6 +2,11 @@ package protocol;
 
 import java.nio.ByteBuffer;
 
+import ecs.KVServerMeta;
+import ecs.Metadata;
+import protocol.IMessage.Status;
+import util.HashUtils;
+
 public class MessageMarshaller {
 
     /**
@@ -12,6 +17,9 @@ public class MessageMarshaller {
     public static byte[] marshall(IMessage message) {
         if (message == null) {
             return null;
+        }
+        if(message.getStatus().equals(Status.SERVER_NOT_RESPONSIBLE)) {
+        	return marshallNotResponsible(message);
         }
         byte[] keyBytes = message.getK().get();
         byte[] valueBytes = message.getV() != null ? message.getV().get() : new byte[]{};
@@ -39,7 +47,7 @@ public class MessageMarshaller {
         if (msgBytes == null || msgBytes[0] == 0x00) {
             return null;
         }
-        IMessage.Status status = IMessage.Status.getByCode(msgBytes[0]);
+        Status status = Status.getByCode(msgBytes[0]);
         if (status == null)
             return null;
 
@@ -57,4 +65,38 @@ public class MessageMarshaller {
         return new Message(status, new K(keyBytes), new V(valBytes));
     }
 
+    
+    public static byte[] marshallNotResponsible(IMessage message) {
+    	Metadata metadata = message.getMetadata();
+    	byte[] output = new byte[1 + 1 + metadata.getSize()*(4 + 2 + 16 +16)];
+    	
+        
+    	output[0] = message.getStatus().getCode();    	
+    	output[1] = (byte)metadata.getSize();
+    	
+    	for(int j = 0; j < metadata.getSize(); j++) {
+    		KVServerMeta meta = metadata.get().get(j);
+    		String[] host = meta.getHost().split(".");
+    		byte[] hostBytes = new byte[4];
+    		for(int i = 0; i<host.length; i++) {
+    			hostBytes[i] = Byte.parseByte(host[i]);
+    		}
+            final short BUFFER_CAPACITY = 4;
+            final short PORT_NUM_BYTES = 2;
+            ByteBuffer portBuffer = ByteBuffer.allocate(BUFFER_CAPACITY).putInt(meta.getPort());
+            byte[] portBytes = new byte[2];
+            portBytes[0] = portBuffer.array()[2];
+            portBytes[1] = portBuffer.array()[3];
+            byte[] startBytes = HashUtils.getHashBytes(meta.getRange().getStart());
+            byte[] endBytes = HashUtils.getHashBytes(meta.getRange().getEnd());
+            byte[] nodeMetadataBytes = new byte[hostBytes.length + portBytes.length + startBytes.length + endBytes.length];
+            System.arraycopy(hostBytes, 0, nodeMetadataBytes, 0, hostBytes.length);
+            System.arraycopy(portBytes, 0, nodeMetadataBytes, hostBytes.length, portBytes.length);
+            System.arraycopy(startBytes, 0, nodeMetadataBytes, hostBytes.length + portBytes.length, startBytes.length);
+            System.arraycopy(endBytes, 0, nodeMetadataBytes, nodeMetadataBytes.length - endBytes.length, endBytes.length);
+            System.arraycopy(nodeMetadataBytes, 0, output, 2 + (j*38), nodeMetadataBytes.length);
+    	}
+    	return output;
+    }
+    
 }

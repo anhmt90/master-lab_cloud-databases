@@ -6,6 +6,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
 
+import ecs.KeyHashRange;
+import ecs.Metadata;
 import server.api.AdminConnection;
 import server.api.ClientConnection;
 import server.storage.cache.CacheDisplacementStrategy;
@@ -18,7 +20,7 @@ import java.net.Socket;
 import java.util.Arrays;
 
 /**
- * Represents a simple Echo Server implementation.
+ * Storage server implementation.
  */
 public class Server extends Thread implements IExternalConfigurationService {
     public static final String SERVER_LOG = "kvServer";
@@ -39,6 +41,10 @@ public class Server extends Thread implements IExternalConfigurationService {
 
     private ServerSocket kvSocket;
     private static ServerSocket mgmtSocket;
+    
+    //Attributes handling the range of values that this and other servers are responsible for
+    private Metadata metaData;
+    private KeyHashRange hashRange;
 
 
     /**
@@ -178,6 +184,24 @@ public class Server extends Thread implements IExternalConfigurationService {
         }
     }
 
+    /**
+     * Gets metadata
+     * 
+     * @return metaData
+     */
+    public Metadata getMetadata() {
+    	return metaData;
+    }
+    
+    /**
+     * Gets range of hash-values that the server is responsible for storing
+     * 
+     * @return hashRange
+     */
+    public KeyHashRange getHashRange() {
+    	return hashRange;
+    }
+    
     /**
      * Gets cache manager
      *

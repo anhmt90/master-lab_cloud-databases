@@ -18,12 +18,27 @@ public class Metadata implements Serializable {
 	 * @param hexKey hashed key in hex format
 	 * @return String containing server address and port
 	 */
-	public String findMatchingServer(String hexKey) {
+	public KVServerMeta findMatchingServer(String hexKey) {
 		for (KVServerMeta temp : meta) {
 			if (temp.getRange().inRange(hexKey)) {
-				return temp.getHost() + " " + temp.getPort();
+				return temp;
 			}
 		}
 		return null;
 	}
+
+	/**
+	 * get metadata size
+	 * 
+	 * @return metadata size
+	 */
+	public int getSize() {
+		return meta.size();
+	}
+
+	public List<KVServerMeta> get() {
+		return meta;
+	}
+	
+	
 }

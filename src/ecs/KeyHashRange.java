@@ -22,4 +22,13 @@ public class KeyHashRange {
 		return false;
 	}
 
+	public String getStart() {
+		return start;
+	}
+
+	public String getEnd() {
+		return end;
+	}
+
+	
 }
