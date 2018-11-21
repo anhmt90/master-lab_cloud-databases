@@ -3,6 +3,7 @@ package ecs.client.app;
 import java.io.IOException;
 import java.util.*;
 
+import ecs.ExternalConfigurationService;
 import ecs.client.api.ECSClient;
 
 import org.apache.logging.log4j.Logger;
@@ -25,15 +26,18 @@ public class ECSApplication {
 	
 	
 	    /**
-	     * The ECSClient as an instance of {@link Client} to communicate with the
+	     * The ECSClient as an instance of {@link ExternalConfigurationService} to communicate with the
 	     * Storage Service
 	     */
-	    private static ECSClient ecsClient = new ECSClient();
+	    private static ExternalConfigurationService ecsClient;
+	    
 	    
 	    
 	    public static void main(String[] args) throws IOException {
 	        Scanner input = new Scanner(System.in);
-
+	        
+	        ecsClient  = new ExternalConfigurationService("dummypath");
+	        
 	        while (true) {
 	            printCommandPrompt();
 	            String userInput = input.nextLine();

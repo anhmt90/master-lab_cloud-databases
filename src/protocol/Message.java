@@ -27,12 +27,17 @@ public class Message implements IMessage {
 		this.key = key;
 		this.value = value;
 	}
-
+	
 	public Message(K key, V value) {
 		this.key = key;
 		this.value = value;
 	}
 
+	public Message(Status status, Metadata metadata) {
+		this.status = status;
+		this.metadata = metadata;
+	}
+	
 	@Override
 	public String getKey() {
 		return key.getString();

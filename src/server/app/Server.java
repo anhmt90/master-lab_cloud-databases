@@ -8,6 +8,8 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
 
 import server.api.ManagementConnection;
+import ecs.KeyHashRange;
+import ecs.Metadata;
 import server.api.ClientConnection;
 import server.storage.cache.CacheDisplacementStrategy;
 import server.storage.CacheManager;
@@ -19,7 +21,7 @@ import java.net.Socket;
 import java.util.Arrays;
 
 /**
- * Represents a simple Echo Server implementation.
+ * Storage server implementation.
  */
 public class Server extends Thread implements IExternalConfigurationService {
     public static final String SERVER_LOG = "kvServer";
@@ -44,6 +46,10 @@ public class Server extends Thread implements IExternalConfigurationService {
 
     private ServerSocket kvSocket;
     //mgmtSocket;
+
+    //Attributes handling the range of values that this and other servers are responsible for
+    private Metadata metaData;
+    private KeyHashRange hashRange;
 
 
     /**
@@ -191,6 +197,24 @@ public class Server extends Thread implements IExternalConfigurationService {
     }
 
     /**
+     * Gets metadata
+     *
+     * @return metaData
+     */
+    public Metadata getMetadata() {
+    	return metaData;
+    }
+
+    /**
+     * Gets range of hash-values that the server is responsible for storing
+     *
+     * @return hashRange
+     */
+    public KeyHashRange getHashRange() {
+    	return hashRange;
+    }
+
+    /**
      * Gets cache manager
      *
      * @return Cache Manager
@@ -333,7 +357,7 @@ public class Server extends Thread implements IExternalConfigurationService {
 
 
     private static Server createServer(String[] args, String ecsAddress) {
-        if (args.length == 0 || args.length >= 3)
+        if (args.length == 0 || args.length > 3)
             throw new IllegalArgumentException("Port number must be provided to start the server");
         int port = -1;
         if (isValidPortNumber(args[0]))

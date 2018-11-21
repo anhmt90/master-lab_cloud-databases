@@ -7,6 +7,7 @@ import protocol.IMessage.Status;
 import server.app.Server;
 import server.storage.PUTStatus;
 import server.storage.CacheManager;
+import util.HashUtils;
 import util.StringUtils;
 
 import java.io.*;
@@ -102,6 +103,11 @@ public class ClientConnection implements Runnable {
 
         K key = message.getK();
         V val = message.getV();
+        
+        if(server.getHashRange().inRange(HashUtils.getHash(key.getString()))) {
+        	return handleMISS();
+        }
+        
         switch (message.getStatus()) {
             case GET:
                 return handleGET(message);
@@ -112,6 +118,10 @@ public class ClientConnection implements Runnable {
             default:
                 throw new IllegalArgumentException("Unknown Request Type");
         }
+    }
+    
+    private IMessage handleMISS() {
+    	return new Message(Status.SERVER_NOT_RESPONSIBLE, server.getMetadata());
     }
 
     /**

@@ -18,40 +18,25 @@ public class Metadata implements Serializable {
 	 * @param hexKey hashed key in hex format
 	 * @return String containing server address and port
 	 */
-	public String findMatchingServer(String hexKey) {
+	public KVServerMeta findMatchingServer(String hexKey) {
 		for (KVServerMeta temp : meta) {
 			if (temp.getRange().inRange(hexKey)) {
-				return temp.getHost() + " " + temp.getPort();
+				return temp;
 			}
 		}
 		return null;
 	}
 
-	public class KVServerMeta {
-		private String host;
-		private int port;
-		private KeyHashRange range;
+	/**
+	 * get metadata size
+	 *
+	 * @return metadata size
+	 */
+	public int getSize() {
+		return meta.size();
+	}
 
-		public KVServerMeta(String host, int port, String start, String end) {
-			this(host, port, new KeyHashRange(start, end));
-		}
-
-		public KVServerMeta(String host, int port, KeyHashRange range) {
-			this.host = host;
-			this.port = port;
-			this.range = range;
-		}
-
-		public String getHost() {
-			return host;
-		}
-
-		public int getPort() {
-			return port;
-		}
-
-		public KeyHashRange getRange() {
-			return range;
-		}
+	public List<KVServerMeta> get() {
+		return meta;
 	}
 }
