@@ -146,7 +146,6 @@ public class CommandLineApp {
             LOG.info(msg + ": " + key.length());
             return;
         }
-
         if (keyAndValue.length == 1) {
             handleDelete(key);
             return;
@@ -164,28 +163,7 @@ public class CommandLineApp {
             LOG.info("Putting: ", key, value);
 
             IMessage serverResponse = kvClient.put(key, value);
-            switch (serverResponse.getStatus()) {
-                case PUT_ERROR:
-                    print("Fail to store key-value pair.");
-                    break;
-                case PUT_SUCCESS:
-                    print("Key-value pair stored successfully.");
-                    break;
-                case PUT_UPDATE:
-                	print("Value for " + key + "was updated.");
-                case DELETE_ERROR:
-                    print("Fail to remove entry. No value for key " + key + " found on server.");
-                    LOG.info("Server response: " + serverResponse.getStatus().name());
-                    break;
-                case DELETE_SUCCESS:
-                    print("Value stored on server for key " + key + " was deleted.");
-                    LOG.info("Server response: " + serverResponse.getStatus().name());
-                    break;
-                default:
-                    print("Wrong server response. Please try again");
-                    LOG.info("Incompatible server response", serverResponse);
-            }
-            LOG.info("Server response: " + serverResponse.getStatus().name());
+            handleServerResponse(serverResponse, key);
         } else {
             print("No connection currently established. Please establish a connection before storing a key-value pair.");
         }
@@ -201,19 +179,7 @@ public class CommandLineApp {
             LOG.info("Deleting: ", key);
 
             IMessage serverResponse = kvClient.put(key, null);
-            switch (serverResponse.getStatus()) {
-                case DELETE_ERROR:
-                    print("Fail to remove entry. No value for key " + key + " found on server.");
-                    LOG.info("Server response: " + serverResponse.getStatus().name());
-                    break;
-                case DELETE_SUCCESS:
-                    print("Value stored on server for key " + key + " was deleted.");
-                    LOG.info("Server response: " + serverResponse.getStatus().name());
-                    break;
-                default:
-                    print("Wrong server response. Please try again.");
-                    LOG.info("Incompatible server response", serverResponse);
-            }
+            handleServerResponse(serverResponse, key);
         } else {
             print("No connection currently established. Please establish a connection before deleting a key-value pair.");
         }
@@ -242,26 +208,65 @@ public class CommandLineApp {
         }
         if (!kvClient.isClosed()) {
             LOG.info("Getting: ", key);
+
             IMessage serverResponse = kvClient.get(key);
-            switch (serverResponse.getStatus()) {
-                case GET_ERROR:
-                    print("Retrieving value was unsuccesful. There might be no value saved on the server corresponding to the given key: "
-                            + key);
-                    LOG.info("Server response: ");
-                    break;
-                case GET_SUCCESS:
-                    print("Value stored on server for key '" + key + "' is: " + serverResponse.getValue());
-                    LOG.info("Server response: " + Status.GET_SUCCESS.name());
-                    break;
-                default:
-                    print("Wrong server response. Please try again");
-                    LOG.info("Incompatible server response", serverResponse);
-            }
+            handleServerResponse(serverResponse, key);
         } else {
             print("No connection currently established. Please establish a connection before retrieving a value");
         }
     }
 
+    /**
+     * Prints out the appropriate response to a server response and logs info
+     * 
+     * @param serverResponse responser from server to a request
+     * @param key key belonging to the request
+     */
+    private static void handleServerResponse(IMessage serverResponse, String key) {
+    	switch (serverResponse.getStatus()) {
+	    	case PUT_ERROR:
+	            print("Fail to store key-value pair.");
+	            LOG.info("Storage failure");
+	            break;
+	        case PUT_SUCCESS:
+	            print("Key-value pair stored successfully.");
+	            LOG.info("Storage success");
+	            break;
+	        case PUT_UPDATE:
+	        	print("Value for " + key + "was updated.");
+	        	LOG.info("Update success");
+	        	break;
+	        case GET_ERROR:
+	            print("Retrieving value was unsuccesful. There might be no value saved on the server corresponding to the given key: "
+	                    + key);
+	            LOG.info("Get failure");
+	            break;
+	        case GET_SUCCESS:
+	            print("Value stored on server for key '" + key + "' is: " + serverResponse.getValue());
+	            LOG.info("Get success");
+	            break;
+	        case DELETE_ERROR:
+                print("Fail to remove entry. No value for key " + key + " found on server.");
+                LOG.info("Deletion failure");
+                break;
+            case DELETE_SUCCESS:
+                print("Value stored on server for key " + key + " was deleted.");
+                LOG.info("Deletion success");
+                break;
+            case SERVER_STOPPED:
+            	print("Storage server is currently stopped and does not accept client requests.");
+            	LOG.info("Server stopped");
+            	break;
+            case SERVER_WRITE_LOCK:
+            	print("Storage server does not currently accept put requests.");
+            	LOG.info("Server locked");
+            	break;
+	        default:
+	            print("Unknown server response. Please try again");
+	            LOG.info("Incompatible server response", serverResponse);
+	    }
+    }
+    
     /**
      * Disconnects the connection to StorageServer
      */
