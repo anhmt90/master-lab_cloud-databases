@@ -4,6 +4,7 @@ import server.api.ClientConnection;
 import server.app.Server;
 import server.storage.PUTStatus;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.file.FileAlreadyExistsException;
@@ -15,6 +16,7 @@ import java.util.Arrays;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import util.FileUtils;
+import util.StringUtils;
 
 import static util.FileUtils.SEP;
 
@@ -49,7 +51,7 @@ public class PersistenceManager implements IPersistenceManager {
     }
 
     @Override
-    public synchronized PUTStatus write(byte[] key, byte[] value) {
+    public synchronized PUTStatus write(String key, byte[] value) {
         Path file = getFilePath(key);
         PUTStatus putStatus = FileUtils.isExisted(file) ? PUTStatus.UPDATE_ERROR : PUTStatus.CREATE_ERROR;
         try {
@@ -67,35 +69,17 @@ public class PersistenceManager implements IPersistenceManager {
 
     /**
      * constructs a directory path for a key
-     * 
+     * The key will be the file name and each of its characters will be a folder in the path to the file
+     *
      * @param key key from which the path is constructed
      * @return a directory path corresponding to the key
      */
-	public Path getFilePath(byte[] key) {
-		String path = DB_PATH  + SEP + parseFilePath(key) + SEP + parseFileName(key);
+	public Path getFilePath(String key) {
+		String path = DB_PATH  + SEP + StringUtils.insertCharEvery(key, SEP,2) + key;
 		return Paths.get(path);
 	}
 
-	/**
-	 * Parses a file path from a key
-	 * 
-	 * @param key key from which path is parsed
-	 * @return file path in String format
-	 */
-    private String parseFilePath(byte[] key) {
-        return Arrays.toString(key).replaceAll("[\\[ \\]]", "")
-                .replaceAll(",", "/");
-    }
 
-    /**
-     * Parses a file name from a key
-     * 
-     * @param key key from which file name is parsed
-     * @return file name in String format
-     */
-    private String parseFileName(byte[] key) {
-        return Arrays.toString(key).replaceAll("\\W", "");
-    }
 
     /**
      * Handles creating or updating a value in a given path
@@ -103,7 +87,7 @@ public class PersistenceManager implements IPersistenceManager {
      * @param file        path in which the value is supposed
      *                    to be stored
      * @param fileContent value being stored in a file
-     * @return Status if operation was successful or failed 
+     * @return Status if operation was successful or failed
      */
 	private synchronized PUTStatus createOrUpdate(Path file, byte[] fileContent) {
 		try {
@@ -122,7 +106,7 @@ public class PersistenceManager implements IPersistenceManager {
 	}
 
     @Override
-    public byte[] read(byte[] key) {
+    public byte[] read(String key) {
         Path file = getFilePath(key);
         if (FileUtils.isExisted(file)) {
             try {
@@ -136,7 +120,7 @@ public class PersistenceManager implements IPersistenceManager {
     }
 
     @Override
-    public PUTStatus delete(byte[] key) {
+    public PUTStatus delete(String key) {
         Path file = getFilePath(key);
         if (!Files.isDirectory(file)) {
             try {

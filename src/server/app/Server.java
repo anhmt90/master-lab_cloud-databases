@@ -13,14 +13,22 @@ import ecs.KeyHashRange;
 import server.api.ClientConnection;
 import server.storage.cache.CacheDisplacementStrategy;
 import server.storage.CacheManager;
+import util.LogUtils;
+import util.StringUtils;
 
 import java.io.IOException;
 import java.net.BindException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+
+import static util.FileUtils.SEP;
+import static util.StringUtils.EMPTY_STRING;
 
 /**
  * Storage server implementation.
@@ -92,7 +100,7 @@ public class Server extends Thread implements IExternalConfigurationService {
         try {
             hashRange = getHashRange(metadata);
         } catch (NoSuchElementException nsee) {
-            return exitWithFalse(nsee);
+            return LogUtils.exitWithError(LOG, nsee);
         }
 
         LOG.info("Server initialized with cache size " + cacheSize
@@ -163,7 +171,7 @@ public class Server extends Thread implements IExternalConfigurationService {
         try {
             hashRange = getHashRange(metadata);
         } catch (NoSuchElementException nsee) {
-            return exitWithFalse(nsee);
+            return LogUtils.exitWithError(LOG, nsee);
         }
         this.metadata = metadata;
         return false;
@@ -171,11 +179,35 @@ public class Server extends Thread implements IExternalConfigurationService {
 
 
     public boolean moveData(KeyHashRange range, NodeInfo target) {
-        if(!range.isSubRangeOf(this.hashRange))
+        if (!range.isSubRangeOf(this.hashRange))
             return false;
-        if(!isWriteLocked())
+        if (!isWriteLocked())
             return false;
-        
+        String start = range.getStart();
+        String end = range.getEnd();
+        String commonPrefix = StringUtils.getLongestCommonPrefix(start, end);
+        String commonParentFolder = commonPrefix.replaceAll(".", EMPTY_STRING + SEP);
+
+
+
+
+        for (int i = commonPrefix.length(); i < start.length(); i++) {
+            byte currStartDigit = Byte.parseByte(String.valueOf(start.charAt(i)), 16);
+            byte currEndDigit = Byte.parseByte(String.valueOf(end.charAt(i)), 16);
+
+            Integer.toHexString(currStartDigit + 1);
+//            List<String> fileNames = getFilesInMiddleFullRange(commonPrefix , )
+        }
+
+        try {
+            Files.walk(Paths.get(commonParentFolder))
+                    .filter(Files::isRegularFile)
+                    .forEach(System.out::println);
+        } catch (IOException ioe) {
+            return LogUtils.exitWithError(LOG, ioe);
+        }
+
+        return false;
     }
 
 
@@ -412,10 +444,4 @@ public class Server extends Thread implements IExternalConfigurationService {
         LOG.error("Invalid IP address. IP address should contain 4 octets separated by '.' (dot). Each octet comprises only digits and ranges from 0 to 255.");
         return false;
     }
-
-    public boolean exitWithFalse(Exception e) {
-        LOG.error(e);
-        return false;
-    }
-
 }

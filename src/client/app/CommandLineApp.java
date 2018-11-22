@@ -133,8 +133,8 @@ public class CommandLineApp {
         if (!isValidArgs(PUT, cmdComponents))
             return;
 
-        String[] keyValue = cmdComponents[1].split(StringUtils.WHITE_SPACE, 2);
-        String key = keyValue[0];
+        String[] keyAndValue = cmdComponents[1].split(StringUtils.WHITE_SPACE, 2);
+        String key = keyAndValue[0];
         if (key.length() < 1) {
             print("Key needs to be at least one non whitespace character.");
             LOG.info("Invalid key. " + cmdComponents);
@@ -146,12 +146,13 @@ public class CommandLineApp {
             LOG.info(msg + ": " + key.length());
             return;
         }
-        if (keyValue.length == 1) {
+
+        if (keyAndValue.length == 1) {
             handleDelete(key);
             return;
         }
 
-        String value = keyValue[1];
+        String value = keyAndValue[1];
         if (value.length() > MAX_VALUE_SIZE) {
             String msg = "Value exceeds maximum size";
             print(msg);
@@ -241,7 +242,6 @@ public class CommandLineApp {
         }
         if (!kvClient.isClosed()) {
             LOG.info("Getting: ", key);
-
             IMessage serverResponse = kvClient.get(key);
             switch (serverResponse.getStatus()) {
                 case GET_ERROR:

@@ -17,6 +17,7 @@ import ecs.KeyHashRange;
 import ecs.Metadata;
 import protocol.*;
 import protocol.IMessage.*;
+import util.HashUtils;
 
 public class Client implements IClient {
 	public static final String CLIENT_LOG = "kvClient";
@@ -195,6 +196,7 @@ public class Client implements IClient {
 		}
 		if (value != null && value.equals("null"))
 			value = null;
+
 		if (value != null) {
 			serverResponse = storeOnServer(key, value);
 		} else {
@@ -270,7 +272,7 @@ public class Client implements IClient {
 	 * @throws IOException
 	 */
 	private IMessage sendWithoutValue(String key, Status status) throws IOException {
-		byte[] keyBytes = key.getBytes(StandardCharsets.US_ASCII);
+		byte[] keyBytes = HashUtils.getHashBytes(key);
 		IMessage toSend = new Message(status, new K(keyBytes));
 		send(MessageMarshaller.marshall(toSend));
 		IMessage response = MessageMarshaller.unmarshall(receive());
@@ -281,13 +283,13 @@ public class Client implements IClient {
 	/**
 	 * Handles delivery of put messages for storage
 	 * 
-	 * @param key   key for the key-value pair
+	 * @param key   key in the key-value pair represented as MD5-hash
 	 * @param value value for the key-value pair
 	 * @return the server response
 	 * @throws IOException
 	 */
 	private IMessage storeOnServer(String key, String value) throws IOException {
-		byte[] keyBytes = key.getBytes(StandardCharsets.US_ASCII);
+		byte[] keyBytes = HashUtils.getHashBytes(key);
 		byte[] valueBytes = value.getBytes(StandardCharsets.US_ASCII);
 		IMessage toSend = new Message(Status.PUT, new K(keyBytes), new V(valueBytes));
 		send(MessageMarshaller.marshall(toSend));

@@ -8,6 +8,7 @@ public class KeyHashRange {
     String end;
 
     public KeyHashRange(String start, String end) {
+        Validate.isTrue(isValidKeyRange(), "Invalid key range");
         this.start = start;
         this.end = end;
     }
@@ -50,15 +51,19 @@ public class KeyHashRange {
     }
 
     public byte[] getStartBytes() {
-        return HashUtils.getHashBytes(start);
+        return HashUtils.getHashBytesOf(start);
     }
 
     public byte[] getEndBytes() {
-        return HashUtils.getHashBytes(end);
+        return HashUtils.getHashBytesOf(end);
     }
 
     private boolean isWrappedAround() {
         return HashUtils.compare(getStartBytes(), getEndBytes()) > 0;
+    }
+
+    private boolean isValidKeyRange() {
+        return start.length() == end.length() && !start.equals(end);
     }
 
 }

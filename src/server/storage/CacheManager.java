@@ -83,7 +83,7 @@ public class CacheManager implements IStorageCRUD {
             updateCache(key, val);
             return val;
         }
-        byte[] res = pm.read(key.get());
+        byte[] res = pm.read(key.getString());
         if (res == null)
             return null;
         val = new V(res);
@@ -102,7 +102,7 @@ public class CacheManager implements IStorageCRUD {
      */
     @Override
     public PUTStatus put(K key, V val) {
-        PUTStatus status = (val != null) ? pm.write(key.get(), val.get()) : pm.delete(key.get());
+        PUTStatus status = (val != null) ? pm.write(key.getString(), val.get()) : pm.delete(key.getString());
         if (status.name().contains(ERROR))
             return status;
         updateCache(key, val);

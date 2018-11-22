@@ -84,7 +84,7 @@ public class MessageMarshaller {
             final short BUFFER_CAPACITY = 4;
             final short PORT_NUM_BYTES = 2;
             ByteBuffer portBuffer = ByteBuffer.allocate(BUFFER_CAPACITY).putInt(meta.getPort());
-            byte[] portBytes = new byte[2];
+            byte[] portBytes = new byte[PORT_NUM_BYTES];
             portBytes[0] = portBuffer.array()[2];
             portBytes[1] = portBuffer.array()[3];
             byte[] startBytes = meta.getRange().getStartBytes();

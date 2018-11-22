@@ -104,22 +104,22 @@ public class ClientConnection implements Runnable {
         K key = message.getK();
         V val = message.getV();
 
-        if(!server.getHashRange().inRange(HashUtils.getHash(key.getString()))) {
-        	return new Message(Status.SERVER_NOT_RESPONSIBLE, server.getMetadata());
+        if (!server.getHashRange().inRange(key.getString())) {
+            return new Message(Status.SERVER_NOT_RESPONSIBLE, server.getMetadata());
         }
-        
+
         switch (message.getStatus()) {
             case GET:
                 return handleGET(message);
             case PUT:
-                if(server.isWriteLocked())
+                if (server.isWriteLocked())
                     return new Message(Status.SERVER_WRITE_LOCK);
                 return handlePUT(key, val);
             default:
                 throw new IllegalArgumentException("Unknown Request Type");
         }
     }
-    
+
     /**
      * Handles and creates a suitable response for a put request
      *

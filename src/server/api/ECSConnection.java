@@ -107,7 +107,7 @@ public class ECSConnection {
             case UPDATE_METADATA:
                 return server.update(configMessage.getMetadata());
             case MOVE_DATA:
-                return server.moveData();
+                return server.moveData(configMessage.getKeyRange() ,configMessage.getTargetServer());
             case SHUTDOWN:
                 return server.shutdown();
             default:

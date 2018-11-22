@@ -6,7 +6,9 @@ import java.nio.file.Paths;
 
 public class FileUtils {
     public static final String WORKING_DIR = System.getProperty("user.dir");
-    public static final String SEP = "/";
+    public static final char SEP = '/';
+
+
     /**
      * Checks if a file path is valid
      *
@@ -27,4 +29,6 @@ public class FileUtils {
         Path filePath = Paths.get(filePathString);
         return isExisted(filePath);
     }
+
+
 }

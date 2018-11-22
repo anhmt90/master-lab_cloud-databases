@@ -1,5 +1,7 @@
 package protocol;
 
+import util.HashUtils;
+
 import java.io.Serializable;
 import java.util.Arrays;
 
@@ -15,7 +17,7 @@ public class K implements Serializable {
     }
 
     public String getString() {
-        return new String(key);
+        return HashUtils.getHashStringOf(key);
     }
 
     @Override

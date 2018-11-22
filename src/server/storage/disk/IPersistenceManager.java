@@ -15,7 +15,7 @@ public interface IPersistenceManager {
 	 * @param value the value that is stored
 	 * @return Status indicating if operation was successful
 	 */
-    PUTStatus write(byte[] key, byte[] value);
+    PUTStatus write(String key, byte[] value);
 
     /**
      * Reads a value from a file
@@ -23,7 +23,7 @@ public interface IPersistenceManager {
      * @param key path to the file that is supposed to be read from
      * @return the value of the file
      */
-    byte[] read(byte[] key);
+    byte[] read(String key);
 
     /**
      * Delete a file
@@ -31,6 +31,6 @@ public interface IPersistenceManager {
      * @param key path to the file that will be deleted
      * @return Status indicating if operation was successful
      */
-    PUTStatus delete(byte[] key);
+    PUTStatus delete(String key);
 
 }

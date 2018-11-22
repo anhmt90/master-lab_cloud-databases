@@ -10,10 +10,14 @@ public class ECSClient implements IECS {
 		
 	}
 
-	@Override
 	public void initService(int numberOfNodes, int cacheSize, CacheDisplacementStrategy displacementStrategy) {
 		// TODO Auto-generated method stub
 		
+	}
+
+	@Override
+	public void initService(int numberOfNodes, int cacheSize, String displacementStrategy) {
+
 	}
 
 	@Override
@@ -35,6 +39,10 @@ public class ECSClient implements IECS {
 	}
 
 	@Override
+	public void addNode(int cacheSize, String displacementStrategy) {
+
+	}
+
 	public void addNode(int cacheSize, CacheDisplacementStrategy displacementStrategy) {
 		// TODO Auto-generated method stub
 		

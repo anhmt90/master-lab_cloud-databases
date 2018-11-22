@@ -1,5 +1,6 @@
 package management;
 
+import ecs.KeyHashRange;
 import ecs.NodeInfo;
 import ecs.Metadata;
 
@@ -11,6 +12,7 @@ public class ConfigMessage implements Serializable {
     private String strategy;
     private Metadata metadata;
     private NodeInfo targetServer;
+    private KeyHashRange keyRange;
 
     public ConfigMessage(ConfigStatus status) {
         this.status = status;
@@ -29,6 +31,12 @@ public class ConfigMessage implements Serializable {
 
     public ConfigMessage(ConfigStatus status, NodeInfo target) {
         this.status = status;
+        this.targetServer = target;
+    }
+
+    public ConfigMessage(ConfigStatus status, KeyHashRange keyRange, NodeInfo target) {
+        this.status = status;
+        this.keyRange = keyRange;
         this.targetServer = target;
     }
 
@@ -53,4 +61,7 @@ public class ConfigMessage implements Serializable {
         return targetServer;
     }
 
+    public KeyHashRange getKeyRange() {
+        return keyRange;
+    }
 }

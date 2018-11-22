@@ -16,7 +16,7 @@ public class AllTests {
 	
     static {
         try {
-            new Server(50000, 10, CacheDisplacementStrategy.FIFO, "ERROR");
+            new Server(50000, "ERROR");
         } catch (Exception e) {
         	LOG.error(e);
             e.printStackTrace();
