@@ -1,15 +1,15 @@
 package server.app;
 
 import ecs.Metadata;
+import ecs.NodeInfo;
 import management.IExternalConfigurationService;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
 
-import server.api.ManagementConnection;
+import server.api.ECSConnection;
 import ecs.KeyHashRange;
-import ecs.Metadata;
 import server.api.ClientConnection;
 import server.storage.cache.CacheDisplacementStrategy;
 import server.storage.CacheManager;
@@ -19,6 +19,8 @@ import java.net.BindException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Arrays;
+import java.util.NoSuchElementException;
+import java.util.Optional;
 
 /**
  * Storage server implementation.
@@ -33,22 +35,17 @@ public class Server extends Thread implements IExternalConfigurationService {
 
     private static final int MGMT_PORT = 9867;
 
-
     private static Logger LOG = LogManager.getLogger("SERVER_LOG");
 
-    private Metadata metadata;
     private int port;
     private CacheManager cm;
-
 
     NodeState state;
     boolean running;
 
     private ServerSocket kvSocket;
-    //mgmtSocket;
-
-    //Attributes handling the range of values that this and other servers are responsible for
-    private Metadata metaData;
+    /* keeps the range of values that this and other servers are responsible for */
+    private Metadata metadata;
     private KeyHashRange hashRange;
 
 
@@ -68,7 +65,7 @@ public class Server extends Thread implements IExternalConfigurationService {
     }
 
     /**
-     * @param metadata
+     * @param metadata  info about assignment of key ranges on servers in the ring
      * @param cacheSize specifies how many key-value pairs the server is allowed to
      *                  keep in-memory
      * @param strategy  specifies the storage replacement strategy in case the
@@ -92,9 +89,24 @@ public class Server extends Thread implements IExternalConfigurationService {
         this.cm = new CacheManager(cacheSize, getDisplacementStrategyByName(strategy));
         this.metadata = metadata;
 
+        try {
+            hashRange = getHashRange(metadata);
+        } catch (NoSuchElementException nsee) {
+            return exitWithFalse(nsee);
+        }
+
         LOG.info("Server initialized with cache size " + cacheSize
                 + " and displacement strategy " + strategy);
         return true;
+    }
+
+    private KeyHashRange getHashRange(Metadata metadata) throws NoSuchElementException {
+        Optional<NodeInfo> nodeData = metadata.get().stream()
+                .filter(md -> md.getPort() == kvSocket.getLocalPort() && md.getHost().equals(kvSocket.getInetAddress().getHostAddress()))
+                .findFirst();
+        if (!nodeData.isPresent())
+            throw new NoSuchElementException("Metadata does not contain info for this node");
+        return nodeData.get().getRange();
     }
 
 
@@ -148,8 +160,22 @@ public class Server extends Thread implements IExternalConfigurationService {
 
     @Override
     public boolean update(Metadata metadata) {
-
+        try {
+            hashRange = getHashRange(metadata);
+        } catch (NoSuchElementException nsee) {
+            return exitWithFalse(nsee);
+        }
+        this.metadata = metadata;
         return false;
+    }
+
+
+    public boolean moveData(KeyHashRange range, NodeInfo target) {
+        if(!range.isSubRangeOf(this.hashRange))
+            return false;
+        if(!isWriteLocked())
+            return false;
+        
     }
 
 
@@ -199,10 +225,10 @@ public class Server extends Thread implements IExternalConfigurationService {
     /**
      * Gets metadata
      *
-     * @return metaData
+     * @return metadata
      */
     public Metadata getMetadata() {
-    	return metaData;
+        return metadata;
     }
 
     /**
@@ -211,7 +237,7 @@ public class Server extends Thread implements IExternalConfigurationService {
      * @return hashRange
      */
     public KeyHashRange getHashRange() {
-    	return hashRange;
+        return hashRange;
     }
 
     /**
@@ -345,11 +371,11 @@ public class Server extends Thread implements IExternalConfigurationService {
         Server server = createServer(args, ecsAddress);
         server.start();
 
-        ManagementConnection mgmtConnection = new ManagementConnection(ecsAddress, server);
+        ECSConnection ecsConnection = new ECSConnection(ecsAddress, server);
 
-        if (mgmtConnection.isOpen() && server.isStopped()) {
+        if (ecsConnection.isOpen() && server.isStopped()) {
             while (server.isRunning()) {
-                mgmtConnection.pollRequests();
+                ecsConnection.pollRequests();
             }
         }
 
@@ -386,4 +412,10 @@ public class Server extends Thread implements IExternalConfigurationService {
         LOG.error("Invalid IP address. IP address should contain 4 octets separated by '.' (dot). Each octet comprises only digits and ranges from 0 to 255.");
         return false;
     }
+
+    public boolean exitWithFalse(Exception e) {
+        LOG.error(e);
+        return false;
+    }
+
 }

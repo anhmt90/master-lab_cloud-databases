@@ -12,12 +12,11 @@ import java.nio.charset.StandardCharsets;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import ecs.KVServerMeta;
+import ecs.NodeInfo;
 import ecs.KeyHashRange;
 import ecs.Metadata;
 import protocol.*;
 import protocol.IMessage.*;
-import util.HashUtils;
 
 public class Client implements IClient {
 	public static final String CLIENT_LOG = "kvClient";
@@ -161,7 +160,7 @@ public class Client implements IClient {
 	
 	private void reroute(String key) throws IOException{
 		print("Server miss. Reconnecting to appropriate server.");
-		KVServerMeta meta = metadata.findMatchingServer(key);
+		NodeInfo meta = metadata.findMatchingServer(key);
 		if(meta == null) {
 			print("No server found as responsible for the key.");
 			throw printLogError(new IOException(), "No server found responsible for key can't route request.");

@@ -103,9 +103,9 @@ public class ClientConnection implements Runnable {
 
         K key = message.getK();
         V val = message.getV();
-        
-        if(server.getHashRange().inRange(HashUtils.getHash(key.getString()))) {
-        	return handleMISS();
+
+        if(!server.getHashRange().inRange(HashUtils.getHash(key.getString()))) {
+        	return new Message(Status.SERVER_NOT_RESPONSIBLE, server.getMetadata());
         }
         
         switch (message.getStatus()) {
@@ -120,10 +120,6 @@ public class ClientConnection implements Runnable {
         }
     }
     
-    private IMessage handleMISS() {
-    	return new Message(Status.SERVER_NOT_RESPONSIBLE, server.getMetadata());
-    }
-
     /**
      * Handles and creates a suitable response for a put request
      *

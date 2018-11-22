@@ -14,7 +14,7 @@ import java.net.BindException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 
-public class ManagementConnection {
+public class ECSConnection {
     private static final int MAX_MESSAGE_LENGTH = 2 + 20 + 1024 * 120;
     private static final int ECS_PORT = 65432;
 
@@ -28,7 +28,7 @@ public class ManagementConnection {
     private BufferedOutputStream output;
 
 
-    public ManagementConnection(String ecsAddress, Server server) {
+    public ECSConnection(String ecsAddress, Server server) {
         this.server = server;
         initAdminTunnel(ecsAddress);
     }
@@ -106,6 +106,8 @@ public class ManagementConnection {
                 return server.unlockWrite();
             case UPDATE_METADATA:
                 return server.update(configMessage.getMetadata());
+            case MOVE_DATA:
+                return server.moveData();
             case SHUTDOWN:
                 return server.shutdown();
             default:

@@ -2,7 +2,6 @@ package ecs;
 
 import management.ConfigMessage;
 import management.ConfigStatus;
-import server.storage.cache.CacheDisplacementStrategy;
 
 import java.io.IOException;
 import java.io.ObjectOutputStream;
@@ -117,7 +116,7 @@ public class KVServer implements Comparable<KVServer> {
   }
 
   void lockWrite() {
-    ConfigMessage msg = new ConfigMessage(ConfigStatus.LOCKWRITE);
+    ConfigMessage msg = new ConfigMessage(ConfigStatus.LOCK_WRITE);
     try {
       this.send(msg);
     } catch (IOException e) {
@@ -126,7 +125,7 @@ public class KVServer implements Comparable<KVServer> {
   }
 
   void unLockWrite() {
-    ConfigMessage msg = new ConfigMessage(ConfigStatus.UNLOCKWRITE);
+    ConfigMessage msg = new ConfigMessage(ConfigStatus.UNLOCK_WRITE);
     try {
       this.send(msg);
     } catch (IOException e) {
@@ -135,8 +134,8 @@ public class KVServer implements Comparable<KVServer> {
   }
 
   void moveData(KeyHashRange range, KVServer anotherServer) {
-    KVServerMeta meta = new KVServerMeta(anotherServer.getHost(), anotherServer.getPort(), range);
-    ConfigMessage msg = new ConfigMessage(ConfigStatus.MOVEDATA, meta);
+    NodeInfo meta = new NodeInfo(anotherServer.getHost(), anotherServer.getPort(), range);
+    ConfigMessage msg = new ConfigMessage(ConfigStatus.MOVE_DATA, meta);
     try {
       this.send(msg);
     } catch (IOException e) {

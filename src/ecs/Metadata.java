@@ -5,10 +5,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Metadata implements Serializable {
-	List<KVServerMeta> meta = new ArrayList<>();
+	List<NodeInfo> meta = new ArrayList<>();
 
 	public void add(String host, int port, String start, String end) {
-		KVServerMeta kvSMeta = new KVServerMeta(host, port, start, end);
+		NodeInfo kvSMeta = new NodeInfo(host, port, start, end);
 		this.meta.add(kvSMeta);
 	}
 
@@ -18,8 +18,8 @@ public class Metadata implements Serializable {
 	 * @param hexKey hashed key in hex format
 	 * @return String containing server address and port
 	 */
-	public KVServerMeta findMatchingServer(String hexKey) {
-		for (KVServerMeta temp : meta) {
+	public NodeInfo findMatchingServer(String hexKey) {
+		for (NodeInfo temp : meta) {
 			if (temp.getRange().inRange(hexKey)) {
 				return temp;
 			}
@@ -36,7 +36,7 @@ public class Metadata implements Serializable {
 		return meta.size();
 	}
 
-	public List<KVServerMeta> get() {
+	public List<NodeInfo> get() {
 		return meta;
 	}
 }

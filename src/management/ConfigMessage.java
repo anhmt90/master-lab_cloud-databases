@@ -1,6 +1,6 @@
 package management;
 
-import ecs.KVServerMeta;
+import ecs.NodeInfo;
 import ecs.Metadata;
 
 import java.io.Serializable;
@@ -10,7 +10,7 @@ public class ConfigMessage implements Serializable {
     private int cacheSize;
     private String strategy;
     private Metadata metadata;
-    private KVServerMeta targetServer;
+    private NodeInfo targetServer;
 
     public ConfigMessage(ConfigStatus status) {
         this.status = status;
@@ -27,7 +27,7 @@ public class ConfigMessage implements Serializable {
         this.metadata = metadata;
     }
 
-    public ConfigMessage(ConfigStatus status, KVServerMeta target) {
+    public ConfigMessage(ConfigStatus status, NodeInfo target) {
         this.status = status;
         this.targetServer = target;
     }
@@ -49,7 +49,7 @@ public class ConfigMessage implements Serializable {
         return metadata;
     }
 
-    public KVServerMeta getTargetServer() {
+    public NodeInfo getTargetServer() {
         return targetServer;
     }
 

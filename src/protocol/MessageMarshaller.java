@@ -2,7 +2,7 @@ package protocol;
 
 import java.nio.ByteBuffer;
 
-import ecs.KVServerMeta;
+import ecs.NodeInfo;
 import ecs.Metadata;
 import protocol.IMessage.Status;
 import util.HashUtils;
@@ -75,7 +75,7 @@ public class MessageMarshaller {
     	output[1] = (byte)metadata.getSize();
     	
     	for(int j = 0; j < metadata.getSize(); j++) {
-    		KVServerMeta meta = metadata.get().get(j);
+    		NodeInfo meta = metadata.get().get(j);
     		String[] host = meta.getHost().split(".");
     		byte[] hostBytes = new byte[4];
     		for(int i = 0; i<host.length; i++) {
@@ -87,8 +87,8 @@ public class MessageMarshaller {
             byte[] portBytes = new byte[2];
             portBytes[0] = portBuffer.array()[2];
             portBytes[1] = portBuffer.array()[3];
-            byte[] startBytes = HashUtils.getHashBytes(meta.getRange().getStart());
-            byte[] endBytes = HashUtils.getHashBytes(meta.getRange().getEnd());
+            byte[] startBytes = meta.getRange().getStartBytes();
+            byte[] endBytes = meta.getRange().getEndBytes();
             byte[] nodeMetadataBytes = new byte[hostBytes.length + portBytes.length + startBytes.length + endBytes.length];
             System.arraycopy(hostBytes, 0, nodeMetadataBytes, 0, hostBytes.length);
             System.arraycopy(portBytes, 0, nodeMetadataBytes, hostBytes.length, portBytes.length);
