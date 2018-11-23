@@ -180,7 +180,7 @@ public class BatchDataTransferProcessor {
     }
 
     private byte[] receive() {
-        byte[] data = new byte[2 + 20 + 1024 * 120];
+        byte[] data = new byte[1 + 3 + 16 + 1024 * 120];
         try {
             moveDataSocket.setSoTimeout(5000);
             bis = new BufferedInputStream(moveDataSocket.getInputStream());

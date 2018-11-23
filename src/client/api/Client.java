@@ -116,7 +116,7 @@ public class Client implements IClient {
 
 	@Override
 	public byte[] receive() {
-		byte[] data = new byte[2 + 20 + 1024 * 120];
+		byte[] data = new byte[1 + 3 + 16 + 1024 * 120];
 		try {
 			socket.setSoTimeout(50000);
 			bis = new BufferedInputStream(socket.getInputStream());

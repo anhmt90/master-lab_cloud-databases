@@ -176,8 +176,14 @@ public class Server extends Thread implements IExternalConfigurationService {
             return false;
         if (!isWriteLocked())
             return false;
-        BatchDataTransferProcessor processor = new BatchDataTransferProcessor();
-        return processor.handleTransferData(range, target);
+        BatchDataTransferProcessor processor = null;
+        try {
+            processor = new BatchDataTransferProcessor(target);
+        } catch (IOException ioe) {
+            return LogUtils.exitWithError(LOG, ioe);
+        }
+        return processor.handleTransferData(range);
+
     }
 
 
