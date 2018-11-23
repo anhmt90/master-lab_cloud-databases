@@ -111,16 +111,6 @@ public class Server extends Thread implements IExternalConfigurationService {
         return true;
     }
 
-    private KeyHashRange getHashRange(Metadata metadata) throws NoSuchElementException {
-        Optional<NodeInfo> nodeData = metadata.get().stream()
-                .filter(md -> md.getPort() == kvSocket.getLocalPort() && md.getHost().equals(kvSocket.getInetAddress().getHostAddress()))
-                .findFirst();
-        if (!nodeData.isPresent())
-            throw new NoSuchElementException("Metadata does not contain info for this node");
-        return nodeData.get().getRange();
-    }
-
-
     /**
      * Stops the server insofar that it won't listen at the given port any more.
      */
@@ -251,6 +241,15 @@ public class Server extends Thread implements IExternalConfigurationService {
      */
     public KeyHashRange getHashRange() {
         return hashRange;
+    }
+
+    private KeyHashRange getHashRange(Metadata metadata) throws NoSuchElementException {
+        Optional<NodeInfo> nodeData = metadata.get().stream()
+                .filter(md -> md.getPort() == kvSocket.getLocalPort() && md.getHost().equals(kvSocket.getInetAddress().getHostAddress()))
+                .findFirst();
+        if (!nodeData.isPresent())
+            throw new NoSuchElementException("Metadata does not contain info for this node");
+        return nodeData.get().getRange();
     }
 
     /**

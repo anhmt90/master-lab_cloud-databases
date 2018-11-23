@@ -16,7 +16,7 @@ import java.net.Socket;
 
 public class ECSConnection {
     private static final int MAX_MESSAGE_LENGTH = 2 + 20 + 1024 * 120;
-    private static final int ECS_PORT = 65432;
+    private static final int ECS_PORT = 54321;
 
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
 
