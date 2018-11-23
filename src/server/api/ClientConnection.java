@@ -112,7 +112,7 @@ public class ClientConnection implements Runnable {
             case GET:
                 return handleGET(message);
             case PUT:
-                if (server.isWriteLocked())
+                if (server.isWriteLocked() && !message.isMovingData())
                     return new Message(Status.SERVER_WRITE_LOCK);
                 return handlePUT(key, val);
             default:

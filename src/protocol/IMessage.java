@@ -82,4 +82,8 @@ public interface IMessage extends Serializable {
      */
     public Metadata getMetadata();
 
+    public boolean isMovingData();
+
+    public void setMovingData(boolean movingData);
+
 }

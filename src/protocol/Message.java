@@ -70,10 +70,12 @@ public class Message implements IMessage {
 		return metadata;
 	}
 
+	@Override
 	public boolean isMovingData() {
 		return movingData;
 	}
 
+	@Override
 	public void setMovingData(boolean movingData) {
 		this.movingData = movingData;
 	}

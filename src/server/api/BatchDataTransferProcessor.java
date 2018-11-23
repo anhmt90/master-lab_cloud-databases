@@ -13,8 +13,10 @@ import util.StringUtils;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
@@ -29,12 +31,23 @@ public class BatchDataTransferProcessor {
      * The socket being used to move data when adding/removing servers
      */
     private Socket moveDataSocket;
+    BufferedOutputStream bos;
+    BufferedInputStream bis;
 
-    public boolean handleTransferData(KeyHashRange range, NodeInfo target) {
-        if(range.isWrappedAround()) {
+    NodeInfo target;
+
+    public BatchDataTransferProcessor(NodeInfo target) throws IOException {
+        this.target = target;
+        connect();
+        bos = new BufferedOutputStream(moveDataSocket.getOutputStream());
+        bis = new BufferedInputStream(moveDataSocket.getInputStream());
+    }
+
+    public boolean handleTransferData(KeyHashRange range) {
+        if (range.isWrappedAround()) {
             KeyHashRange leftRange = new KeyHashRange(range.getStart(), new String(new char[4]).replace("\0", "FFFF"));
             KeyHashRange rightRange = new KeyHashRange(new String(new char[4]).replace("\0", "0000"), range.getEnd());
-            return handleTransferData(leftRange, target) && handleTransferData(rightRange, target);
+            return handleTransferData(leftRange) && handleTransferData(rightRange);
         }
 
         String[] start = StringUtils.splitEvery(range.getStart(), 2);
@@ -57,22 +70,23 @@ public class BatchDataTransferProcessor {
             for (int i = commonPrefix.length() / 2 + 1; i < start.length; i++) {
                 String[] startIndexFiles = walkStart(Arrays.copyOfRange(start, 0, i), start[i]);
                 String[] endIndexFiles = walkEnd(Arrays.copyOfRange(end, 0, i), end[i]);
-
-                String[] totalIndexFiles = new String[indexFiles.length + startIndexFiles.length + endIndexFiles.length];
-                System.arraycopy(indexFiles, 0, totalIndexFiles, 0, indexFiles.length);
-                System.arraycopy(startIndexFiles, 0, totalIndexFiles, indexFiles.length, startIndexFiles.length);
-                System.arraycopy(endIndexFiles, 0, totalIndexFiles, indexFiles.length + startIndexFiles.length, endIndexFiles.length);
-                indexFiles = totalIndexFiles;
-                totalIndexFiles = null;
+                indexFiles = merge(indexFiles, startIndexFiles, endIndexFiles);
             }
-            transfer(indexFiles);
+            return transfer(indexFiles);
 
         } catch (IOException ioe) {
             return LogUtils.exitWithError(LOG, ioe);
         }
+    }
 
-
-        return true;
+    private String[] merge(String[] indexFiles, String[] startIndexFiles, String[] endIndexFiles) {
+        String[] totalIndexFiles = new String[indexFiles.length + startIndexFiles.length + endIndexFiles.length];
+        System.arraycopy(indexFiles, 0, totalIndexFiles, 0, indexFiles.length);
+        System.arraycopy(startIndexFiles, 0, totalIndexFiles, indexFiles.length, startIndexFiles.length);
+        System.arraycopy(endIndexFiles, 0, totalIndexFiles, indexFiles.length + startIndexFiles.length, endIndexFiles.length);
+        indexFiles = totalIndexFiles;
+        totalIndexFiles = null;
+        return indexFiles;
     }
 
     private String[] walkStart(String[] parentDirs, String lowerBound) throws IOException {
@@ -135,32 +149,37 @@ public class BatchDataTransferProcessor {
         return indexFiles;
     }
 
-    public void transfer(String[] indexFiles) throws IOException {
+    public boolean transfer(String[] indexFiles) throws IOException {
         for (String indexFile : indexFiles) {
             List<String> filesToMove = Files.readAllLines(Paths.get(indexFile));
-
             for (String file : filesToMove) {
-                K key = new K(HashUtils.getHashBytesOf(Paths.get(file).getFileName().toString()));
-                V val = new V(Files.readAllBytes(Paths.get(file)));
-                byte[] toSend = MessageMarshaller.marshall(new Message(IMessage.Status.PUT, key, val));
-
-                BufferedOutputStream bos = new BufferedOutputStream(moveDataSocket.getOutputStream());
-                BufferedInputStream bis = new BufferedInputStream(moveDataSocket.getInputStream());
-                try {
-                    bos.write(toSend);
-                    bos.flush();
-                    LOG.info("sending " + toSend.length + " bytes to server");
-                } catch (IOException e) {
-                    tearDownMoveDataConnection(bos, bis);
-                    throw LogUtils.printLogError(e, "Could't connect to the server. Disconnecting...", LOG);
-                }
-                IMessage response = MessageMarshaller.unmarshall(receiveFromTarget(bos, bis));
-                LOG.info("Received from server: " + response);
+                if (!put(file))
+                    return false;
             }
         }
+        return true;
     }
 
-    private byte[] receiveFromTarget(BufferedOutputStream bos, BufferedInputStream bis) {
+    private boolean put(String file) throws IOException {
+        K key = new K(HashUtils.getHashBytesOf(Paths.get(file).getFileName().toString()));
+        V val = new V(Files.readAllBytes(Paths.get(file)));
+        byte[] toSend = MessageMarshaller.marshall(new Message(IMessage.Status.PUT, key, val));
+
+        try {
+            bos.write(toSend);
+            bos.flush();
+            LOG.info("sending " + toSend.length + " bytes to server");
+        } catch (IOException e) {
+            disconnect();
+            LogUtils.printLogError(e, "Could't connect to the server. Disconnecting...", LOG);
+            return false;
+        }
+        IMessage response = MessageMarshaller.unmarshall(receive());
+        LOG.info("Received from server: " + response);
+        return true;
+    }
+
+    private byte[] receive() {
         byte[] data = new byte[2 + 20 + 1024 * 120];
         try {
             moveDataSocket.setSoTimeout(5000);
@@ -169,15 +188,28 @@ public class BatchDataTransferProcessor {
             LOG.info("received data from server" + bytesCopied + " bytes");
         } catch (SocketTimeoutException ste) {
             LogUtils.printLogError(ste, "'receive' timeout. Client will disconnect from server.", LOG);
-            tearDownMoveDataConnection(bos, bis);
+            disconnect();
         } catch (IOException e) {
             LogUtils.printLogError(e, "Could't connect to the server. Disconnecting...", LOG);
-            tearDownMoveDataConnection(bos, bis);
+            disconnect();
         }
         return data;
     }
 
-    private void tearDownMoveDataConnection(BufferedOutputStream bos, BufferedInputStream bis) {
+    public void connect() throws IOException {
+        try {
+            moveDataSocket = new Socket();
+            moveDataSocket.connect(new InetSocketAddress(target.getHost(), target.getPort()), 5000);
+        } catch (UnknownHostException uhe) {
+            throw LogUtils.printLogError(uhe, "Unknown host", LOG);
+        } catch (SocketTimeoutException ste) {
+            throw LogUtils.printLogError(ste, "Could not connect to server. Connection timeout.", LOG);
+        } catch (IOException ioe) {
+            throw LogUtils.printLogError(ioe, "Could not connect to server.", LOG);
+        }
+    }
+
+    private void disconnect() {
         try {
             if (bos != null)
                 bos.close();
