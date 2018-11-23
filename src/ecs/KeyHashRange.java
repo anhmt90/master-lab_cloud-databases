@@ -23,6 +23,9 @@ public class KeyHashRange {
         if (hexSample.compareTo(start) > -1 && hexSample.compareTo(end) == -1) {
             return true;
         }
+        else if (isWrappedAround() && !(hexSample.compareTo(start) == -1 && hexSample.compareTo(end) > -1)) {
+        	return true;
+        }
         return false;
     }
 

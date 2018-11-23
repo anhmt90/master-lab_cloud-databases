@@ -1,6 +1,7 @@
 package protocol;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 
 import ecs.NodeInfo;
 import ecs.Metadata;
@@ -21,7 +22,7 @@ public class MessageMarshaller {
         if(message.getStatus().equals(Status.SERVER_NOT_RESPONSIBLE)) {
         	return marshallNotResponsible(message);
         }
-        byte[] keyBytes = message.getK().get();
+        byte[] keyBytes = message.getK() != null ? message.getK().get() : new byte[]{};
         byte[] valueBytes = message.getV() != null ? message.getV().get() : new byte[]{};
         byte[] output = new byte[1 + 3 + keyBytes.length + valueBytes.length];
 
@@ -49,6 +50,28 @@ public class MessageMarshaller {
         Status status = Status.getByCode(msgBytes[0]);
         if (status == null)
             return null;
+        
+        if (status.equals(Status.SERVER_NOT_RESPONSIBLE)) {
+        	int metadataSize = msgBytes[1];
+        	Metadata metadata = new Metadata();
+        	for (int i = 0; i < metadataSize; i++) {
+        		String host = "";
+        		for(int j = 0; j < 4; j++) {
+        			host = host + Byte.toString(msgBytes[2 + j + i*38]);
+        		}
+        		byte[] portBytes = {msgBytes[6 + i*38], msgBytes[7 + i*38]};
+        		int port = (portBytes[0]<< 8)&0x0000ff00|
+        			       (portBytes[1]<< 0)&0x000000ff;;
+        		String hashRangeStart = "";
+        		String hashRangeEnd = "";
+        		for(int j = 0; j < 16; j++) {
+        			hashRangeStart = hashRangeStart + Byte.toString(msgBytes[7 + j + i*38]);
+        			hashRangeEnd = hashRangeEnd + Byte.toString(msgBytes[24 + j + i*38]);
+        		}
+        		metadata.add(host, port, hashRangeStart, hashRangeEnd);
+        	}
+        	return new Message(status, metadata);
+        }
 
         int valLength = ByteBuffer.wrap(new byte[]{0, msgBytes[1], msgBytes[2], msgBytes[3]}).getInt();
 
@@ -65,7 +88,7 @@ public class MessageMarshaller {
     
     public static byte[] marshallNotResponsible(IMessage message) {
     	Metadata metadata = message.getMetadata();
-    	byte[] output = new byte[1 + 1 + metadata.getSize()*(4 + 2 + 16 +16)];
+    	byte[] output = new byte[1 + 1 + metadata.getSize()*(4 + 2 + 16 + 16)];
     	
         
     	output[0] = message.getStatus().getCode();    	
@@ -81,7 +104,7 @@ public class MessageMarshaller {
             final short BUFFER_CAPACITY = 4;
             final short PORT_NUM_BYTES = 2;
             ByteBuffer portBuffer = ByteBuffer.allocate(BUFFER_CAPACITY).putInt(meta.getPort());
-            byte[] portBytes = new byte[PORT_NUM_BYTES];
+            byte[] portBytes = new byte[2];
             portBytes[0] = portBuffer.array()[2];
             portBytes[1] = portBuffer.array()[3];
             byte[] startBytes = meta.getRange().getStartBytes();

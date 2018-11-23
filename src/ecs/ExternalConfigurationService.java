@@ -189,5 +189,9 @@ public class ExternalConfigurationService extends Thread implements IECS {
 
     this.start();
   }
+  
+  public boolean getRunning() {
+	  return running;
+  }
 
 }
