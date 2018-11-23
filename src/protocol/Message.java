@@ -7,6 +7,10 @@ public class Message implements IMessage {
 	K key;
 	V value;
 	Metadata metadata;
+	/**
+	 * flag indicating if this message is of move data process when adding/removing servers
+	 */
+	boolean movingData;
 
 	public Message(Status status) {
 		this.status = status;
@@ -64,6 +68,14 @@ public class Message implements IMessage {
 	@Override
 	public Metadata getMetadata() {
 		return metadata;
+	}
+
+	public boolean isMovingData() {
+		return movingData;
+	}
+
+	public void setMovingData(boolean movingData) {
+		this.movingData = movingData;
 	}
 
 	@Override

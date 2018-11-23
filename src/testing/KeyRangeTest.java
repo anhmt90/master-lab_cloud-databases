@@ -22,7 +22,7 @@ public class KeyRangeTest extends TestCase {
         }
 
         String commonPrefix = StringUtils.getLongestCommonPrefix(start, end);
-        String commonParentFolder = StringUtils.insertCharEvery(commonPrefix, SEP, 2);
+        String commonParentFolder = StringUtils.insertCharEvery(commonPrefix, SEP.charAt(0), 2);
 
     }
 

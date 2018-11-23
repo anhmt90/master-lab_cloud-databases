@@ -23,18 +23,17 @@ public class MessageMarshaller {
         }
         byte[] keyBytes = message.getK().get();
         byte[] valueBytes = message.getV() != null ? message.getV().get() : new byte[]{};
-        byte[] output = new byte[1 + 1 + 3 + keyBytes.length + valueBytes.length];
+        byte[] output = new byte[1 + 3 + keyBytes.length + valueBytes.length];
 
         final short BUFFER_CAPACITY = 4;
         final short VAL_LENGTH_NUM_BYTES = 3;
         ByteBuffer valueLengthBuffer = ByteBuffer.allocate(BUFFER_CAPACITY).putInt(valueBytes.length);
 
         output[0] = message.getStatus().getCode();
-        output[1] = (byte) keyBytes.length;
 
-        System.arraycopy(valueLengthBuffer.array(), 1, output, 2, VAL_LENGTH_NUM_BYTES);
-        System.arraycopy(keyBytes, 0, output, 2 + VAL_LENGTH_NUM_BYTES, keyBytes.length);
-        System.arraycopy(valueBytes, 0, output, 2 + VAL_LENGTH_NUM_BYTES + keyBytes.length, valueBytes.length);
+        System.arraycopy(valueLengthBuffer.array(), 1, output, 1, VAL_LENGTH_NUM_BYTES);
+        System.arraycopy(keyBytes, 0, output, 1 + VAL_LENGTH_NUM_BYTES, keyBytes.length);
+        System.arraycopy(valueBytes, 0, output, 1 + VAL_LENGTH_NUM_BYTES + keyBytes.length, valueBytes.length);
         return output;
     }
 
@@ -51,15 +50,13 @@ public class MessageMarshaller {
         if (status == null)
             return null;
 
-        byte keyLength = msgBytes[1];
-        int valLength = ByteBuffer.wrap(new byte[]{0, msgBytes[2], msgBytes[3], msgBytes[4]}).getInt();
+        int valLength = ByteBuffer.wrap(new byte[]{0, msgBytes[1], msgBytes[2], msgBytes[3]}).getInt();
 
-
-        byte[] keyBytes = new byte[keyLength];
-        System.arraycopy(msgBytes, 1 + 1 + 3, keyBytes, 0, keyLength);
+        byte[] keyBytes = new byte[16];
+        System.arraycopy(msgBytes, 1 + 3, keyBytes, 0, keyBytes.length);
 
         byte[] valBytes = new byte[valLength];
-        System.arraycopy(msgBytes, 1 + 1 + 3 + keyLength, valBytes, 0, valLength);
+        System.arraycopy(msgBytes, 1 + 3 + keyBytes.length, valBytes, 0, valLength);
         if (valLength == 0)
             return new Message(status, new K(keyBytes));
         return new Message(status, new K(keyBytes), new V(valBytes));

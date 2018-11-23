@@ -75,7 +75,7 @@ public class PersistenceManager implements IPersistenceManager {
      * @return a directory path corresponding to the key
      */
 	public Path getFilePath(String key) {
-		String path = DB_PATH  + SEP + StringUtils.insertCharEvery(key, SEP,2) + key;
+		String path = DB_PATH  + SEP + StringUtils.insertCharEvery(key, '/',2) + key;
 		return Paths.get(path);
 	}
 

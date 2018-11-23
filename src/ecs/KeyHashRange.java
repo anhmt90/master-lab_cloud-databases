@@ -58,7 +58,7 @@ public class KeyHashRange {
         return HashUtils.getHashBytesOf(end);
     }
 
-    private boolean isWrappedAround() {
+    public boolean isWrappedAround() {
         return HashUtils.compare(getStartBytes(), getEndBytes()) > 0;
     }
 

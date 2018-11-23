@@ -1,5 +1,7 @@
 package util;
 
+import java.util.Arrays;
+
 public class StringUtils {
 
     public static final char LINE_FEED = 0x0A;
@@ -57,7 +59,6 @@ public class StringUtils {
      * Notice: the last character in the returned value is always the given character {@param insert}
      * if {@param n} > 0
      *
-     *
      * @param str
      * @param insert
      * @param n
@@ -75,6 +76,28 @@ public class StringUtils {
         if (str.length() % n != 0) {
             sb.append(str, str.length() - str.length() % n, str.length());
             sb.append(insert);
+        }
+        return sb.toString();
+    }
+
+
+    public static String join(String[] strArr) {
+        return joinSeparated(strArr, EMPTY_STRING);
+    }
+
+    public static String joinSeparated(String[] strArr, String sep) {
+        StringBuilder sb = new StringBuilder();
+        for (String str : strArr)
+            sb.append(str + sep);
+        return sb.toString();
+    }
+
+    public static String removeChar(String str, char match) {
+        StringBuilder sb = new StringBuilder();
+        for (char c : str.toCharArray()) {
+            if(c == match)
+                continue;
+            sb.append(c);
         }
         return sb.toString();
     }

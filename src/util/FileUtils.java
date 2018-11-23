@@ -6,7 +6,7 @@ import java.nio.file.Paths;
 
 public class FileUtils {
     public static final String WORKING_DIR = System.getProperty("user.dir");
-    public static final char SEP = '/';
+    public static final String SEP = "/";
 
 
     /**

@@ -8,4 +8,17 @@ public class LogUtils {
         LOG.error(e);
         return false;
     }
+
+    /**
+     * Logging of errors
+     *
+     * @param exception the exception that was thrown in the error
+     * @param message   the error message
+     * @return exception
+     */
+    public static <E> E printLogError(E exception, String message, Logger LOG) {
+        System.out.print(message + "\n");
+        LOG.error(message, exception);
+        return exception;
+    }
 }
