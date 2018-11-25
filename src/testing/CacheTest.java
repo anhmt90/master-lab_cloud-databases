@@ -71,7 +71,7 @@ public class CacheTest extends TestCase {
    * @throws InterruptedException if {@link TestClient} thread was interrupted
    */
   private void testCacheStrategySimplePut(int capacity, CacheDisplacementStrategy strategy) throws NoSuchMethodException, InterruptedException {
-    CacheManager cm = new CacheManager(capacity, strategy);
+    CacheManager cm = new CacheManager(AllTests.DB_DIR, capacity, strategy);
 
     Method updateCache = getUpdateCacheMethod(cm);
 
@@ -124,7 +124,7 @@ public class CacheTest extends TestCase {
    * @param strategy {@link CacheDisplacementStrategy}
    */
   private void testCacheOneItemEvict(CacheDisplacementStrategy strategy) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-    CacheManager cm = new CacheManager(1, strategy);
+    CacheManager cm = new CacheManager(AllTests.DB_DIR, 1, strategy);
     Method updateCache = getUpdateCacheMethod(cm);
 
     V v = new V("testValue".getBytes());
@@ -187,7 +187,7 @@ public class CacheTest extends TestCase {
    */
   @Test
   public void testFIFODelete() throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-    CacheManager cm = new CacheManager(100, CacheDisplacementStrategy.FIFO);
+    CacheManager cm = new CacheManager(AllTests.DB_DIR, 100, CacheDisplacementStrategy.FIFO);
     testDelete(cm);
   }
 
@@ -196,7 +196,7 @@ public class CacheTest extends TestCase {
    */
   @Test
   public void testLRUDelete() throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-    CacheManager cm = new CacheManager(100, CacheDisplacementStrategy.LRU);
+    CacheManager cm = new CacheManager(AllTests.DB_DIR, 100, CacheDisplacementStrategy.LRU);
     testDelete(cm);
   }
 
@@ -205,7 +205,7 @@ public class CacheTest extends TestCase {
    */
   @Test
   public void testLFUDelete() throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-    CacheManager cm = new CacheManager(100, CacheDisplacementStrategy.LFU);
+    CacheManager cm = new CacheManager(AllTests.DB_DIR, 100, CacheDisplacementStrategy.LFU);
     testDelete(cm);
   }
 

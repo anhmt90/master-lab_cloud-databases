@@ -20,7 +20,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class PersistenceTest extends TestCase {
-    PersistenceManager persistenceManager = new PersistenceManager();
+    PersistenceManager persistenceManager = new PersistenceManager(AllTests.DB_DIR);
     private final K key = new K(HashUtils.getHashBytes("SomeKey=09"));
     private V value = new V("==Abc09$8".getBytes());
 

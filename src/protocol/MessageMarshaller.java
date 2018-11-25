@@ -5,6 +5,7 @@ import java.nio.ByteBuffer;
 import ecs.NodeInfo;
 import ecs.Metadata;
 import protocol.IMessage.Status;
+import util.StringUtils;
 
 public class MessageMarshaller {
 
@@ -82,7 +83,7 @@ public class MessageMarshaller {
                 hashRangeStart = hashRangeStart + Byte.toString(msgBytes[7 + j + i*38]);
                 hashRangeEnd = hashRangeEnd + Byte.toString(msgBytes[24 + j + i*38]);
             }
-            metadata.add(host, port, hashRangeStart, hashRangeEnd);
+            metadata.add(StringUtils.EMPTY_STRING, host, port, hashRangeStart, hashRangeEnd);
         }
         return new Message(status, metadata);
     }

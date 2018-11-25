@@ -39,10 +39,10 @@ public class CacheManager implements IStorageCRUD {
      */
     private PersistenceManager pm;
 
-    public CacheManager(int cacheCapacity, CacheDisplacementStrategy strategy) {
+    public CacheManager(String serverName, int cacheCapacity, CacheDisplacementStrategy strategy) {
         this.cacheCapacity = cacheCapacity;
         this.cache = new ConcurrentHashMap<>(cacheCapacity + 1, 1);
-        pm = new PersistenceManager();
+        pm = new PersistenceManager(serverName);
         cacheTracker = initTracker(cacheCapacity, strategy);
     }
 

@@ -45,6 +45,7 @@ public class Server extends Thread implements IExternalConfigurationService {
     /* keeps the range of values that this and other servers are responsible for */
     private Metadata metadata;
     private KeyHashRange hashRange;
+    private String serverName;
 
 
     /**
@@ -84,7 +85,7 @@ public class Server extends Thread implements IExternalConfigurationService {
             return false;
         }
 
-        this.cm = new CacheManager(cacheSize, getDisplacementStrategyByName(strategy));
+        this.cm = new CacheManager(serverName, cacheSize, getDisplacementStrategyByName(strategy));
         this.metadata = metadata;
 
         try {
@@ -250,6 +251,7 @@ public class Server extends Thread implements IExternalConfigurationService {
             .findFirst();
         if (!nodeData.isPresent())
             throw new NoSuchElementException("Metadata does not contain info for this node");
+        serverName = nodeData.get().getName();
         return nodeData.get().getRange();
     }
 

@@ -25,8 +25,8 @@ public class PersistenceManager implements IPersistenceManager {
 	
 	private static final String DB_PATH = System.getProperty("user.dir") + SEP + "db" + SEP;
 
-    public PersistenceManager() {
-        createDBDir(DB_PATH);
+    public PersistenceManager(String serverId) {
+        createDBDir(DB_PATH + serverId + SEP);
     }
 
     /**
