@@ -54,8 +54,9 @@ public class Server extends Thread implements IExternalConfigurationService {
      * @param port     given port for disk server to operate
      * @param logLevel specifies the logging Level on the server
      */
-    public Server(int port, String logLevel) {
+    public Server(String serverName, int port, String logLevel) {
         this.port = port;
+        this.serverName = serverName;
         Configurator.setRootLevel(Level.getLevel(logLevel));
         state = NodeState.STOPPED;
 
@@ -388,15 +389,20 @@ public class Server extends Thread implements IExternalConfigurationService {
 
 
     private static Server createServer(String[] args) {
-        if (args.length < 1 || args.length > 4)
+        if (args.length < 2 || args.length > 3)
             throw new IllegalArgumentException("Port must be provided to start the server");
-        int port = -1;
-        if (isValidPortNumber(args[0]))
-            port = Integer.parseInt(args[0]);
 
-        if (args.length == 2 && isValidLogLevel(args[1]))
-            return new Server(port, args[1]);
-        return new Server(port, DEFAULT_LOG_LEVEL);
+        String serverNameStr = args[0];
+        String portStr = args[1];
+        String logLevel = DEFAULT_LOG_LEVEL;
+        if (args.length == 3 && isValidLogLevel(args[2]))
+          logLevel = args[2];
+
+        int port = -1;
+        if (isValidPortNumber(portStr))
+            port = Integer.parseInt(portStr);
+
+        return new Server(serverNameStr, port, logLevel);
     }
 
     private static boolean isValidAddress(String address) {
