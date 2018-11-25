@@ -102,14 +102,9 @@ public class ECSApplication {
 		 * Handles the command {@see SHUTDOWN}
 		 */
 		private static void handleShutdown() {
-			if(ecsClient.isRunning()) {
-				ecsClient.shutDown();
-				print("Storage service shutting down");
-				LOG.info("Shutdown");
-			}
-			else {
-				print("Storage service is not currently running.");
-			}
+			ecsClient.shutDown();
+			print("Storage service shutting down");
+			LOG.info("Shutdown");
 		}
 
 
