@@ -81,4 +81,12 @@ public class NodesChord {
     return this.nodes.values();
   }
 
+  /**
+   * Checks if Treemap is empty
+   * 
+   * @return true if treemap is empty
+   */
+  public boolean isEmpty() {
+	  return nodes.isEmpty();
+  }
 }

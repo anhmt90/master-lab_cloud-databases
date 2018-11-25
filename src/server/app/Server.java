@@ -33,7 +33,7 @@ public class Server extends Thread implements IExternalConfigurationService {
     private static final int DEFAULT_CACHE_SIZE = 100;
     private static final int DEFAULT_PORT = 50000;
 
-    private static Logger LOG = LogManager.getLogger("SERVER_LOG");
+    private static Logger LOG = LogManager.getLogger(SERVER_LOG);
 
     private int port;
     private CacheManager cm;
@@ -252,7 +252,6 @@ public class Server extends Thread implements IExternalConfigurationService {
             .findFirst();
         if (!nodeData.isPresent())
             throw new NoSuchElementException("Metadata does not contain info for this node");
-        serverName = nodeData.get().getName();
         return nodeData.get().getRange();
     }
 
@@ -275,8 +274,16 @@ public class Server extends Thread implements IExternalConfigurationService {
         return state;
     }
 
+    public int getPort() {
+        return port;
+    }
+
     public void setNodeState(NodeState state) {
         this.state = state;
+    }
+
+    public void setServerName(String serverName) {
+        this.serverName = serverName;
     }
 
     /**
@@ -377,13 +384,18 @@ public class Server extends Thread implements IExternalConfigurationService {
         return false;
     }
 
+
+
     /**
      * Main entry point for the echo server application.
      *
      * @param args contains the port number at args[0], the cache size at args[1], the cache displacement strategy at args[2] and the logging Level at args[3].
      */
     public static void main(String[] args) {
+        LOG.info("In Server#main()");
         Server server = createServer(args);
+        server.setServerName(args[0]);
+        LOG.info("Server " + server.getName() + " created and serving on port " + server.getPort());
         server.start();
     }
 
