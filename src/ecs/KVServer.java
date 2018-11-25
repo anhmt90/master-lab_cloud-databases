@@ -3,6 +3,7 @@ package ecs;
 import management.ConfigMessage;
 import management.ConfigStatus;
 
+import java.util.function.Consumer;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
@@ -31,26 +32,21 @@ public class KVServer implements Comparable<KVServer> {
   private int sshPort = 22;
   private String sshCMD;
 
-  public KVServer(String host, String port) throws IOException, InterruptedException, NoSuchAlgorithmException {
+  public KVServer(String host, String port) {
     this(host, Integer.parseInt(port));
   }
 
-  public KVServer(Socket socket) {
-    this.socket = socket;
-    this.address = (InetSocketAddress) socket.getRemoteSocketAddress();
-    this.sshCMD = String.format("ssh -n %s -p %d nohup java -jar " + WORKING_DIR + SEP + "ms3-server.jar %d &",
-        this.address.getAddress(), sshPort,
-        this.address.getPort());
-    this.hashKey = HashUtils.getHash(String.format("%s:%d", this.address.getAddress(), this.address.getPort()));
+  public KVServer(String host, int port) {
+    this(new InetSocketAddress(host, port));
   }
 
-  public KVServer(String host, int port) throws IOException, InterruptedException, NoSuchAlgorithmException {
-    this.address = new InetSocketAddress(host, port);
+  public KVServer(InetSocketAddress address) {
+    this.address = address;
     this.socket = new Socket();
     this.sshCMD = String.format("ssh -n %s -p %d nohup java -jar " + WORKING_DIR + SEP + "ms3-server.jar %d &",
-        host, sshPort,
-        port);
-    this.hashKey = HashUtils.getHash(String.format("%s:%d", host, port));
+        this.getHost(), sshPort,
+        this.getPort());
+    this.hashKey = HashUtils.getHash(String.format("%s:%d", this.getHost(), this.getPort()));
   }
 
   public void send(ConfigMessage msg) throws IOException {
@@ -71,12 +67,19 @@ public class KVServer implements Comparable<KVServer> {
     return this.address.getPort();
   }
 
-  void launch() throws IOException, InterruptedException {
+  void launch(Consumer<Boolean> callback) {
     Process proc;
     Runtime run = Runtime.getRuntime();
-    proc = run.exec(this.sshCMD);
-    proc.waitFor();
-    LOG.info(String.format("Started server %s:%d via ssh", this.address.getHostString(), this.address.getPort()));
+    boolean launched = true;
+    try {
+      proc = run.exec(this.sshCMD);
+      proc.waitFor();
+      LOG.info(String.format("Started server %s:%d via ssh", this.address.getHostString(), this.address.getPort()));
+    } catch (IOException | InterruptedException e) {
+      launched = false;
+      LOG.error(String.format("Couldn't launch the server %s:%d", this.getHost(), this.getPort()));
+    }
+    callback.accept(launched);
   }
 
   void init(Metadata metadata, int cacheSize, String strategy) {
