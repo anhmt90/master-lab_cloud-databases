@@ -2,24 +2,26 @@ package ecs;
 
 import management.ConfigMessage;
 import management.ConfigStatus;
-
-import java.util.function.Consumer;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.security.NoSuchAlgorithmException;
-
-import static util.FileUtils.SEP;
-import static util.FileUtils.WORKING_DIR;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import util.HashUtils;
 
+import java.io.IOException;
+import java.io.ObjectOutputStream;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+
+import static util.FileUtils.SEP;
+import static util.FileUtils.WORKING_DIR;
+
 public class KVServer implements Comparable<KVServer> {
   private static final String ECS_LOG = "ECS";
   private static Logger LOG = LogManager.getLogger(ECS_LOG);
+
+  private static final int RETRY_TIMES = 5;
+  private static final long RETRY_DELAY = 1000; // milliseconds
 
   public String getHashKey() {
     return hashKey;
@@ -74,6 +76,19 @@ public class KVServer implements Comparable<KVServer> {
     try {
       proc = run.exec(this.sshCMD);
       proc.waitFor();
+      for (int i = 0; i < RETRY_TIMES; i++) {
+        TimeUnit.MILLISECONDS.sleep(RETRY_DELAY);
+        try {
+          this.socket = new Socket(this.address.getAddress(), this.address.getPort());
+        } catch (IOException e) {
+          LOG.info(String.format("Couldn't connect to the server %s:%d (%d/%d)",
+              this.getHost(), this.getPort(),
+              i, RETRY_TIMES));
+        }
+      }
+      if (this.socket == null) {
+        throw new IOException();
+      }
       LOG.info(String.format("Started server %s:%d via ssh", this.address.getHostString(), this.address.getPort()));
     } catch (IOException | InterruptedException e) {
       launched = false;
