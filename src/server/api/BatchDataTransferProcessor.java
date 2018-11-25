@@ -171,7 +171,7 @@ public class BatchDataTransferProcessor {
             LOG.info("sending " + toSend.length + " bytes to server");
         } catch (IOException e) {
             disconnect();
-            LogUtils.printLogError(e, "Could't connect to the server. Disconnecting...", LOG);
+            LogUtils.printLogError(LOG, e, "Could't connect to the server. Disconnecting...");
             return false;
         }
         IMessage response = MessageMarshaller.unmarshall(receive());
@@ -187,10 +187,10 @@ public class BatchDataTransferProcessor {
             int bytesCopied = bis.read(data);
             LOG.info("received data from server" + bytesCopied + " bytes");
         } catch (SocketTimeoutException ste) {
-            LogUtils.printLogError(ste, "'receive' timeout. Client will disconnect from server.", LOG);
+            LogUtils.printLogError(LOG, ste, "'receive' timeout. Client will disconnect from server.");
             disconnect();
         } catch (IOException e) {
-            LogUtils.printLogError(e, "Could't connect to the server. Disconnecting...", LOG);
+            LogUtils.printLogError(LOG, e, "Could't connect to the server. Disconnecting...");
             disconnect();
         }
         return data;
@@ -201,11 +201,11 @@ public class BatchDataTransferProcessor {
             moveDataSocket = new Socket();
             moveDataSocket.connect(new InetSocketAddress(target.getHost(), target.getPort()), 5000);
         } catch (UnknownHostException uhe) {
-            throw LogUtils.printLogError(uhe, "Unknown host", LOG);
+            throw LogUtils.printLogError(LOG, uhe, "Unknown host");
         } catch (SocketTimeoutException ste) {
-            throw LogUtils.printLogError(ste, "Could not connect to server. Connection timeout.", LOG);
+            throw LogUtils.printLogError(LOG, ste, "Could not connect to server. Connection timeout.");
         } catch (IOException ioe) {
-            throw LogUtils.printLogError(ioe, "Could not connect to server.", LOG);
+            throw LogUtils.printLogError(LOG, ioe, "Could not connect to server.");
         }
     }
 
@@ -220,7 +220,7 @@ public class BatchDataTransferProcessor {
             }
             moveDataSocket = new Socket();
         } catch (IOException e) {
-            LogUtils.printLogError(e, "Connection is already closed.", LOG);
+            LogUtils.printLogError(LOG, e, "Connection is already closed.");
         }
     }
 }

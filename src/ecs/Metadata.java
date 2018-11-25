@@ -7,8 +7,8 @@ import java.util.List;
 public class Metadata implements Serializable {
 	List<NodeInfo> meta = new ArrayList<>();
 
-	public void add(String host, int port, String start, String end) {
-		NodeInfo kvSMeta = new NodeInfo(host, port, start, end);
+	public void add(String nodeName, String host, int port, String start, String end) {
+		NodeInfo kvSMeta = new NodeInfo(nodeName, host, port, start, end);
 		this.meta.add(kvSMeta);
 	}
 
@@ -19,9 +19,9 @@ public class Metadata implements Serializable {
 	 * @return String containing server address and port
 	 */
 	public NodeInfo findMatchingServer(String hexKey) {
-		for (NodeInfo temp : meta) {
-			if (temp.getRange().inRange(hexKey)) {
-				return temp;
+		for (NodeInfo nodeInfo : meta) {
+			if (nodeInfo.getRange().inRange(hexKey)) {
+				return nodeInfo;
 			}
 		}
 		return null;

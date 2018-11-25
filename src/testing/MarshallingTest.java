@@ -19,6 +19,9 @@ public class MarshallingTest extends TestCase {
 	@Test
     public void testMetadataMarshalling() {
 		Metadata metadata = new Metadata();
+		String name1 = "node1";
+		String name2 = "node2";
+		String name3 = "node3";
 		String host1 = "127.9.234.1";
 		String host2 = "123.94.75.2";
 		String host3 = "127.0.0.1";
@@ -28,9 +31,9 @@ public class MarshallingTest extends TestCase {
 		String hashKey1 = HashUtils.getHash(String.format("%s:%d", host1, port1));
 		String hashKey2 = HashUtils.getHash(String.format("%s:%d", host2, port2));
 		String hashKey3 = HashUtils.getHash(String.format("%s:%d", host3, port3));
-		metadata.add(host1, port1, hashKey1, hashKey2);
-		metadata.add(host2, port2, hashKey2, hashKey3);
-		metadata.add(host3, port3, hashKey3, hashKey1);
+		metadata.add(name1, host1, port1, hashKey1, hashKey2);
+		metadata.add(name2, host2, port2, hashKey2, hashKey3);
+		metadata.add(name3, host3, port3, hashKey3, hashKey1);
         Message message = new Message(Status.SERVER_NOT_RESPONSIBLE, metadata);
         byte[] marshalledMessage = MessageMarshaller.marshall(message);
         IMessage unmarshalledMessage = MessageMarshaller.unmarshall(marshalledMessage);

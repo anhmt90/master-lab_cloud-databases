@@ -12,6 +12,7 @@ import server.storage.cache.CacheDisplacementStrategy;
 
 public class AllTests {
 	public static final String TEST_LOG = "tests";
+	public static final String DB_DIR = "test_db";
 	private static Logger LOG = LogManager.getLogger(TEST_LOG);
 	
     static {

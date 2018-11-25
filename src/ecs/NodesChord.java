@@ -58,7 +58,7 @@ public class NodesChord {
       for (Map.Entry<String, KVServer> entry : this.nodes.entrySet()) {
         String end = entry.getKey();
         KVServer node = entry.getValue();
-        md.add(node.getHost(), node.getPort(), start, end);
+        md.add(node.getNodeName(), node.getHost(), node.getPort(), start, end);
         start = end;
       }
       this.mdChanged = false;
