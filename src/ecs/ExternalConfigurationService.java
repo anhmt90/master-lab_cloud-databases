@@ -20,6 +20,8 @@ public class ExternalConfigurationService implements IECS {
 
     private NodesChord chord = new NodesChord();
     private List<KVServer> serverPool = new ArrayList<>();
+    
+    private boolean running = false;
 
     private void publishMetadata() {
         Metadata md = chord.getMetadata();
@@ -56,6 +58,7 @@ public class ExternalConfigurationService implements IECS {
         for (KVServer kvS : this.chord.nodes()) {
             kvS.startServer();
         }
+        running = true;
     }
 
     @Override
@@ -65,6 +68,7 @@ public class ExternalConfigurationService implements IECS {
             kvS.stopServer();
             this.serverPool.add(kvS);
         }
+        running = false;
     }
 
     @Override
@@ -72,6 +76,7 @@ public class ExternalConfigurationService implements IECS {
         for (KVServer kvS : this.chord.nodes()) {
             kvS.shutDown();
         }
+        running = false;
     }
 
     @Override
@@ -142,6 +147,24 @@ public class ExternalConfigurationService implements IECS {
             KVServer kvS = new KVServer(serverName, serverHost, serverPort);
             this.serverPool.add(kvS);
         }
+    }
+    
+    /**
+     * Checks if the storage service is currently running
+     * 
+     * @return true if service is running
+     */
+    public boolean isRunning() {
+  	  return running;
+    }
+    
+    /**
+     * Checks if the current List of active nodes is empty
+     * 
+     * @return boolean true if service has no active nodes
+     */
+    public boolean isEmpty() {
+  	  return chord.isEmpty();
     }
 
 }

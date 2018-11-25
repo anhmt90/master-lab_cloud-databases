@@ -99,27 +99,6 @@ public class ECSApplication {
     }
 
 
-    /**
-     * Handles the command {@see SHUTDOWN}
-     */
-    private static void handleShutdown() {
-        ecsClient.shutDown();
-        print("Storage service shutting down");
-        LOG.info("Shutdown");
-    }
-
-
-    /**
-     * Handles the command {@see STOP}
-     */
-    private static void handleStop() {
-//			if (ecsClient.isRunning()) {
-//				print("Storage service is not currently running.");
-//				return;
-//			}
-        ecsClient.stopService();
-
-    }
 
 
     /**
@@ -157,22 +136,67 @@ public class ECSApplication {
 
 
     /**
-     * Handles the command {@see REMOVE}
-     */
-    private static void handleRemoveNode() {
-        ecsClient.removeNode();
+	 * Handles the command {@see SHUTDOWN}
+	 */
+	private static void handleShutdown() {
+		if(ecsClient.isEmpty()) {
+			print("No active nodes that could be shutdown.");
+			return;
+		}
+		if(ecsClient.isRunning()) {
+			ecsClient.shutDown();
+			print("Storage service shutting down");
+			LOG.info("Shutdown");
+		}
+		else {
+			print("Storage service is not currently running.");
+		}
+	}
 
-    }
+
+	/**
+	 * Handles the command {@see STOP}
+	 */
+	private static void handleStop() {
+		if(ecsClient.isEmpty()) {
+			print("Service currently has no active nodes.");
+			return;
+		}
+		if (!ecsClient.isRunning()) {
+			print("Storage service is not currently running.");
+			return;
+		}
+		ecsClient.stopService();
+		
+	}
+	
+	/**
+	 * Handles the command {@see REMOVE}
+	 */
+	private static void handleRemoveNode() {
+		if(ecsClient.isEmpty()) {
+			print("Service currently has no active nodes.");
+			return;
+		}
+		ecsClient.removeNode();
+	}
 
 
-    /**
-     * Handles the command {@see START}
-     */
-    private static void handleStart() {
-        ecsClient.startService();
-
-    }
-
+	/**
+	 * Handles the command {@see START}
+	 */
+	private static void handleStart() {
+		if(ecsClient.isEmpty()) {
+			print("Service currently has no active nodes.");
+			return;
+		}
+		if (ecsClient.isRunning()) {
+			print("Storage service is already running.");
+			return;
+		}
+		ecsClient.startService();
+		
+	}
     /**
      * Handles the command {@see QUIT}
      *
@@ -181,7 +205,7 @@ public class ECSApplication {
     private static void handleQuit(Scanner input) {
         print("Exiting application");
         LOG.info("quit");
-        //ecsClient.disconnect();
+        ecsClient.shutDown();
         input.close();
     }
 
