@@ -17,7 +17,7 @@ import java.net.Socket;
 
 import static protocol.IMessage.MAX_MESSAGE_LENGTH;
 
-public class AdminConnection {
+public class AdminConnection implements Runnable {
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
     private static final int BOOT_ACK_PORT = 54321;
     private boolean isOpen;
@@ -30,9 +30,9 @@ public class AdminConnection {
     private BufferedOutputStream bos;
 
 
-    public AdminConnection(Server server, String ecsAddress, int mgmtPort) {
+    public AdminConnection(Server server, Socket socket) {
         this.server = server;
-        initAdminTunnel(ecsAddress, mgmtPort);
+        this.ecsSocket = socket;
     }
 
     /**
@@ -132,9 +132,9 @@ public class AdminConnection {
         bos.write(ConfigMessageMarshaller.marshall(message));
         bos.flush();
         LOG.info("SEND \t<"
-                + ecsSocket.getInetAddress().getHostAddress() + ":"
-                + ecsSocket.getPort() + ">: '"
-                + message.toString() + "'");
+            + ecsSocket.getInetAddress().getHostAddress() + ":"
+            + ecsSocket.getPort() + ">: '"
+            + message.toString() + "'");
 
     }
 
@@ -153,28 +153,15 @@ public class AdminConnection {
         ConfigMessage message = ConfigMessageMarshaller.unmarshall(messageBuffer);
 
         LOG.info("RECEIVE \t<"
-                + ecsSocket.getInetAddress().getHostAddress() + ":"
-                + ecsSocket.getPort() + ">: '"
-                + message.toString().trim() + "'");
+            + ecsSocket.getInetAddress().getHostAddress() + ":"
+            + ecsSocket.getPort() + ">: '"
+            + message.toString().trim() + "'");
 
         return message;
     }
 
-    private void initAdminTunnel(String ecsAddress, int mgmtPort) {
-        LOG.info("Initialize admin tunnel  ...");
-        Socket bootACKSocket = new Socket();
-        try {
-            bootACKSocket.connect(new InetSocketAddress(ecsAddress, BOOT_ACK_PORT), 5000);
-            LOG.info("Confirm booting success to ECS on port: " + bootACKSocket.getLocalPort());
+    @Override
+    public void run() {
 
-            mgmtSocket = new ServerSocket(mgmtPort);
-            LOG.info("Server listening on port: " + mgmtSocket.getLocalPort() + " for admin instructions from ECS");
-        } catch (IOException e) {
-            LOG.error("Error! Cannot open server socket:");
-            if (e instanceof BindException) {
-                LOG.error("Port " + BOOT_ACK_PORT + " is already bound!");
-            }
-            e.printStackTrace();
-        }
     }
 }

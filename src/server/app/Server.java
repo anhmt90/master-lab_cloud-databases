@@ -1,5 +1,6 @@
 package server.app;
 
+import ecs.KeyHashRange;
 import ecs.Metadata;
 import ecs.NodeInfo;
 import management.IExternalConfigurationService;
@@ -7,20 +8,21 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
-
-import server.api.BatchDataTransferProcessor;
 import server.api.AdminConnection;
-import ecs.KeyHashRange;
+import server.api.BatchDataTransferProcessor;
 import server.api.ClientConnection;
-import server.storage.cache.CacheDisplacementStrategy;
 import server.storage.CacheManager;
+import server.storage.cache.CacheDisplacementStrategy;
 import util.LogUtils;
 
+import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.net.BindException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.*;
+import java.util.Arrays;
+import java.util.NoSuchElementException;
+import java.util.Optional;
 
 /**
  * Storage server implementation.
@@ -31,13 +33,9 @@ public class Server extends Thread implements IExternalConfigurationService {
     private static final int DEFAULT_CACHE_SIZE = 100;
     private static final int DEFAULT_PORT = 50000;
 
-    private static final String DEFAULT_ECS_ADDRESS = "127.0.0.1";
-
-
     private static Logger LOG = LogManager.getLogger("SERVER_LOG");
 
     private int port;
-    private int mgmtPort;
     private CacheManager cm;
 
     NodeState state;
@@ -55,9 +53,8 @@ public class Server extends Thread implements IExternalConfigurationService {
      * @param port     given port for disk server to operate
      * @param logLevel specifies the logging Level on the server
      */
-    public Server(int port, int mgmtPort, String logLevel) {
+    public Server(int port, String logLevel) {
         this.port = port;
-        this.mgmtPort = mgmtPort;
         Configurator.setRootLevel(Level.getLevel(logLevel));
         state = NodeState.STOPPED;
 
@@ -97,7 +94,7 @@ public class Server extends Thread implements IExternalConfigurationService {
         }
 
         LOG.info("Server initialized with cache size " + cacheSize
-                + " and displacement strategy " + strategy);
+            + " and displacement strategy " + strategy);
         return true;
     }
 
@@ -187,11 +184,20 @@ public class Server extends Thread implements IExternalConfigurationService {
             while (isRunning()) {
                 try {
                     Socket client = kvSocket.accept();
-                    ClientConnection connection = new ClientConnection(this, client, cm);
-                    new Thread(connection).start();
+                    BufferedInputStream input = new BufferedInputStream(client.getInputStream());
+                    byte[] messageBytes = new byte[1];
+                    int bytesCopied = input.read(messageBytes);
 
-                    LOG.info(
+                    if (messageBytes[0] == new Integer(1).byteValue()) {
+                        AdminConnection ecs = new AdminConnection(this, client);
+                        new Thread(ecs).start();
+                    } else {
+                        ClientConnection connection = new ClientConnection(this, client, cm);
+                        new Thread(connection).start();
+
+                        LOG.info(
                             "Connected to " + client.getInetAddress().getHostName() + " on port " + client.getPort());
+                    }
                 } catch (IOException e) {
                     LOG.error("Error! " + "Unable to establish connection. \n", e);
                 }
@@ -240,8 +246,8 @@ public class Server extends Thread implements IExternalConfigurationService {
 
     private KeyHashRange getHashRange(Metadata metadata) throws NoSuchElementException {
         Optional<NodeInfo> nodeData = metadata.get().stream()
-                .filter(md -> md.getPort() == kvSocket.getLocalPort() && md.getHost().equals(kvSocket.getInetAddress().getHostAddress()))
-                .findFirst();
+            .filter(md -> md.getPort() == kvSocket.getLocalPort() && md.getHost().equals(kvSocket.getInetAddress().getHostAddress()))
+            .findFirst();
         if (!nodeData.isPresent())
             throw new NoSuchElementException("Metadata does not contain info for this node");
         return nodeData.get().getRange();
@@ -256,9 +262,6 @@ public class Server extends Thread implements IExternalConfigurationService {
         return cm;
     }
 
-    private int getMgmtPort() {
-        return mgmtPort;
-    }
 
     /**
      * Gets current service state of the server
@@ -339,7 +342,7 @@ public class Server extends Thread implements IExternalConfigurationService {
      *                                  recognized Displacement Strategy
      */
     private static CacheDisplacementStrategy getDisplacementStrategyByName(String strategy)
-            throws IllegalArgumentException {
+        throws IllegalArgumentException {
         switch (strategy.toUpperCase()) {
             case "FIFO":
                 return CacheDisplacementStrategy.FIFO;
@@ -367,7 +370,7 @@ public class Server extends Thread implements IExternalConfigurationService {
             }
         }
         System.out.println(
-                "Invalid Log Level. Please choose one of the following: 'ALL', 'INFO', 'DEBUG', 'WARN', 'ERROR', 'FATAL', 'OFF'");
+            "Invalid Log Level. Please choose one of the following: 'ALL', 'INFO', 'DEBUG', 'WARN', 'ERROR', 'FATAL', 'OFF'");
         return false;
     }
 
@@ -377,42 +380,21 @@ public class Server extends Thread implements IExternalConfigurationService {
      * @param args contains the port number at args[0], the cache size at args[1], the cache displacement strategy at args[2] and the logging Level at args[3].
      */
     public static void main(String[] args) {
-        String ecsAddress = DEFAULT_ECS_ADDRESS;
-        Server server = createServer(args, ecsAddress);
+        Server server = createServer(args);
         server.start();
-
-        AdminConnection adminConnection = new AdminConnection(server, ecsAddress, server.getMgmtPort());
-
-        adminConnection.pollRequests();
-
     }
 
 
-    private static Server createServer(String[] args, String ecsAddress) {
-        if (args.length < 2 || args.length > 4)
-            throw new IllegalArgumentException("Port and management port must be provided to start the server");
+    private static Server createServer(String[] args) {
+        if (args.length < 1 || args.length > 4)
+            throw new IllegalArgumentException("Port must be provided to start the server");
         int port = -1;
-        int mgmtPort = -1;
         if (isValidPortNumber(args[0]))
             port = Integer.parseInt(args[0]);
-        if(isValidPortNumber(args[1]))
-            mgmtPort = Integer.parseInt(args[1]);
 
-        switch (args.length) {
-            case 2:
-                return new Server(port, mgmtPort, DEFAULT_LOG_LEVEL);
-            case 3:
-                if (isValidLogLevel(args[2]))
-                    return new Server(port, mgmtPort, args[2]);
-            case 4:
-                if (isValidAddress(args[3])) {
-                    ecsAddress = args[3];
-                    return new Server(port, mgmtPort, args[2]);
-                }
-                throw new IllegalArgumentException("Invalid ECS IP address");
-            default:
-                throw new IllegalArgumentException("Error! Invalid number of arguments! Number of args provided: " + args.length);
-        }
+        if (args.length == 2 && isValidLogLevel(args[1]))
+            return new Server(port, args[1]);
+        return new Server(port, DEFAULT_LOG_LEVEL);
     }
 
     private static boolean isValidAddress(String address) {
