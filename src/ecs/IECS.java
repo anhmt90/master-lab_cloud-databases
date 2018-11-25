@@ -2,10 +2,12 @@ package ecs;
 
 import server.storage.cache.CacheDisplacementStrategy;
 
+import java.io.IOException;
+
 public interface IECS {
 	
 	
-	void initService (int numberOfNodes, int cacheSize, String displacementStrategy);
+	void initService (int numberOfNodes, int cacheSize, String displacementStrategy) throws Exception;
 	
 	void startService();
 	
@@ -13,7 +15,7 @@ public interface IECS {
 	
 	void shutDown();
 	
-	void addNode(int cacheSize, String displacementStrategy);
+	void addNode(int cacheSize, String displacementStrategy) throws InterruptedException, IOException;
 	
 	void removeNode();
 }

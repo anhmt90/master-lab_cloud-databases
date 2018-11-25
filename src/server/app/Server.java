@@ -8,30 +8,19 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
 
-import protocol.*;
 import server.api.BatchDataTransferProcessor;
-import server.api.ECSConnection;
+import server.api.AdminConnection;
 import ecs.KeyHashRange;
 import server.api.ClientConnection;
 import server.storage.cache.CacheDisplacementStrategy;
 import server.storage.CacheManager;
-import sun.util.resources.cldr.vai.CalendarData_vai_Vaii_LR;
-import util.HashUtils;
 import util.LogUtils;
-import util.StringUtils;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.net.BindException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.SocketTimeoutException;
-import java.nio.file.*;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
-
-import static util.FileUtils.SEP;
 
 /**
  * Storage server implementation.
@@ -44,11 +33,11 @@ public class Server extends Thread implements IExternalConfigurationService {
 
     private static final String DEFAULT_ECS_ADDRESS = "127.0.0.1";
 
-    private static final int MGMT_PORT = 9867;
 
     private static Logger LOG = LogManager.getLogger("SERVER_LOG");
 
     private int port;
+    private int mgmtPort;
     private CacheManager cm;
 
     NodeState state;
@@ -66,8 +55,9 @@ public class Server extends Thread implements IExternalConfigurationService {
      * @param port     given port for disk server to operate
      * @param logLevel specifies the logging Level on the server
      */
-    public Server(int port, String logLevel) {
+    public Server(int port, int mgmtPort, String logLevel) {
         this.port = port;
+        this.mgmtPort = mgmtPort;
         Configurator.setRootLevel(Level.getLevel(logLevel));
         state = NodeState.STOPPED;
 
@@ -187,7 +177,6 @@ public class Server extends Thread implements IExternalConfigurationService {
     }
 
 
-
     /**
      * Initializes and starts the server. Loops until the the server should be
      * closed.
@@ -267,6 +256,9 @@ public class Server extends Thread implements IExternalConfigurationService {
         return cm;
     }
 
+    private int getMgmtPort() {
+        return mgmtPort;
+    }
 
     /**
      * Gets current service state of the server
@@ -286,7 +278,7 @@ public class Server extends Thread implements IExternalConfigurationService {
      *
      * @return true if server is running
      */
-    private boolean isRunning() {
+    public boolean isRunning() {
         return running;
     }
 
@@ -389,34 +381,33 @@ public class Server extends Thread implements IExternalConfigurationService {
         Server server = createServer(args, ecsAddress);
         server.start();
 
-        ECSConnection ecsConnection = new ECSConnection(ecsAddress, server);
+        AdminConnection adminConnection = new AdminConnection(server, ecsAddress, server.getMgmtPort());
 
-        if (ecsConnection.isOpen() && server.isStopped()) {
-            while (server.isRunning()) {
-                ecsConnection.pollRequests();
-            }
-        }
+        adminConnection.pollRequests();
 
     }
 
 
     private static Server createServer(String[] args, String ecsAddress) {
-        if (args.length == 0 || args.length > 3)
-            throw new IllegalArgumentException("Port number must be provided to start the server");
+        if (args.length < 2 || args.length > 4)
+            throw new IllegalArgumentException("Port and management port must be provided to start the server");
         int port = -1;
+        int mgmtPort = -1;
         if (isValidPortNumber(args[0]))
             port = Integer.parseInt(args[0]);
+        if(isValidPortNumber(args[1]))
+            mgmtPort = Integer.parseInt(args[1]);
 
         switch (args.length) {
-            case 1:
-                return new Server(port, DEFAULT_LOG_LEVEL);
             case 2:
-                if (isValidLogLevel(args[1]))
-                    return new Server(port, args[1]);
+                return new Server(port, mgmtPort, DEFAULT_LOG_LEVEL);
             case 3:
-                if (isValidAddress(args[2])) {
-                    ecsAddress = args[2];
-                    return new Server(port, args[1]);
+                if (isValidLogLevel(args[2]))
+                    return new Server(port, mgmtPort, args[2]);
+            case 4:
+                if (isValidAddress(args[3])) {
+                    ecsAddress = args[3];
+                    return new Server(port, mgmtPort, args[2]);
                 }
                 throw new IllegalArgumentException("Invalid ECS IP address");
             default:

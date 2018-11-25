@@ -9,6 +9,7 @@ import server.storage.PUTStatus;
 import server.storage.CacheManager;
 import util.HashUtils;
 import util.StringUtils;
+import static protocol.IMessage.MAX_MESSAGE_LENGTH;
 
 import java.io.*;
 import java.net.Socket;
@@ -23,7 +24,6 @@ import java.net.Socket;
  */
 public class ClientConnection implements Runnable {
 
-    private static final int MAX_MESSAGE_LENGTH = 2 + 20 + 1024 * 120;
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
 
     private boolean isOpen;
@@ -203,7 +203,6 @@ public class ClientConnection implements Runnable {
      * @throws IOException
      */
     private IMessage receive() throws IOException {
-        int index = 0;
         byte[] messageBytes = new byte[MAX_MESSAGE_LENGTH];
 
         int bytesCopied = input.read(messageBytes);

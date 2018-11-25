@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.*;
 
 import ecs.ExternalConfigurationService;
-import ecs.client.api.ECSClient;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
@@ -33,7 +32,7 @@ public class ECSApplication {
 	    
 	    
 	    
-	    public static void main(String[] args) throws IOException {
+	    public static void main(String[] args) throws Exception {
 	        Scanner input = new Scanner(System.in);
 	        
 	        ecsClient  = new ExternalConfigurationService("dummypath");
@@ -87,7 +86,7 @@ public class ECSApplication {
 		 *                      command name is the first component and the remaining as
 		 *                      the second
 		 */
-		private static void handleAddNode(String[] cmdComponents) {
+		private static void handleAddNode(String[] cmdComponents) throws IOException, InterruptedException {
 			if (!isValidArgs(ADD, cmdComponents)) {
 	            return;
 	        }
@@ -103,7 +102,7 @@ public class ECSApplication {
 		 * Handles the command {@see SHUTDOWN}
 		 */
 		private static void handleShutdown() {
-			if(ecsClient.getRunning()) {
+			if(ecsClient.isRunning()) {
 				ecsClient.shutDown();
 				print("Storage service shutting down");
 				LOG.info("Shutdown");
@@ -134,7 +133,7 @@ public class ECSApplication {
 		 *                      command name is the first component and the remaining as
 		 *                      the second
 		 */
-		private static void handleInitiateService(String[] cmdComponents) {
+		private static void handleInitiateService(String[] cmdComponents) throws Exception {
 			if (!isValidArgs(INIT, cmdComponents)) {
 	            return;
 	        }

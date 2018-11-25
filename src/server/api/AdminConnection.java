@@ -12,25 +12,27 @@ import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.net.BindException;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.net.Socket;
 
-public class ECSConnection {
-    private static final int MAX_MESSAGE_LENGTH = 2 + 20 + 1024 * 120;
-    private static final int ECS_PORT = 54321;
+import static protocol.IMessage.MAX_MESSAGE_LENGTH;
 
+public class AdminConnection {
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
-
+    private static final int BOOT_ACK_PORT = 54321;
     private boolean isOpen;
 
     private Socket ecsSocket;
+    private ServerSocket mgmtSocket;
+
     private Server server;
-    private BufferedInputStream input;
-    private BufferedOutputStream output;
+    private BufferedInputStream bis;
+    private BufferedOutputStream bos;
 
 
-    public ECSConnection(String ecsAddress, Server server) {
+    public AdminConnection(Server server, String ecsAddress, int mgmtPort) {
         this.server = server;
-        initAdminTunnel(ecsAddress);
+        initAdminTunnel(ecsAddress, mgmtPort);
     }
 
     /**
@@ -39,30 +41,34 @@ public class ECSConnection {
      */
     public void pollRequests() {
         try {
-            output = new BufferedOutputStream(ecsSocket.getOutputStream());
-            input = new BufferedInputStream(ecsSocket.getInputStream());
+            bos = new BufferedOutputStream(ecsSocket.getOutputStream());
+            bis = new BufferedInputStream(ecsSocket.getInputStream());
 
-            while (isOpen) {
-                try {
-                    ConfigMessage configMessage = poll();
+            while (server.isRunning()) {
+                ecsSocket = mgmtSocket.accept();
+                isOpen = true;
 
-                    boolean success = handleAdminRequest(configMessage);
-                    ConfigMessage ack = new ConfigMessage(getAckStatus(configMessage.getStatus(), success));
-                    send(ack);
+                while (isOpen) {
+                    try {
+                        ConfigMessage configMessage = poll();
 
-                } catch (IOException ioe) {
-                    LOG.error("Error! Connection lost!");
-                    isOpen = false;
+                        boolean success = handleAdminRequest(configMessage);
+                        ConfigMessage ack = new ConfigMessage(getAckStatus(configMessage.getStatus(), success));
+                        send(ack);
+
+                    } catch (IOException ioe) {
+                        LOG.error("Error! Connection lost!");
+                        isOpen = false;
+                    }
                 }
             }
         } catch (IOException ioe) {
             LOG.error("Error! Connection could not be established!", ioe);
-
         } finally {
             try {
                 if (ecsSocket != null) {
-                    input.close();
-                    output.close();
+                    bis.close();
+                    bos.close();
                     ecsSocket.close();
                 }
             } catch (IOException ioe) {
@@ -74,21 +80,21 @@ public class ECSConnection {
     private ConfigStatus getAckStatus(ConfigStatus reqStatus, boolean success) {
         switch (reqStatus) {
             case INIT:
-                return success ? ConfigStatus.INIT_SUCCESS : ConfigStatus.INIT_ERROR;
+                return success ? ConfigStatus.INIT_SUCCESS : ConfigStatus.ERROR;
             case START:
-                return success ? ConfigStatus.START_SUCCESS : ConfigStatus.START_ERROR;
+                return success ? ConfigStatus.START_SUCCESS : ConfigStatus.ERROR;
             case LOCK_WRITE:
-                return success ? ConfigStatus.LOCK_WRITE_SUCCESS : ConfigStatus.LOCK_WRITE_ERROR;
+                return success ? ConfigStatus.LOCK_WRITE_SUCCESS : ConfigStatus.ERROR;
             case UNLOCK_WRITE:
-                return success ? ConfigStatus.UNLOCK_WRITE_SUCCESS : ConfigStatus.UNLOCK_WRITE_ERROR;
+                return success ? ConfigStatus.UNLOCK_WRITE_SUCCESS : ConfigStatus.ERROR;
             case UPDATE_METADATA:
-                return success ? ConfigStatus.UPDATE_METADATA_SUCCESS : ConfigStatus.UPDATE_METADATA_ERROR;
+                return success ? ConfigStatus.UPDATE_METADATA_SUCCESS : ConfigStatus.ERROR;
             case MOVE_DATA:
-                return success ? ConfigStatus.MOVE_DATA_SUCCESS : ConfigStatus.MOVE_DATA_ERROR;
+                return success ? ConfigStatus.MOVE_DATA_SUCCESS : ConfigStatus.ERROR;
             case STOP:
-                return success ? ConfigStatus.STOP_SUCCESS : ConfigStatus.STOP_ERROR;
-                default:
-                    throw new IllegalStateException("Unknown status of request!");
+                return success ? ConfigStatus.STOP_SUCCESS : ConfigStatus.ERROR;
+            default:
+                throw new IllegalStateException("Unknown status of request!");
         }
     }
 
@@ -107,7 +113,7 @@ public class ECSConnection {
             case UPDATE_METADATA:
                 return server.update(configMessage.getMetadata());
             case MOVE_DATA:
-                return server.moveData(configMessage.getKeyRange() ,configMessage.getTargetServer());
+                return server.moveData(configMessage.getKeyRange(), configMessage.getTargetServer());
             case SHUTDOWN:
                 return server.shutdown();
             default:
@@ -123,8 +129,8 @@ public class ECSConnection {
      * @throws IOException
      */
     public void send(ConfigMessage message) throws IOException {
-        output.write(ConfigMessageMarshaller.marshall(message));
-        output.flush();
+        bos.write(ConfigMessageMarshaller.marshall(message));
+        bos.flush();
         LOG.info("SEND \t<"
                 + ecsSocket.getInetAddress().getHostAddress() + ":"
                 + ecsSocket.getPort() + ">: '"
@@ -133,7 +139,7 @@ public class ECSConnection {
     }
 
     /**
-     * Receives a message sent by a client
+     * Receives a message sent by ECS
      *
      * @return the received message
      * @throws IOException
@@ -141,7 +147,7 @@ public class ECSConnection {
     private ConfigMessage poll() throws IOException {
         byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
 
-        int bytesCopied = input.read(messageBuffer);
+        int bytesCopied = bis.read(messageBuffer);
         LOG.info("Read " + bytesCopied + " from input stream");
 
         ConfigMessage message = ConfigMessageMarshaller.unmarshall(messageBuffer);
@@ -154,26 +160,21 @@ public class ECSConnection {
         return message;
     }
 
-    private void initAdminTunnel(String ecsAddress) {
+    private void initAdminTunnel(String ecsAddress, int mgmtPort) {
         LOG.info("Initialize admin tunnel  ...");
-        ecsSocket = new Socket();
+        Socket bootACKSocket = new Socket();
         try {
-            ecsSocket.connect(new InetSocketAddress(ecsAddress, ECS_PORT), 5000);
-            isOpen = true;
-            send(new ConfigMessage(ConfigStatus.BOOT_SUCCESS));
+            bootACKSocket.connect(new InetSocketAddress(ecsAddress, BOOT_ACK_PORT), 5000);
+            LOG.info("Confirm booting success to ECS on port: " + bootACKSocket.getLocalPort());
 
-            LOG.info("Server connects to ECS on port: " + ecsSocket.getLocalPort());
+            mgmtSocket = new ServerSocket(mgmtPort);
+            LOG.info("Server listening on port: " + mgmtSocket.getLocalPort() + " for admin instructions from ECS");
         } catch (IOException e) {
             LOG.error("Error! Cannot open server socket:");
             if (e instanceof BindException) {
-                LOG.error("Port " + ECS_PORT + " is already bound!");
+                LOG.error("Port " + BOOT_ACK_PORT + " is already bound!");
             }
             e.printStackTrace();
         }
     }
-
-    public boolean isOpen() {
-        return isOpen && ecsSocket != null && !ecsSocket.isClosed() && !ecsSocket.isConnected();
-    }
-
 }
