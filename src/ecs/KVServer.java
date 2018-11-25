@@ -7,6 +7,7 @@ import org.apache.logging.log4j.Logger;
 import util.HashUtils;
 
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -59,6 +60,12 @@ public class KVServer implements Comparable<KVServer> {
     } catch (IOException e) {
       e.printStackTrace();
     }
+  }
+
+  public ConfigMessage receive() throws IOException, ClassNotFoundException {
+    ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
+    ConfigMessage msg = (ConfigMessage) ois.readObject();
+    return msg;
   }
 
   public String getHost() {
@@ -156,7 +163,8 @@ public class KVServer implements Comparable<KVServer> {
     ConfigMessage msg = new ConfigMessage(ConfigStatus.MOVE_DATA, meta);
     try {
       this.send(msg);
-    } catch (IOException e) {
+      this.receive();
+    } catch (IOException | ClassNotFoundException e) {
       e.printStackTrace();
     }
   }
