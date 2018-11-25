@@ -34,12 +34,12 @@ public class ExternalConfigurationService implements IECS {
       LOG.warn("Number of available servers is less than chosen to initialize. Starting all available servers");
       numberOfNodes = this.serverPool.size();
     }
-    for (int i = 0; i < numberOfNodes; i++)  {
+    for (int i = 0; i < numberOfNodes; i++) {
       int n = ThreadLocalRandom.current().nextInt(this.serverPool.size());
       KVServer kvS = this.serverPool.get(n);
       this.chord.add(kvS);
     }
-    for (KVServer kvS: this.chord.nodes()) {
+    for (KVServer kvS : this.chord.nodes()) {
       kvS.launch(launched -> {
         if (launched) {
           kvS.init(this.chord.getMetadata(), cacheSize, displacementStrategy);
@@ -53,7 +53,7 @@ public class ExternalConfigurationService implements IECS {
 
   @Override
   public void startService() {
-    for (KVServer kvS: this.chord.nodes()) {
+    for (KVServer kvS : this.chord.nodes()) {
       kvS.startServer();
     }
   }

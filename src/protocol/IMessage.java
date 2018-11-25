@@ -5,7 +5,7 @@ import java.io.Serializable;
 import ecs.Metadata;
 
 public interface IMessage extends Serializable {
-
+    public static final int MAX_MESSAGE_LENGTH = 2 + 20 + 1024 * 120;
     enum Status {
         GET(0x00),            /* Get - request */
         GET_ERROR(0x01),        /* requested tuple (i.e. value) not found */

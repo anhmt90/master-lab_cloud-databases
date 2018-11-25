@@ -1,28 +1,26 @@
 package ecs;
 
 import management.ConfigMessage;
+import management.ConfigMessageMarshaller;
 import management.ConfigStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import util.HashUtils;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+import static protocol.IMessage.MAX_MESSAGE_LENGTH;
 import static util.FileUtils.SEP;
 import static util.FileUtils.WORKING_DIR;
 
 public class KVServer implements Comparable<KVServer> {
   private static final String ECS_LOG = "ECS";
   private static Logger LOG = LogManager.getLogger(ECS_LOG);
-
-  private static final int RETRY_TIMES = 5;
-  private static final long RETRY_DELAY = 1000; // milliseconds
 
   public String getHashKey() {
     return hashKey;
@@ -32,6 +30,9 @@ public class KVServer implements Comparable<KVServer> {
 
   private InetSocketAddress address;
   private Socket socket;
+  private BufferedInputStream bis;
+  private BufferedOutputStream bos;
+
   private int sshPort = 22;
   private String sshCMD;
 
@@ -52,22 +53,6 @@ public class KVServer implements Comparable<KVServer> {
     this.hashKey = HashUtils.getHash(String.format("%s:%d", this.getHost(), this.getPort()));
   }
 
-  public void send(ConfigMessage msg) throws IOException {
-    try {
-      ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
-      oos.writeObject(msg);
-      oos.flush();
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-  }
-
-  public ConfigMessage receive() throws IOException, ClassNotFoundException {
-    ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
-    ConfigMessage msg = (ConfigMessage) ois.readObject();
-    return msg;
-  }
-
   public String getHost() {
     return this.address.getHostString();
   }
@@ -83,16 +68,7 @@ public class KVServer implements Comparable<KVServer> {
     try {
       proc = run.exec(this.sshCMD);
       proc.waitFor();
-      for (int i = 0; i < RETRY_TIMES; i++) {
-        TimeUnit.MILLISECONDS.sleep(RETRY_DELAY);
-        try {
-          this.socket = new Socket(this.address.getAddress(), this.address.getPort());
-        } catch (IOException e) {
-          LOG.info(String.format("Couldn't connect to the server %s:%d (%d/%d)",
-              this.getHost(), this.getPort(),
-              i, RETRY_TIMES));
-        }
-      }
+      this.initSocket();
       if (this.socket == null) {
         throw new IOException();
       }
@@ -104,75 +80,138 @@ public class KVServer implements Comparable<KVServer> {
     callback.accept(launched);
   }
 
-  void init(Metadata metadata, int cacheSize, String strategy) {
+
+  public void send(ConfigMessage message) throws IOException {
+    try {
+      bos.write(ConfigMessageMarshaller.marshall(message));
+      bos.flush();
+      LOG.info("SEND \t<"
+          + socket.getInetAddress().getHostAddress() + ":"
+          + socket.getPort() + ">: '"
+          + message.toString() + "'");
+
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  /**
+   * Receives a message sent by {@link server.app.Server}
+   *
+   * @return the received message
+   * @throws IOException
+   */
+  private ConfigMessage receive() throws IOException {
+    byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
+    int bytesCopied = bis.read(messageBuffer);
+    LOG.info("Read " + bytesCopied + " from input stream");
+
+    ConfigMessage message = ConfigMessageMarshaller.unmarshall(messageBuffer);
+
+    LOG.info("RECEIVE \t<"
+        + socket.getInetAddress().getHostAddress() + ":"
+        + socket.getPort() + ">: '"
+        + message.toString().trim() + "'");
+
+    return message;
+  }
+
+  boolean init(Metadata metadata, int cacheSize, String strategy) {
     ConfigMessage msg = new ConfigMessage(ConfigStatus.INIT, cacheSize, strategy, metadata);
     try {
-      this.send(msg);
+      return sendAndExpect(msg, ConfigStatus.INIT_SUCCESS);
     } catch (IOException e) {
       e.printStackTrace();
     }
+    return false;
   }
 
-  void startServer() {
+  boolean startServer() {
     ConfigMessage msg = new ConfigMessage(ConfigStatus.START);
     try {
-      this.send(msg);
+      return sendAndExpect(msg, ConfigStatus.START_SUCCESS);
     } catch (IOException e) {
       e.printStackTrace();
     }
+    return false;
   }
 
-  void stopServer() {
+  boolean stopServer() {
     ConfigMessage msg = new ConfigMessage(ConfigStatus.STOP);
     try {
-      this.send(msg);
+      return sendAndExpect(msg, ConfigStatus.STOP_SUCCESS);
     } catch (IOException e) {
       e.printStackTrace();
     }
+    return false;
   }
 
-  void shutDown() {
+  boolean shutDown() {
     ConfigMessage msg = new ConfigMessage(ConfigStatus.SHUTDOWN);
     try {
-      this.send(msg);
+      return sendAndExpect(msg, ConfigStatus.SHUTDOWN_SUCCESS);
     } catch (IOException e) {
       e.printStackTrace();
     }
+    return false;
   }
 
-  void lockWrite() {
+  boolean lockWrite() {
     ConfigMessage msg = new ConfigMessage(ConfigStatus.LOCK_WRITE);
     try {
-      this.send(msg);
+      return sendAndExpect(msg, ConfigStatus.LOCK_WRITE_SUCCESS);
     } catch (IOException e) {
       e.printStackTrace();
     }
+    return false;
   }
 
-  void unLockWrite() {
+  boolean unLockWrite() {
     ConfigMessage msg = new ConfigMessage(ConfigStatus.UNLOCK_WRITE);
     try {
-      this.send(msg);
+      return sendAndExpect(msg, ConfigStatus.UNLOCK_WRITE_SUCCESS);
     } catch (IOException e) {
       e.printStackTrace();
     }
+    return false;
   }
 
-  void moveData(KeyHashRange range, KVServer anotherServer) {
+  boolean moveData(KeyHashRange range, KVServer anotherServer) {
     NodeInfo meta = new NodeInfo(anotherServer.getHost(), anotherServer.getPort(), range);
     ConfigMessage msg = new ConfigMessage(ConfigStatus.MOVE_DATA, meta);
     try {
-      this.send(msg);
-      this.receive();
-    } catch (IOException | ClassNotFoundException e) {
+      return sendAndExpect(msg, ConfigStatus.MOVE_DATA_SUCCESS);
+    } catch (IOException e) {
       e.printStackTrace();
     }
+    return false;
   }
 
-  void update(Metadata metadata) {
+  boolean update(Metadata metadata) {
     ConfigMessage msg = new ConfigMessage(ConfigStatus.UPDATE_METADATA, metadata);
     try {
-      this.send(msg);
+      return sendAndExpect(msg, ConfigStatus.UPDATE_METADATA_SUCCESS);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    return false;
+  }
+
+  private boolean sendAndExpect(ConfigMessage toSend, ConfigStatus expected) throws IOException {
+    send(toSend);
+    ConfigMessage response = receive();
+    if (response.getStatus().equals(expected))
+      return true;
+    return false;
+  }
+
+  private void initSocket() {
+    socket = new Socket();
+    try {
+      socket.connect(this.address, 5000);
+      socket.setSoTimeout(5000);
+      bos = new BufferedOutputStream(socket.getOutputStream());
+      bis = new BufferedInputStream(socket.getInputStream());
     } catch (IOException e) {
       e.printStackTrace();
     }

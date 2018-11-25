@@ -76,11 +76,11 @@ public class Client implements IClient {
 			socket = new Socket();
 			socket.connect(new InetSocketAddress(address, port), 5000);
 		} catch (UnknownHostException uhe) {
-			throw LogUtils.printLogError(uhe, "Unknown host", LOG);
+			throw LogUtils.printLogError(LOG, uhe, "Unknown host");
 		} catch (SocketTimeoutException ste) {
-			throw LogUtils.printLogError(ste, "Could not connect to server. Connection timeout.", LOG);
+			throw LogUtils.printLogError(LOG, ste, "Could not connect to server. Connection timeout.");
 		} catch (IOException ioe) {
-			throw LogUtils.printLogError(ioe, "Could not connect to server.", LOG);
+			throw LogUtils.printLogError(LOG, ioe, "Could not connect to server.");
 		}
 	}
 
@@ -97,7 +97,7 @@ public class Client implements IClient {
 			}
 			socket = new Socket();
 		} catch (IOException e) {
-			LogUtils.printLogError(e, "Connection is already closed.", LOG);
+			LogUtils.printLogError(LOG, e, "Connection is already closed.");
 		}
 	}
 
@@ -110,7 +110,7 @@ public class Client implements IClient {
 			LOG.info("sending " + data.length + " bytes to server");
 		} catch (IOException e) {
 			disconnect();
-			throw LogUtils.printLogError(e, "Could't connect to the server. Disconnecting...", LOG);
+			throw LogUtils.printLogError(LOG, e, "Could't connect to the server. Disconnecting...");
 		}
 	}
 
@@ -123,10 +123,10 @@ public class Client implements IClient {
 			int bytesCopied = bis.read(data);
 			LOG.info("received data from server" + bytesCopied + " bytes");
 		} catch (SocketTimeoutException ste) {
-			LogUtils.printLogError(ste, "'receive' timeout. Client will disconnect from server.", LOG);
+			LogUtils.printLogError(LOG, ste, "'receive' timeout. Client will disconnect from server.");
 			disconnect();
 		} catch (IOException e) {
-			LogUtils.printLogError(e, "Could't connect to the server. Disconnecting...", LOG);
+			LogUtils.printLogError(LOG, e, "Could't connect to the server. Disconnecting...");
 			disconnect();
 		}
 		return data;
@@ -153,7 +153,7 @@ public class Client implements IClient {
 		NodeInfo meta = metadata.findMatchingServer(key);
 		if(meta == null) {
 			print("No server found as responsible for the key.");
-			throw LogUtils.printLogError(new IOException(), "No server found responsible for key can't route request.", LOG);
+			throw LogUtils.printLogError(LOG, new IOException(), "No server found responsible for key can't route request.");
 		}
 		disconnect();
 		this.address = meta.getHost();
@@ -217,11 +217,11 @@ public class Client implements IClient {
 			case GET:
 				return get(key);
 			default:
-				throw LogUtils.printLogError(new IOException(), "Illegal request while handling server miss", LOG);
+				throw LogUtils.printLogError(LOG, new IOException(), "Illegal request while handling server miss");
 			}
 		}
 		else {
-			throw LogUtils.printLogError(new IOException(), "Server metadata empty", LOG);
+			throw LogUtils.printLogError(LOG, new IOException(), "Server metadata empty");
 		}
 	}
 

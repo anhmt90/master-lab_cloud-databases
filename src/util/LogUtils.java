@@ -16,7 +16,7 @@ public class LogUtils {
      * @param message   the error message
      * @return exception
      */
-    public static <E> E printLogError(E exception, String message, Logger LOG) {
+    public static <E> E printLogError(Logger LOG, E exception, String message) {
         System.out.print(message + "\n");
         LOG.error(message, exception);
         return exception;
