@@ -45,7 +45,7 @@ public class MarshallingTest extends TestCase {
 		IMessage message = new Message(Status.GET, new K(keyBytes), new V(valueBytes));
 		byte[] marshalledMessage = MessageMarshaller.marshall(message);
 		IMessage unmarshalledMessage = MessageMarshaller.unmarshall(marshalledMessage);
-		assertEquals(message.getStatus(), unmarshalledMessage.getStatus());
+		assertTrue(message.getStatus().equals(unmarshalledMessage.getStatus()));
 		assertEquals(message.getK().getString(), unmarshalledMessage.getK().getString());
 		assertEquals(message.getV().getString(), unmarshalledMessage.getV().getString());
          }
