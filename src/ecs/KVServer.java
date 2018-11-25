@@ -49,14 +49,23 @@ public class KVServer implements Comparable<KVServer> {
         this.nodeName = serverName;
         this.address = address;
         this.socket = new Socket();
-        this.sshCMD = String.format("ssh -n %s -p %d nohup java -jar " + WORKING_DIR + SEP + "ms3-server.jar %s %d &",
+        String nohup = "nohup";
+        if(isLocalhostAndWindows()){
+            nohup = "start /min";
+        }
+
+        this.sshCMD = String.format("ssh -n %s -p %d " + nohup + " java -jar " + WORKING_DIR + SEP + "ms3-server.jar %s %d &",
                 getHost(),
                 SSH_PORT,
                 getNodeName(),
                 getPort()
-
         );
         this.hashKey = HashUtils.getHash(String.format("%s:%d", this.getHost(), this.getPort()));
+    }
+
+    private boolean isLocalhostAndWindows() {
+        boolean isWindows = System.getProperty("os.name").toLowerCase().indexOf("win") >= 0;
+        return (getHost().equals("127.0.0.1") || getHost().equals("localhost")) && isWindows;
     }
 
     public String getHost() {
@@ -81,8 +90,11 @@ public class KVServer implements Comparable<KVServer> {
             this.bos.write(new byte[]{1});
             this.bos.flush();
             LOG.info(String.format("Started server %s:%d via ssh", this.address.getHostString(), this.address.getPort()));
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException e) {
             launched = false;
+            LOG.error(String.format("Couldn't launch the server %s:%d", this.getHost(), this.getPort()));
+        }
+        catch (InterruptedException e) {
             LOG.error(String.format("Couldn't launch the server %s:%d", this.getHost(), this.getPort()));
         }
         callback.accept(launched);

@@ -33,7 +33,7 @@ public class Server extends Thread implements IExternalConfigurationService {
     private static final int DEFAULT_CACHE_SIZE = 100;
     private static final int DEFAULT_PORT = 50000;
 
-    private static Logger LOG = LogManager.getLogger("SERVER_LOG");
+    private static Logger LOG = LogManager.getLogger(SERVER_LOG);
 
     private int port;
     private CacheManager cm;
@@ -251,7 +251,6 @@ public class Server extends Thread implements IExternalConfigurationService {
             .findFirst();
         if (!nodeData.isPresent())
             throw new NoSuchElementException("Metadata does not contain info for this node");
-        serverName = nodeData.get().getName();
         return nodeData.get().getRange();
     }
 
@@ -274,8 +273,16 @@ public class Server extends Thread implements IExternalConfigurationService {
         return state;
     }
 
+    public int getPort() {
+        return port;
+    }
+
     public void setNodeState(NodeState state) {
         this.state = state;
+    }
+
+    public void setServerName(String serverName) {
+        this.serverName = serverName;
     }
 
     /**
@@ -376,26 +383,32 @@ public class Server extends Thread implements IExternalConfigurationService {
         return false;
     }
 
+
+
     /**
      * Main entry point for the echo server application.
      *
      * @param args contains the port number at args[0], the cache size at args[1], the cache displacement strategy at args[2] and the logging Level at args[3].
      */
     public static void main(String[] args) {
+        LOG.info("In Server#main()");
         Server server = createServer(args);
+        server.setServerName(args[0]);
+        LOG.info("Server " + server.getName() + " created and serving on port " + server.getPort());
         server.start();
     }
 
 
     private static Server createServer(String[] args) {
-        if (args.length < 1 || args.length > 4)
-            throw new IllegalArgumentException("Port must be provided to start the server");
-        int port = -1;
-        if (isValidPortNumber(args[0]))
-            port = Integer.parseInt(args[0]);
+        if (args.length < 2 || args.length > 4)
+            throw LogUtils.printLogError(LOG, new IllegalArgumentException("Node name and port must be provided to start the server"));
 
-        if (args.length == 2 && isValidLogLevel(args[1]))
-            return new Server(port, args[1]);
+        int port = -1;
+        if (isValidPortNumber(args[1]))
+            port = Integer.parseInt(args[1]);
+
+        if (args.length == 3 && isValidLogLevel(args[1]))
+            return new Server(port, args[2]);
         return new Server(port, DEFAULT_LOG_LEVEL);
     }
 

@@ -13,6 +13,16 @@ public class LogUtils {
      * Logging of errors
      *
      * @param exception the exception that was thrown in the error
+     * @return exception
+     */
+    public static <E> E printLogError(Logger LOG, E exception) {
+        return printLogError(LOG, exception, StringUtils.EMPTY_STRING);
+    }
+
+    /**
+     * Logging of errors
+     *
+     * @param exception the exception that was thrown in the error
      * @param message   the error message
      * @return exception
      */

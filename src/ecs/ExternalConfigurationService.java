@@ -2,6 +2,7 @@ package ecs;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import util.Validate;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -34,11 +35,18 @@ public class ExternalConfigurationService implements IECS {
             LOG.warn("Number of available servers is less than chosen to initialize. Starting all available servers");
             numberOfNodes = this.serverPool.size();
         }
+
         for (int i = 0; i < numberOfNodes; i++) {
             int n = ThreadLocalRandom.current().nextInt(this.serverPool.size());
             KVServer kvS = this.serverPool.get(n);
+            if(chord.nodes().contains(kvS)) {
+                i--;
+                continue;
+            }
             this.chord.add(kvS);
         }
+        Validate.isTrue(chord.nodes().size() == numberOfNodes, "Not enough nodes are added");
+
         for (KVServer kvS : this.chord.nodes()) {
             kvS.launch(launched -> {
                 if (launched) {
@@ -88,7 +96,7 @@ public class ExternalConfigurationService implements IECS {
                 kvS.startServer();
                 Optional<KVServer> predecessorOpt = this.chord.getPredecessor(kvS.getHashKey());
                 if (!predecessorOpt.isPresent()) {
-                    LOG.info("It's the first node in the service, nothing to move");
+                    LOG.info("It's the only node in the service, nothing to move");
                 } else {
                     KVServer predecessor = predecessorOpt.get();
                     // it's a circle. If there is a predecessor then there is a successor
