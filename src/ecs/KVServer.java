@@ -72,6 +72,8 @@ public class KVServer implements Comparable<KVServer> {
       if (this.socket == null) {
         throw new IOException();
       }
+      this.bos.write(new byte[]{1});
+      this.bos.flush();
       LOG.info(String.format("Started server %s:%d via ssh", this.address.getHostString(), this.address.getPort()));
     } catch (IOException | InterruptedException e) {
       launched = false;

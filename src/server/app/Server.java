@@ -188,7 +188,7 @@ public class Server extends Thread implements IExternalConfigurationService {
                     byte[] messageBytes = new byte[1];
                     int bytesCopied = input.read(messageBytes);
 
-                    if (messageBytes[0] == new Integer(1).byteValue()) {
+                    if (messageBytes[0] == 1) {
                         AdminConnection ecs = new AdminConnection(this, client);
                         new Thread(ecs).start();
                     } else {

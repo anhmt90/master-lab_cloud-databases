@@ -75,6 +75,7 @@ public class Client implements IClient {
 		try {
 			socket = new Socket();
 			socket.connect(new InetSocketAddress(address, port), 5000);
+			this.send(new byte[]{0});
 		} catch (UnknownHostException uhe) {
 			throw LogUtils.printLogError(LOG, uhe, "Unknown host");
 		} catch (SocketTimeoutException ste) {

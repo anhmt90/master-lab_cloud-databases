@@ -23,7 +23,6 @@ public class AdminConnection implements Runnable {
     private boolean isOpen;
 
     private Socket ecsSocket;
-    private ServerSocket mgmtSocket;
 
     private Server server;
     private BufferedInputStream bis;
@@ -45,22 +44,12 @@ public class AdminConnection implements Runnable {
             bis = new BufferedInputStream(ecsSocket.getInputStream());
 
             while (server.isRunning()) {
-                ecsSocket = mgmtSocket.accept();
-                isOpen = true;
+                ConfigMessage configMessage = poll();
 
-                while (isOpen) {
-                    try {
-                        ConfigMessage configMessage = poll();
+                boolean success = handleAdminRequest(configMessage);
+                ConfigMessage ack = new ConfigMessage(getAckStatus(configMessage.getStatus(), success));
+                send(ack);
 
-                        boolean success = handleAdminRequest(configMessage);
-                        ConfigMessage ack = new ConfigMessage(getAckStatus(configMessage.getStatus(), success));
-                        send(ack);
-
-                    } catch (IOException ioe) {
-                        LOG.error("Error! Connection lost!");
-                        isOpen = false;
-                    }
-                }
             }
         } catch (IOException ioe) {
             LOG.error("Error! Connection could not be established!", ioe);
