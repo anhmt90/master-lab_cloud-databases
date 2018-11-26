@@ -19,7 +19,7 @@ public class OneServerTest {
   public void init() throws IOException, NoSuchFieldException, IllegalAccessException {
     ecs = new ExternalConfigurationService(ecsConfigPath);
     enronDataset = new EnronDataset(enronPath);
-    enronDataset.loadAllMessages();
+    enronDataset.loadMessages(3000);
   }
 
   public long[] testServersClients(int numClients, int putRatio, int opsPerClient,
@@ -27,6 +27,7 @@ public class OneServerTest {
 
     ClientRunner[] clients = new ClientRunner[numClients];
     ecs.initService(numServers, cacheSize, strategy);
+    ecs.startService();
     KVServer kvS = ecs.getChord().nodes().iterator().next();
     for (int i = 0; i < clients.length; i++) {
       Client client = new Client(kvS.getHost(), kvS.getPort());

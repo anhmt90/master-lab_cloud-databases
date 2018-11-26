@@ -10,6 +10,7 @@ import util.HashUtils;
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -75,7 +76,7 @@ public class KVServer implements Comparable<KVServer> {
     boolean launched = true;
     try {
       proc = run.exec(this.sshCMD);
-      proc.waitFor();
+//      proc.waitFor();
       BufferedReader in = new BufferedReader(new InputStreamReader(proc.getInputStream()));
       String line;
       while ((line = in.readLine()) != null) {
@@ -87,7 +88,7 @@ public class KVServer implements Comparable<KVServer> {
       this.bos.write(new byte[]{1});
       this.bos.flush();
       LOG.info(String.format("Started server %s:%d via ssh", this.address.getHostString(), this.address.getPort()));
-    } catch (IOException | InterruptedException e) {
+    } catch (IOException e) {
       launched = false;
       LOG.error(String.format("Couldn't launch the server %s:%d", this.getHost(), this.getPort()));
       LOG.error(e);
@@ -104,8 +105,13 @@ public class KVServer implements Comparable<KVServer> {
    */
   public void send(ConfigMessage message) throws IOException {
     try {
-      bos.write(ConfigMessageMarshaller.marshall(message));
-      bos.flush();
+      ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
+      oos.writeObject(message);
+      oos.flush();
+//      byte[] bytes = ConfigMessageMarshaller.marshall(message);
+//      LOG.info("Sending bytes to the server: " + Arrays.toString(bytes));
+//      bos.write(bytes);
+//      bos.flush();
       LOG.info("SEND \t<"
           + socket.getInetAddress().getHostAddress() + ":"
           + socket.getPort() + ">: '"
@@ -123,11 +129,19 @@ public class KVServer implements Comparable<KVServer> {
    * @throws IOException
    */
   private ConfigMessage receive() throws IOException {
-    byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
-    int bytesCopied = bis.read(messageBuffer);
-    LOG.info("Read " + bytesCopied + " from input stream");
+//    byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
+//    int bytesCopied = bis.read(messageBuffer);
+//    LOG.info("Read " + bytesCopied + " from input stream");
+//
+//    ConfigMessage message = ConfigMessageMarshaller.unmarshall(messageBuffer);
+    ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
+    ConfigMessage message = null;
+    try {
+      message = (ConfigMessage) ois.readObject();
+    } catch (ClassNotFoundException e) {
+      e.printStackTrace();
+    }
 
-    ConfigMessage message = ConfigMessageMarshaller.unmarshall(messageBuffer);
 
     LOG.info("RECEIVE \t<"
         + socket.getInetAddress().getHostAddress() + ":"

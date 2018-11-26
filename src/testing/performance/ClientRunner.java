@@ -32,6 +32,11 @@ class ClientRunner implements Runnable {
 
   @Override
   public void run() {
+    try {
+      client.connect();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
     Stopwatch sw = new Stopwatch();
     for (int i = 0; i < ops; i++) {
       int n = ThreadLocalRandom.current().nextInt(100);
