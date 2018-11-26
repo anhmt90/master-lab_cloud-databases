@@ -160,7 +160,7 @@ public class OneServerTest {
       e.printStackTrace();
     }
 
-    int numClients = 100;
+    int numClients = 1;
     int opsPerClient = 1000;
     int putRatio = 50;
 
