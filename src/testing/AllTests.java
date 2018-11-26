@@ -28,7 +28,7 @@ public class AllTests {
             server.start();
             server.initKVServer(getMetadata(), 100, "FIFO");
             server.startService();
-            Thread.sleep(3600000);
+//            Thread.sleep(3600000);
         } catch (Exception e) {
             LOG.error(e);
             e.printStackTrace();
