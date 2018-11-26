@@ -58,10 +58,12 @@ public class MessageMarshaller {
         if (status.equals(Status.SERVER_NOT_RESPONSIBLE)) {
             return unmarshallMetadata(msgBytes, status);
         }
+        if(msgBytes.length < 16)
+            return new Message(status);
 
         int valLength = ByteBuffer.wrap(new byte[]{0, msgBytes[1], msgBytes[2], msgBytes[3]}).getInt();
-
         byte[] keyBytes = new byte[16];
+
         System.arraycopy(msgBytes, 1 + 3, keyBytes, 0, keyBytes.length);
 
         byte[] valBytes = new byte[valLength];

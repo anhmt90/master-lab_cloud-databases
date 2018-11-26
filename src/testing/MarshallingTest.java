@@ -48,7 +48,7 @@ public class MarshallingTest extends TestCase {
 
 	@Test
     public void testNormalMarshall() {
-		byte[] keyBytes = "thiskey".getBytes(StandardCharsets.US_ASCII);
+		byte[] keyBytes = HashUtils.getHashBytes("thiskey");
 		byte[] valueBytes = "thisvalue".getBytes(StandardCharsets.US_ASCII);
 		IMessage message = new Message(Status.GET, new K(keyBytes), new V(valueBytes));
 		byte[] marshalledMessage = MessageMarshaller.marshall(message);
@@ -68,7 +68,7 @@ public class MarshallingTest extends TestCase {
 
     @Test
     public void testKeyMarshall() {
-    	byte[] keyBytes = "thiskey".getBytes(StandardCharsets.US_ASCII);
+		byte[] keyBytes = HashUtils.getHashBytes("thiskey");
 		IMessage message = new Message(Status.GET, new K(keyBytes));
 		byte[] marshalledMessage = MessageMarshaller.marshall(message);
 		IMessage unmarshalledMessage = MessageMarshaller.unmarshall(marshalledMessage);
