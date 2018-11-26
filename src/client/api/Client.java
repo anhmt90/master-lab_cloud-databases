@@ -185,6 +185,7 @@ public class Client implements IClient {
 
 	@Override
 	public IMessage put(String key, String value) throws IOException {
+		LOG.info(String.format("Put %s %s", key, value));
 		IMessage serverResponse;
 		if(connectedServerHashRange != null && !connectedServerHashRange.inRange(HashUtils.getHash(key))) {
 			reroute(key);

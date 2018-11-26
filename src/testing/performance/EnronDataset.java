@@ -9,15 +9,20 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class EnronDataset {
   class KV {
     public final String key;
     public final String val;
+    Pattern keyPattern = Pattern.compile("\\d+\\.\\d+");
 
     public KV(String key, String val) {
-      this.key = key;
       this.val = val;
+      this.key = key;
+
+//      Matcher m = keyPattern.matcher(key);
     }
 
   }

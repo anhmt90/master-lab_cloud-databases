@@ -41,6 +41,8 @@ class ClientRunner implements Runnable {
     for (int i = 0; i < ops; i++) {
       int n = ThreadLocalRandom.current().nextInt(100);
       EnronDataset.KV kv = enronDataset.getRandom();
+      String key = kv.key == null? "stub" : kv.key;
+      String val = kv.val == null? "stub" : kv.val;
       try {
         sw.tick();
         if (n >= putRatio) {
