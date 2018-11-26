@@ -82,7 +82,9 @@ public class ExternalConfigurationService implements IECS {
     @Override
     public void shutDown() {
         for (KVServer kvS : this.chord.nodes()) {
+            chord.remove(kvS);
             kvS.shutDown();
+            this.serverPool.add(kvS);
         }
         running = false;
     }
