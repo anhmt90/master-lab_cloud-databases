@@ -10,6 +10,7 @@ import java.io.IOException;
 import static util.FileUtils.SEP;
 
 public class OneServerTest {
+  private static final String outputPath = FileUtils.WORKING_DIR  + SEP + "performance_results" + SEP + "cache_to_time.txt";
   private static final String enronPath = FileUtils.WORKING_DIR + "/../../maildir";
   private EnronDataset enronDataset;
   private static final String ecsConfigPath = System.getProperty("user.dir") + SEP + "config" + SEP + "server-info";
@@ -59,7 +60,12 @@ public class OneServerTest {
           t.join();
         }
         long elapsedTime = sw.tick();
-        long totalOps = numClients * opsPerClient;
+        long maxLatency = 0;
+        long minLatency = Long.MAX_VALUE;
+        for (ClientRunner cr: clients) {
+          if (cr.getMaxLatency() > maxLatency) maxLatency = cr.getMaxLatency();
+          if (cr.getMaxLatency() < minLatency) minLatency = cr.getMinLatency();
+        }
 
         ecs.shutDown();
       }
