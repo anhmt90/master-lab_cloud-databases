@@ -7,11 +7,21 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class EnronDataset {
+  private class KV {
+    private final String key;
+    private final String val;
+
+    public KV(String key, String val) {
+      this.key = key;
+      this.val = val;
+    }
+  }
   private final Path rootPath;
-  private ConcurrentHashMap<String, String> kvMap;
+  private CopyOnWriteArrayList<KV> kvs;
   private List<Path> files = new ArrayList<Path>();
 
   public EnronDataset(String datasetPath) throws IOException {
@@ -26,6 +36,7 @@ public class EnronDataset {
     Files.walk(this.rootPath)
         .filter(Files::isRegularFile)
         .forEach(filePath -> this.files.add(filePath));
+    System.out.println(String.format("Number of entries in the dataset: %d", this.files.size()));
   }
 
   private void loadMsg(Path filePath) {
@@ -45,13 +56,11 @@ public class EnronDataset {
     }
     String value = sb.toString();
 
-    this.kvMap.put(key, value);
+    this.kvs.add(new KV(key, value));
   }
 
   public void loadMessages(int amount) {
-    float loadFactor = 0.95f;
-    int hmInitSize = (int) (amount * 1.1);
-    this.kvMap = new ConcurrentHashMap<>(hmInitSize, loadFactor);
+    this.kvs = new CopyOnWriteArrayList<>();
 
     Collections.shuffle(this.files);
 
@@ -59,12 +68,7 @@ public class EnronDataset {
     for (int i = 0; i < amount; i++) {
       Path filePath = this.files.get(i);
 
-      Thread t = new Thread(new Runnable() {
-        @Override
-        public void run() {
-          loadMsg(filePath);
-        }
-      });
+      Thread t = new Thread(() -> loadMsg(filePath));
       t.start();
       threads.add(t);
     }
@@ -78,6 +82,10 @@ public class EnronDataset {
     }
   }
 
+  public void loadAllMessages() {
+    this.loadMessages(this.files.size());
+  }
+
   public static void main(String[] args) {
     EnronDataset ed = null;
     try {
@@ -87,19 +95,20 @@ public class EnronDataset {
       return;
     }
 
-    ed.loadMessages(200);
+    ed.loadMessages(2);
     System.out.println("Loaded msgs: " + ed.size());
-    for (Map.Entry<String, String> entry: ed.loadedEntries().entrySet()) {
-      System.out.println(entry.getKey());
-      System.out.println(entry.getValue());
-    }
   }
 
-  public Map<String, String> loadedEntries() {
-    return this.kvMap;
+  public CopyOnWriteArrayList<KV> loadedEntries() {
+    return this.kvs;
   }
 
   public int size() {
-    return this.kvMap.size();
+    return this.kvs.size();
+  }
+
+  public KV getRandom() {
+    int n = ThreadLocalRandom.current().nextInt(this.size());
+    return this.kvs.get(n);
   }
 }
