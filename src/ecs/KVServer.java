@@ -51,7 +51,7 @@ public class KVServer implements Comparable<KVServer> {
     this.socket = new Socket();
     String[] cmds = {"ssh", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
         "ecs@"+getHost(), "-p", ""+SSH_PORT,
-        "nohup java -jar /opt/app/ms3-server.jar " + getNodeName() + " " + getPort() +" > /dev/null & "
+        "nohup java -jar /opt/app/ms3-server.jar " + getNodeName() + " " + getPort() +" > /opt/app/logs/server_docker & "
     };
     this.sshCMD = cmds;
     this.hashKey = HashUtils.getHash(String.format("%s:%d", this.getHost(), this.getPort()));
