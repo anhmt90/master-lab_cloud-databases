@@ -8,9 +8,9 @@ public class KeyHashRange {
     String end;
 
     public KeyHashRange(String start, String end) {
-        Validate.isTrue(isValidKeyRange(), "Invalid key range");
         this.start = start;
         this.end = end;
+        Validate.isTrue(isValidKeyRange(), "Invalid key range");
     }
 
     /**

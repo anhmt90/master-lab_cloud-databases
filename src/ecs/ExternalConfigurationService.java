@@ -38,6 +38,7 @@ public class ExternalConfigurationService implements IECS {
             numberOfNodes = this.serverPool.size();
         }
 
+        LOG.debug("Choosing servers to initialize");
         for (int i = 0; i < numberOfNodes; i++) {
             int n = ThreadLocalRandom.current().nextInt(this.serverPool.size());
             KVServer kvS = this.serverPool.get(n);
@@ -46,9 +47,11 @@ public class ExternalConfigurationService implements IECS {
         }
         Validate.isTrue(chord.nodes().size() == numberOfNodes, "Not enough nodes are added");
 
+        LOG.debug("Launching chosen servers");
         for (KVServer kvS : this.chord.nodes()) {
             kvS.launch(launched -> {
                 if (launched) {
+                    LOG.debug(String.format("Server %s:%d launched", kvS.getHost(), kvS.getPort()));
                     kvS.init(this.chord.getMetadata(), cacheSize, displacementStrategy);
                 } else {
                     LOG.error("Couldn't initialize the service, shutting down");
