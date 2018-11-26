@@ -63,4 +63,4 @@ networks:
         - subnet: $NETWORK/24
 EOF
 
-docker-compose up -d
+docker-compose up --build -d

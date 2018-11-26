@@ -2,6 +2,10 @@ package ecs;
 
 import java.io.Serializable;
 
+/**
+ * Contains important info for a server like address, port and KeyHashRange
+ *
+ */
 public class NodeInfo implements Serializable {
     private String name;
     private String host;

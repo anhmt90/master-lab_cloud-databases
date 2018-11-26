@@ -15,6 +15,10 @@ import java.util.function.Consumer;
 
 import static protocol.IMessage.MAX_MESSAGE_LENGTH;
 
+/**
+ * Handles connection from ECS to one key-value storage server
+ *
+ */
 public class KVServer implements Comparable<KVServer> {
   private static final String ECS_LOG = "ECS";
   private static Logger LOG = LogManager.getLogger(ECS_LOG);
@@ -51,7 +55,7 @@ public class KVServer implements Comparable<KVServer> {
     this.socket = new Socket();
     String[] cmds = {"ssh", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
         "ecs@"+getHost(), "-p", ""+SSH_PORT,
-        "nohup java -jar /opt/app/ms3-server.jar " + getNodeName() + " " + getPort() +" > /dev/null & "
+        "nohup java -jar /opt/app/ms3-server.jar " + getNodeName() + " " + getPort() +" > /opt/app/logs/server_docker & "
     };
     this.sshCMD = cmds;
     this.hashKey = HashUtils.getHash(String.format("%s:%d", this.getHost(), this.getPort()));
@@ -92,6 +96,12 @@ public class KVServer implements Comparable<KVServer> {
   }
 
 
+  /**
+   * Sends a message to the connected server
+   * 
+   * @param message message to be sent
+   * @throws IOException
+   */
   public void send(ConfigMessage message) throws IOException {
     try {
       bos.write(ConfigMessageMarshaller.marshall(message));
@@ -208,6 +218,14 @@ public class KVServer implements Comparable<KVServer> {
     return false;
   }
 
+  /**
+   * Sends a ConfigMessage and checks if the server response matches an expected response
+   * 
+   * @param toSend message to be sent to the server
+   * @param expected status of the expected server response
+   * @return true if server response matches the expected one
+   * @throws IOException
+   */
   private boolean sendAndExpect(ConfigMessage toSend, ConfigStatus expected) throws IOException {
     if (bos != null && bis != null) {
       send(toSend);

@@ -5,6 +5,10 @@ import util.Validate;
 
 import java.io.Serializable;
 
+/**
+ * Structure handling Key ranges for the consistent hashing storage ring
+ *  
+ */
 public class KeyHashRange implements Serializable {
     String start;
     String end;
