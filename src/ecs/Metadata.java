@@ -8,6 +8,11 @@ public class Metadata implements Serializable {
 	List<NodeInfo> meta = new ArrayList<>();
 
 	public void add(String nodeName, String host, int port, String start, String end) {
+	  System.out.println(String.format("WHAT %s %s", start, end));
+		if (start.equals(end)) {
+			start = "00000000000000000000000000000000";
+			end = "ffffffffffffffffffffffffffffffff";
+		}
 		NodeInfo kvSMeta = new NodeInfo(nodeName, host, port, start, end);
 		this.meta.add(kvSMeta);
 	}

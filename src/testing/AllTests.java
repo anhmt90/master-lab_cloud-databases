@@ -17,7 +17,7 @@ public class AllTests {
 	
     static {
         try {
-            new Server("node1",50000, "ERROR");
+            new Server("testServer", 50000, "ERROR");
         } catch (Exception e) {
         	LOG.error(e);
             e.printStackTrace();

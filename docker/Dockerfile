@@ -2,6 +2,7 @@ FROM java:openjdk-8-jdk-alpine
 
 ENV username ecs
 ENV workdir /opt/app
+ENV PATH "$PATH:$workdir"
 
 RUN apk add --update openssh \
   && rm -rf /tmp/* /var/cache/apk/*
