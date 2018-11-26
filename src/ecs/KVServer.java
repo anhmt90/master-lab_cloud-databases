@@ -233,10 +233,11 @@ public class KVServer implements Comparable<KVServer> {
   }
 
   /**
-   * Sends a ConfigMessage and 
-   * @param toSend
-   * @param expected
-   * @return
+   * Sends a ConfigMessage and checks if the server response matches an expected response
+   * 
+   * @param toSend message to be sent to the server
+   * @param expected status of the expected server response
+   * @return true if server response matches the expected one
    * @throws IOException
    */
   private boolean sendAndExpect(ConfigMessage toSend, ConfigStatus expected) throws IOException {
