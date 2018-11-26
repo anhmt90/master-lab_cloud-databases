@@ -177,4 +177,7 @@ public class ExternalConfigurationService implements IECS {
   	  return chord.isEmpty();
     }
 
+    public NodesChord getChord() {
+        return this.chord;
+    }
 }

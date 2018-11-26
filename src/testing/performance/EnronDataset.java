@@ -11,14 +11,15 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class EnronDataset {
-  private class KV {
-    private final String key;
-    private final String val;
+  class KV {
+    public final String key;
+    public final String val;
 
     public KV(String key, String val) {
       this.key = key;
       this.val = val;
     }
+
   }
   private final Path rootPath;
   private CopyOnWriteArrayList<KV> kvs;
