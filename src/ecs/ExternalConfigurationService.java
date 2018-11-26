@@ -42,10 +42,6 @@ public class ExternalConfigurationService implements IECS {
         for (int i = 0; i < numberOfNodes; i++) {
             int n = ThreadLocalRandom.current().nextInt(this.serverPool.size());
             KVServer kvS = this.serverPool.get(n);
-            if(chord.nodes().contains(kvS)) {
-                i--;
-                continue;
-            }
             this.serverPool.remove(n);
             this.chord.add(kvS);
         }
@@ -86,7 +82,9 @@ public class ExternalConfigurationService implements IECS {
     @Override
     public void shutDown() {
         for (KVServer kvS : this.chord.nodes()) {
+            chord.remove(kvS);
             kvS.shutDown();
+            this.serverPool.add(kvS);
         }
         running = false;
     }
@@ -179,4 +177,7 @@ public class ExternalConfigurationService implements IECS {
   	  return chord.isEmpty();
     }
 
+    public NodesChord getChord() {
+        return this.chord;
+    }
 }

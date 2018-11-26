@@ -72,11 +72,10 @@ public class KVServer implements Comparable<KVServer> {
     try {
       proc = run.exec(this.sshCMD);
       proc.waitFor();
-      System.out.println(proc.exitValue());
       BufferedReader in = new BufferedReader(new InputStreamReader(proc.getInputStream()));
       String line;
       while ((line = in.readLine()) != null) {
-        System.out.println(line);
+        LOG.info("SSH response: " + line);
       }
 
       LOG.debug("Initializing socket");

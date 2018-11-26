@@ -7,19 +7,19 @@ import ecs.Metadata;
 public interface IMessage extends Serializable {
     public static final int MAX_MESSAGE_LENGTH = 2 + 20 + 1024 * 120;
     enum Status {
-        GET(0x00),            /* Get - request */
-        GET_ERROR(0x01),        /* requested tuple (i.e. value) not found */
-        GET_SUCCESS(0x02),    /* requested tuple (i.e. value) found */
-        PUT(0x03),            /* Put - request */
-        PUT_SUCCESS(0x04),    /* Put - request successful, tuple inserted */
-        PUT_UPDATE(0x05),    /* Put - request successful, i.e. value updated */
-        PUT_ERROR(0x06),        /* Put - request not successful */
-        DELETE_SUCCESS(0x07), /* Delete - request successful */
-        DELETE_ERROR(0x08),    /* Delete - request successful */
+        GET(0x01),            /* Get - request */
+        GET_ERROR(0x02),        /* requested tuple (i.e. value) not found */
+        GET_SUCCESS(0x03),    /* requested tuple (i.e. value) found */
+        PUT(0x04),            /* Put - request */
+        PUT_SUCCESS(0x05),    /* Put - request successful, tuple inserted */
+        PUT_UPDATE(0x06),    /* Put - request successful, i.e. value updated */
+        PUT_ERROR(0x07),        /* Put - request not successful */
+        DELETE_SUCCESS(0x08), /* Delete - request successful */
+        DELETE_ERROR(0x09),    /* Delete - request successful */
 
-        SERVER_STOPPED(0x09),           /* Server is stopped, no requests are processed */
-        SERVER_WRITE_LOCK(0x0A),        /* Server locked for out, only get possible */
-        SERVER_NOT_RESPONSIBLE(0x0B)    /* Request not successful, server not responsible for key */
+        SERVER_STOPPED(0x0A),           /* Server is stopped, no requests are processed */
+        SERVER_WRITE_LOCK(0x0B),        /* Server locked for out, only get possible */
+        SERVER_NOT_RESPONSIBLE(0x0C)    /* Request not successful, server not responsible for key */
         ;
 
 

@@ -7,6 +7,15 @@ import java.util.List;
 public class Metadata implements Serializable {
 	List<NodeInfo> meta = new ArrayList<>();
 
+	/**
+	 * Adds an element to the metadata list
+	 * 
+	 * @param nodeName name of the added node
+	 * @param host IPv4 address of the host in String format
+	 * @param port port on which the ECS connects
+	 * @param start the beginning of the key range the server is responsible for
+	 * @param end the end of the key range the server is responsible for
+	 */
 	public void add(String nodeName, String host, int port, String start, String end) {
 	  System.out.println(String.format("WHAT %s %s", start, end));
 		if (start.equals(end)) {
