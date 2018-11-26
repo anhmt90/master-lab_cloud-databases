@@ -2,6 +2,7 @@ package testing;
 
 import ecs.KeyHashRange;
 import ecs.NodeInfo;
+import junit.framework.TestCase;
 import org.junit.Test;
 import server.api.BatchDataTransferProcessor;
 import server.storage.disk.PersistenceManager;
@@ -21,7 +22,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import static util.FileUtils.SEP;
 
-public class FetchBatchDataTest {
+public class FetchBatchDataTest extends TestCase {
 
     static final String NODE_1 = "node1";
     static final String NODE_2 = "node2";
@@ -35,9 +36,12 @@ public class FetchBatchDataTest {
     private Method cleanUp;
     private String[] keySet1;
     private String[] keySet2;
+    private KeyHashRange node1_range;
+    private KeyHashRange node2_range;
+    private KeyHashRange node3_range;
 
-    @Test
-    public void testFetchBatchDataForTransfer() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException, IOException {
+
+    public void prepare() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException, IOException {
         pm1 = new PersistenceManager("db_test" + SEP + NODE_1);
         pm2 = new PersistenceManager("db_test" + SEP + NODE_2);
         pm3 = new PersistenceManager("db_test" + SEP + NODE_3);
@@ -46,19 +50,18 @@ public class FetchBatchDataTest {
         String node2Hash = new String(new char[8]).replace("\0", "9999");
         String node3Hash = new String(new char[8]).replace("\0", "eeee");
 
-        KeyHashRange node1_range = new KeyHashRange(HashUtils.increaseHashBy1(node3Hash), node1Hash); // EEEE..EEEF - 3333..3333
-        KeyHashRange node2_range = new KeyHashRange(HashUtils.increaseHashBy1(node1Hash), node2Hash); // 3333..3334 - 9999..9999
-        KeyHashRange node3_range = new KeyHashRange(HashUtils.increaseHashBy1(node2Hash), node3Hash); // 9999..999A - EEEE..EEEE
+        node1_range = new KeyHashRange(HashUtils.increaseHashBy1(node3Hash), node1Hash); // EEEE..EEEF - 3333..3333
+        node2_range = new KeyHashRange(HashUtils.increaseHashBy1(node1Hash), node2Hash); // 3333..3334 - 9999..9999
+        node3_range = new KeyHashRange(HashUtils.increaseHashBy1(node2Hash), node3Hash); // 9999..999A - EEEE..EEEE
 
         populateData();
-        test_fetching_data_for_transfering_when_adding_new_node_between(node1Hash, node3Hash);
-        test_fetching_data_for_transfering_when_removing_node_between(node1Hash, node3Hash);
-
     }
 
-    private void test_fetching_data_for_transfering_when_removing_node_between(String node1Hash, String node3Hash) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, IOException {
-        KeyHashRange node3_range;//update range of successor
-        node3_range = new KeyHashRange(HashUtils.increaseHashBy1(node1Hash), node3Hash);
+    @Test
+    public void test_fetching_data_to_transfer_when_removing_node() throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, IOException {
+        prepare();
+
+        node3_range = new KeyHashRange(HashUtils.increaseHashBy1(node1_range.getEnd()), node3_range.getEnd());
         NodeInfo target = new NodeInfo(NODE_3, "127.0.0.1", 50000, node3_range);
         BatchDataTransferProcessor batchProcessor = new BatchDataTransferProcessor(target, pm2.getDbPath());
         setIndexRelevantDataFilesMethod(batchProcessor);
@@ -78,13 +81,16 @@ public class FetchBatchDataTest {
         deleteIndexFolder(batchProcessor, indexFiles);
     }
 
-    public void test_fetching_data_for_transfering_when_adding_new_node_between(String node1Hash, String node3Hash) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, IOException {
-        KeyHashRange node1_range;// adding new node between node3 and node1
+    @Test
+    public void test_fetching_data_to_transfer_when_adding_new_node_() throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, IOException {
+        prepare();
+
+        // adding new node between node3 and node1
         String newNodeHash = "10" + new String(new char[6]).replace("\0", "00000");
-        KeyHashRange newNode_range = new KeyHashRange(HashUtils.increaseHashBy1(node3Hash), newNodeHash);
+        KeyHashRange newNode_range = new KeyHashRange(HashUtils.increaseHashBy1(node3_range.getEnd()), newNodeHash);
 
         // update range of successor (node1)
-        node1_range = new KeyHashRange(HashUtils.increaseHashBy1(newNodeHash), node1Hash);
+        node1_range = new KeyHashRange(HashUtils.increaseHashBy1(newNodeHash), node1_range.getEnd());
         NodeInfo target = new NodeInfo(NODE_1, "127.0.0.1", 50000, node1_range);
         BatchDataTransferProcessor batchProcessor = new BatchDataTransferProcessor(target, pm1.getDbPath());
 
@@ -96,7 +102,7 @@ public class FetchBatchDataTest {
             filesToTransfer.addAll(Files.readAllLines(Paths.get(file)));
         }
 
-        List<String> keySet1_toMove = Arrays.asList(Arrays.copyOfRange(keySet1, 0 , 5));
+        List<String> keySet1_toMove = Arrays.asList(Arrays.copyOfRange(keySet1, 0, 5));
         for (String file : filesToTransfer) {
             String fileName = Paths.get(file).getFileName().toString();
             assertThat(keySet1_toMove.contains(fileName), is(true));
