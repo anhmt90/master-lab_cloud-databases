@@ -38,7 +38,12 @@ public class MarshallingTest extends TestCase {
         byte[] marshalledMessage = MessageMarshaller.marshall(message);
         IMessage unmarshalledMessage = MessageMarshaller.unmarshall(marshalledMessage);
         assertEquals(message.getStatus(), unmarshalledMessage.getStatus());
-        assertEquals(message.getMetadata(), unmarshalledMessage.getMetadata());
+        for(int i = 0; i < metadata.getSize(); i++) {
+        	assertEquals(message.getMetadata().get().get(i).getHost(), unmarshalledMessage.getMetadata().get().get(i).getHost());
+        	assertEquals(message.getMetadata().get().get(i).getPort(), unmarshalledMessage.getMetadata().get().get(i).getPort());
+        	assertEquals(message.getMetadata().get().get(i).getRange().getStart(), unmarshalledMessage.getMetadata().get().get(i).getRange().getStart());
+        	assertEquals(message.getMetadata().get().get(i).getRange().getEnd(), unmarshalledMessage.getMetadata().get().get(i).getRange().getEnd());
+        }
     }
 	
 	@Test

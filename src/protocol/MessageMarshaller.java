@@ -1,10 +1,15 @@
 package protocol;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 import ecs.NodeInfo;
 import ecs.Metadata;
 import protocol.IMessage.Status;
+import util.HashUtils;
 import util.StringUtils;
 
 public class MessageMarshaller {
@@ -70,22 +75,24 @@ public class MessageMarshaller {
         int metadataSize = msgBytes[1];
         Metadata metadata = new Metadata();
         for (int i = 0; i < metadataSize; i++) {
+            byte[] hostBytes = {msgBytes[2 + i*38], msgBytes[3 + i*38], msgBytes[4 + i*38], msgBytes[5 + i*38]};
             String host = "";
-            for(int j = 0; j < 4; j++) {
-                host = host + Byte.toString(msgBytes[2 + j + i*38]);
-                if(j < 3) {
-                	host = host + ".";
-                }
+            try {
+            	InetAddress hostAddress = InetAddress.getByAddress(hostBytes);
+            	host = hostAddress.getHostAddress();
+            } catch (UnknownHostException ex) {
+            	return null;
             }
+            
             byte[] portBytes = {msgBytes[6 + i*38], msgBytes[7 + i*38]};
             int port = (portBytes[0]<< 8)&0x0000ff00|
                        (portBytes[1]<< 0)&0x000000ff;
-            String hashRangeStart = "";
-            String hashRangeEnd = "";
-            for(int j = 0; j < 16; j++) {
-                hashRangeStart = hashRangeStart + Byte.toString(msgBytes[8 + j + i*38]);
-                hashRangeEnd = hashRangeEnd + Byte.toString(msgBytes[24 + j + i*38]);
-            }
+            byte[] hashRangeStartBytes = new byte[16];
+            byte[] hashRangeEndBytes = new byte[16];
+            System.arraycopy(msgBytes, 8 + i*38, hashRangeStartBytes, 0, hashRangeStartBytes.length);
+            System.arraycopy(msgBytes, 24 + i*38, hashRangeEndBytes, 0, hashRangeEndBytes.length);
+            String hashRangeStart = HashUtils.getHashStringOf(hashRangeStartBytes);
+            String hashRangeEnd = HashUtils.getHashStringOf(hashRangeEndBytes);
             metadata.add(StringUtils.EMPTY_STRING, host, port, hashRangeStart, hashRangeEnd);
         }
         return new Message(status, metadata);
@@ -102,10 +109,15 @@ public class MessageMarshaller {
     	
     	for(int j = 0; j < metadata.getSize(); j++) {
     		NodeInfo meta = metadata.get().get(j);
-    		String[] host = meta.getHost().split(".");
     		byte[] hostBytes = new byte[4];
-    		for(int i = 0; i<host.length; i++) {
-    			hostBytes[i] = Byte.parseByte(host[i]);
+    		try {
+    			InetAddress host = InetAddress.getByName(meta.getHost());
+    			byte[] addressBytes = host.getAddress();
+    			if (addressBytes.length == 4) {
+    				hostBytes = addressBytes;
+    			}
+    		} catch (UnknownHostException ex) {
+    			return null;
     		}
             final short BUFFER_CAPACITY = 4;
             final short PORT_NUM_BYTES = 2;
