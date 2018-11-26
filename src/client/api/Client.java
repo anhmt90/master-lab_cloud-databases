@@ -149,6 +149,12 @@ public class Client implements IClient {
 			return false;
 	}
 	
+	/**
+	 * Reconnects to the correct server for the key on server miss
+	 * 
+	 * @param key the key that is supposed to be accessed on the storage service
+	 * @throws IOException
+	 */
 	private void reroute(String key) throws IOException{
 		print("Server miss. Reconnecting to appropriate server.");
 		NodeInfo meta = metadata.findMatchingServer(key);

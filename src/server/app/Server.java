@@ -29,7 +29,7 @@ import java.util.Optional;
  */
 public class Server extends Thread implements IExternalConfigurationService {
     public static final String SERVER_LOG = "kvServer";
-    private static final String DEFAULT_LOG_LEVEL = "INFO";
+    private static final String DEFAULT_LOG_LEVEL = "ALL";
     private static final int DEFAULT_CACHE_SIZE = 100;
     private static final int DEFAULT_PORT = 50000;
 
@@ -184,13 +184,16 @@ public class Server extends Thread implements IExternalConfigurationService {
                     byte[] messageBytes = new byte[1];
 
                     int bytesCopied = input.read(messageBytes);
+                    LOG.info("MessageBytes: " + Arrays.toString(messageBytes));
 
                     if (messageBytes[0] == 1) {
+                        LOG.info("Admin connection initialized");
                         AdminConnection ecs = new AdminConnection(this, client);
                         new Thread(ecs).start();
                     } else {
                         ClientConnection connection = new ClientConnection(this, client, cm);
                         new Thread(connection).start();
+                        LOG.info("Client connection initialized");
 
                         LOG.info(
                                 "Connected to " + client.getInetAddress().getHostName() + " on port " + client.getPort());

@@ -9,6 +9,7 @@ OUT_FILE="docker-compose.yml"
 CONFIG_FILE="./config/server-info"
 
 docker-compose down
+docker image prune -f
 
 NETWORK="172.172.1.0"
 NETWORK_HEX=$(printf '%.2X%.2X%.2X%.2X\n' `echo $NETWORK | sed -e 's/\./ /g'`)

@@ -7,9 +7,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import server.app.Server;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.BindException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -131,8 +129,11 @@ public class AdminConnection implements Runnable {
      * @throws IOException
      */
     public void send(ConfigMessage message) throws IOException {
-        bos.write(ConfigMessageMarshaller.marshall(message));
-        bos.flush();
+        ObjectOutputStream oos = new ObjectOutputStream(ecsSocket.getOutputStream());
+        oos.writeObject(message);
+        oos.flush();
+//        bos.write(ConfigMessageMarshaller.marshall(message));
+//        bos.flush();
         LOG.info("SEND \t<"
                 + ecsSocket.getInetAddress().getHostAddress() + ":"
                 + ecsSocket.getPort() + ">: '"
@@ -147,12 +148,20 @@ public class AdminConnection implements Runnable {
      * @throws IOException
      */
     private ConfigMessage poll() throws IOException {
-        byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
-
-        int bytesCopied = bis.read(messageBuffer);
-        LOG.info("Read " + bytesCopied + " from input stream");
-
-        ConfigMessage message = ConfigMessageMarshaller.unmarshall(messageBuffer);
+//        byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
+//
+//        LOG.info("Polling...");
+//        int bytesCopied = bis.read(messageBuffer);
+//        LOG.info("Read " + bytesCopied + " from input stream");
+//
+//        ConfigMessage message = ConfigMessageMarshaller.unmarshall(messageBuffer);
+        ObjectInputStream ois = new ObjectInputStream(ecsSocket.getInputStream());
+        ConfigMessage message = null;
+        try {
+            message = (ConfigMessage) ois.readObject();
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
 
         LOG.info("RECEIVE \t<"
                 + ecsSocket.getInetAddress().getHostAddress() + ":"
