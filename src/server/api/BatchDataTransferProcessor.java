@@ -26,9 +26,15 @@ import java.util.stream.Stream;
 
 import static util.FileUtils.SEP;
 
+/**
+ * handles the batch data transfer process when adding or removing nodes takes places in the ring
+ */
 public class BatchDataTransferProcessor {
-    private static final String DATA_TRANSFER_INDEX_FOLDER = System.getProperty("user.dir") + SEP + "dti" + SEP;
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
+    /**
+     * the path to the folder where all index files residing in
+     */
+    private static final String DATA_TRANSFER_INDEX_FOLDER = System.getProperty("user.dir") + SEP + "dti" + SEP;
 
     /**
      * The socket being used to move data when adding/removing servers
@@ -37,7 +43,14 @@ public class BatchDataTransferProcessor {
     BufferedOutputStream bos;
     BufferedInputStream bis;
 
+    /**
+     * the info of target server
+     */
     NodeInfo target;
+
+    /**
+     * the database path to search for the data that needs to be transferred
+     */
     String dbPath;
 
     public BatchDataTransferProcessor(NodeInfo target, String dbPath) {
@@ -45,12 +58,23 @@ public class BatchDataTransferProcessor {
         this.dbPath = dbPath;
     }
 
+    /**
+     * initializes socket to the target server for transfering data
+     *
+     * @throws IOException
+     */
     private void initSocket() throws IOException {
         connect();
         bos = new BufferedOutputStream(moveDataSocket.getOutputStream());
         bis = new BufferedInputStream(moveDataSocket.getInputStream());
     }
 
+    /**
+     * starts transferring data to {@see target} server
+     *
+     * @param range the hashed key range of data that need to be transferred
+     * @return boolean value indicating whether the transfer process ended successfully
+     */
     public boolean handleTransferData(KeyHashRange range) {
         String[] indexFiles = new String[0];
         try {
@@ -67,11 +91,16 @@ public class BatchDataTransferProcessor {
         }
     }
 
+    /**
+     * deletes all {@see indexfiles} and also all file references stored in those after the transfer process has ended
+     *
+     * @param indexFiles files that stores paths to the key-value files which have to be transferred
+     */
     private void cleanUp(String[] indexFiles) throws IOException {
-        if(indexFiles.length > 0) {
+        if (indexFiles.length > 0) {
             for (String indexFile : indexFiles) {
                 Path indexFilePath = Paths.get(indexFile);
-                for (String dataFile: Files.readAllLines(indexFilePath)) {
+                for (String dataFile : Files.readAllLines(indexFilePath)) {
                     Files.deleteIfExists(Paths.get(dataFile));
                 }
                 Files.deleteIfExists(Paths.get(indexFile));
@@ -86,6 +115,12 @@ public class BatchDataTransferProcessor {
         Files.deleteIfExists(Paths.get(DATA_TRANSFER_INDEX_FOLDER));
     }
 
+    /**
+     * indexes all the data files in the given range by storing the paths to them in index files
+     *
+     * @param range the range of data files which should be transferred
+     * @return a list of paths to index files, based on which the relevant key-value files can be found for transferring
+     */
     public String[] indexRelevantDataFiles(KeyHashRange range) {
         if (range.isWrappedAround()) {
             KeyHashRange leftRange = new KeyHashRange(range.getStart(), new String(new char[8]).replace("\0", "ffff"));
@@ -126,7 +161,15 @@ public class BatchDataTransferProcessor {
         return null;
     }
 
-
+    /**
+     * walks along the lower bound of the range into directories to index relevant data files
+     *
+     * @param start         start of key range being split into 2-char-components
+     * @param commonPrefix  the common prefix of start and end of the key range
+     * @param firstDiffDirs list of all directories lying in the first directory level where the start and end differs
+     * @param lowerBound    index of one of the {@param start} component.
+     * @param indexFiles    list of paths to index files.
+     */
     private void walkStart(String[] start,
                            String commonPrefix,
                            String[] firstDiffDirs,
@@ -151,6 +194,15 @@ public class BatchDataTransferProcessor {
         }
     }
 
+    /**
+     * walks along the upper bound of the range into directories to index relevant data files
+     *
+     * @param end           end of key range being split into 2-char-components
+     * @param commonPrefix  the common prefix of start and end of the key range
+     * @param firstDiffDirs list of all directories lying in the first directory level where the start and end differs
+     * @param upperBound    index of one of the {@param end} component.
+     * @param indexFiles    list of paths to index files.
+     */
     private void walkEnd(String[] end,
                          String commonPrefix,
                          String[] firstDiffDirs,
@@ -175,6 +227,14 @@ public class BatchDataTransferProcessor {
         }
     }
 
+    /**
+     * handles the last files when we walk along the start and end of key range.
+     * This is the file whose hashed key matches exactly the start and end of the range
+     *
+     * @param indexFiles list of paths to index files.
+     * @param currDir    current directory that one is standing at
+     * @throws IOException
+     */
     private void visitLastFile(List<String> indexFiles, String currDir) throws IOException {
         String name = StringUtils.removeChar(currDir, SEP.charAt(0));
         Path indexFile = Paths.get(DATA_TRANSFER_INDEX_FOLDER + name);
@@ -184,10 +244,23 @@ public class BatchDataTransferProcessor {
         indexFiles.add(indexFile.toString());
     }
 
-    private int getIndex(String startDir, String[] directChildDirs) {
-        return Arrays.binarySearch(directChildDirs, startDir);
+    /**
+     * gets index of a string in string array by binary search
+     *
+     * @param toSearch the string to search for
+     * @param array    the array to search into
+     * @return the index in the array or negative index if {@param toSearch} is not in the array
+     */
+    private int getIndex(String toSearch, String[] array) {
+        return Arrays.binarySearch(array, toSearch);
     }
 
+    /**
+     * lists all direct child folder of the given current directory
+     *
+     * @param currDir the curreent directory that we are at
+     * @return a nam list of all direct children of the given folder
+     */
     private String[] getSortedChildDirs(String currDir) throws IOException {
         String[] directChildDirs = Files.list(Paths.get(dbPath + currDir))
                 .filter(Files::isDirectory)
@@ -234,6 +307,12 @@ public class BatchDataTransferProcessor {
         return indexFiles;
     }
 
+    /**
+     * sends numerous PUT-requests to the target node to transfer the data
+     *
+     * @param indexFiles list of paths to index files.
+     * @return boolean value indicating whether all PUT-requests ended successfully or not
+     */
     public boolean transfer(String[] indexFiles) throws IOException {
         if (moveDataSocket == null || moveDataSocket.isClosed() || !moveDataSocket.isConnected())
             initSocket();
@@ -247,6 +326,12 @@ public class BatchDataTransferProcessor {
         return true;
     }
 
+    /**
+     * sends a PUT-request to transfer a key-value pair
+     *
+     * @param file the key-value file
+     * @return boolean value indicating whether the PUT-request ended successfully or not
+     */
     private boolean put(String file) throws IOException {
         K key = new K(HashUtils.getHashBytesOf(Paths.get(file).getFileName().toString()));
         V val = new V(Files.readAllBytes(Paths.get(file)));
@@ -266,6 +351,11 @@ public class BatchDataTransferProcessor {
         return true;
     }
 
+    /**
+     * receives data over socket
+     *
+     * @return the received byte array
+     */
     private byte[] receive() {
         byte[] data = new byte[1 + 3 + 16 + 1024 * 120];
         try {
@@ -283,6 +373,9 @@ public class BatchDataTransferProcessor {
         return data;
     }
 
+    /**
+     * connects to remote target server
+     */
     public void connect() throws IOException {
         try {
             moveDataSocket = new Socket();
@@ -294,8 +387,12 @@ public class BatchDataTransferProcessor {
         } catch (IOException ioe) {
             throw LogUtils.printLogError(LOG, ioe, "Could not connect to server.");
         }
+
     }
 
+    /**
+     * disconnects from the remote target server
+     */
     private void disconnect() {
         try {
             if (bos != null)
@@ -311,6 +408,11 @@ public class BatchDataTransferProcessor {
         }
     }
 
+    /**
+     * gets the path to the folder where all index files residing in
+     *
+     * @return the path of the folder
+     */
     public static String getDataTransferIndexFolder() {
         return DATA_TRANSFER_INDEX_FOLDER;
     }

@@ -182,6 +182,7 @@ public class Server extends Thread implements IExternalConfigurationService {
                     Socket client = kvSocket.accept();
                     BufferedInputStream input = new BufferedInputStream(client.getInputStream());
                     byte[] messageBytes = new byte[1];
+
                     int bytesCopied = input.read(messageBytes);
 
                     if (messageBytes[0] == 1) {

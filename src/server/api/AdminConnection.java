@@ -28,14 +28,13 @@ public class AdminConnection implements Runnable {
     private BufferedInputStream bis;
     private BufferedOutputStream bos;
 
-
     public AdminConnection(Server server, Socket socket) {
         this.server = server;
         this.ecsSocket = socket;
     }
 
     /**
-     * Initializes and starts the connection with ECS.
+     * Listens to the admin instructions from ECS
      * Loops until the connection is closed or aborted by the ECS.
      */
     public void pollRequests() {
@@ -66,6 +65,13 @@ public class AdminConnection implements Runnable {
         }
     }
 
+    /**
+     * check the result of handling admin requests and get an appropriate ACK status
+     *
+     * @param reqStatus admin request status
+     * @param success result of handling admin requests, true or fals
+     * @return
+     */
     private ConfigStatus getAckStatus(ConfigStatus reqStatus, boolean success) {
         switch (reqStatus) {
             case INIT:
@@ -87,6 +93,12 @@ public class AdminConnection implements Runnable {
         }
     }
 
+    /**
+     * calls relevant functions based on the admin requests
+     *
+     * @param configMessage the message containing admin quests
+     * @return
+     */
     private boolean handleAdminRequest(ConfigMessage configMessage) {
         LOG.info("handle request from ECS with status " + configMessage.getStatus());
         switch (configMessage.getStatus()) {
@@ -122,9 +134,9 @@ public class AdminConnection implements Runnable {
         bos.write(ConfigMessageMarshaller.marshall(message));
         bos.flush();
         LOG.info("SEND \t<"
-            + ecsSocket.getInetAddress().getHostAddress() + ":"
-            + ecsSocket.getPort() + ">: '"
-            + message.toString() + "'");
+                + ecsSocket.getInetAddress().getHostAddress() + ":"
+                + ecsSocket.getPort() + ">: '"
+                + message.toString() + "'");
 
     }
 
@@ -143,9 +155,9 @@ public class AdminConnection implements Runnable {
         ConfigMessage message = ConfigMessageMarshaller.unmarshall(messageBuffer);
 
         LOG.info("RECEIVE \t<"
-            + ecsSocket.getInetAddress().getHostAddress() + ":"
-            + ecsSocket.getPort() + ">: '"
-            + message.toString().trim() + "'");
+                + ecsSocket.getInetAddress().getHostAddress() + ":"
+                + ecsSocket.getPort() + ">: '"
+                + message.toString().trim() + "'");
 
         return message;
     }
