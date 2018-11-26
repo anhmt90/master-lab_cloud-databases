@@ -71,6 +71,13 @@ public class MessageMarshaller {
         return new Message(status, new K(keyBytes), new V(valBytes));
     }
 
+    /**
+     * Unmarshalls a byte array that contains a metadata object
+     * 
+     * @param msgBytes the byte array containing all information for the unmarshalling
+     * @param status the status of the message to be unmarshalled
+     * @return Message containing the metadata from the byte array
+     */
     private static IMessage unmarshallMetadata(byte[] msgBytes, Status status) {
         int metadataSize = msgBytes[1];
         Metadata metadata = new Metadata();
@@ -99,6 +106,12 @@ public class MessageMarshaller {
     }
 
 
+    /**
+     * Marshalls messages containing metadata so they can be sent over a socket
+     * 
+     * @param message the message to be sent
+     * @return a byte array containing all information from the message
+     */
     public static byte[] marshallMetadata(IMessage message) {
     	Metadata metadata = message.getMetadata();
     	byte[] output = new byte[1 + 1 + metadata.getSize()*(4 + 2 + 16 + 16)];

@@ -31,6 +31,12 @@ public class KeyHashRange implements Serializable {
         return false;
     }
 
+    /**
+     * Tests if this key range is contained within another range
+     * 
+     * @param otherRange the other range 
+     * @return true if it is a subrange
+     */
     public boolean isSubRangeOf(KeyHashRange otherRange) {
         boolean isStartGreaterEqual = HashUtils.compare(getStartBytes(), otherRange.getStartBytes()) >= 0;
         boolean isEndLessEqual = HashUtils.compare(getEndBytes(), otherRange.getEndBytes()) <= 0;

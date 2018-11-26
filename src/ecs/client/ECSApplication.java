@@ -1,4 +1,4 @@
-package ecs.client.app;
+package ecs.client;
 
 import java.io.IOException;
 import java.util.*;
