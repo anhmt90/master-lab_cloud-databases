@@ -58,7 +58,7 @@ public class MarshallingTest extends TestCase {
 		IMessage message = new Message(Status.SERVER_STOPPED);
 		byte[] marshalledMessage = MessageMarshaller.marshall(message);
 		IMessage unmarshalledMessage = MessageMarshaller.unmarshall(marshalledMessage);
-		assertEquals(message, unmarshalledMessage);
+		assertTrue(message.getStatus().equals(unmarshalledMessage.getStatus()));
     }
     
     @Test
@@ -67,6 +67,7 @@ public class MarshallingTest extends TestCase {
 		IMessage message = new Message(Status.GET, new K(keyBytes));
 		byte[] marshalledMessage = MessageMarshaller.marshall(message);
 		IMessage unmarshalledMessage = MessageMarshaller.unmarshall(marshalledMessage);
-		assertEquals(message, unmarshalledMessage);
+		assertTrue(message.getStatus().equals(unmarshalledMessage.getStatus()));
+		assertEquals(message.getK().getString(), unmarshalledMessage.getK().getString());
     }
 }

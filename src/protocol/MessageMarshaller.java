@@ -19,7 +19,7 @@ public class MessageMarshaller {
             return null;
         }
         if(message.getStatus().equals(Status.SERVER_NOT_RESPONSIBLE)) {
-        	return unmarshallMetadata(message);
+        	return marshallMetadata(message);
         }
         byte[] keyBytes = message.getK() != null ? message.getK().get() : new byte[]{};
         byte[] valueBytes = message.getV() != null ? message.getV().get() : new byte[]{};
@@ -56,7 +56,7 @@ public class MessageMarshaller {
 
         int valLength = ByteBuffer.wrap(new byte[]{0, msgBytes[1], msgBytes[2], msgBytes[3]}).getInt();
 
-        byte[] keyBytes = new byte[16];
+        byte[] keyBytes = new byte[msgBytes.length - valLength - 4];
         System.arraycopy(msgBytes, 1 + 3, keyBytes, 0, keyBytes.length);
 
         byte[] valBytes = new byte[valLength];
@@ -73,14 +73,17 @@ public class MessageMarshaller {
             String host = "";
             for(int j = 0; j < 4; j++) {
                 host = host + Byte.toString(msgBytes[2 + j + i*38]);
+                if(j < 3) {
+                	host = host + ".";
+                }
             }
             byte[] portBytes = {msgBytes[6 + i*38], msgBytes[7 + i*38]};
             int port = (portBytes[0]<< 8)&0x0000ff00|
-                       (portBytes[1]<< 0)&0x000000ff;;
+                       (portBytes[1]<< 0)&0x000000ff;
             String hashRangeStart = "";
             String hashRangeEnd = "";
             for(int j = 0; j < 16; j++) {
-                hashRangeStart = hashRangeStart + Byte.toString(msgBytes[7 + j + i*38]);
+                hashRangeStart = hashRangeStart + Byte.toString(msgBytes[8 + j + i*38]);
                 hashRangeEnd = hashRangeEnd + Byte.toString(msgBytes[24 + j + i*38]);
             }
             metadata.add(StringUtils.EMPTY_STRING, host, port, hashRangeStart, hashRangeEnd);
@@ -89,7 +92,7 @@ public class MessageMarshaller {
     }
 
 
-    public static byte[] unmarshallMetadata(IMessage message) {
+    public static byte[] marshallMetadata(IMessage message) {
     	Metadata metadata = message.getMetadata();
     	byte[] output = new byte[1 + 1 + metadata.getSize()*(4 + 2 + 16 + 16)];
     	
