@@ -7,6 +7,10 @@ import java.lang.reflect.Array;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
+/**
+ * Maps server connections in a tree structure
+ *
+ */
 public class NodesChord {
     private TreeMap<String, KVServer> nodes = new TreeMap<>();
     private Metadata md = new Metadata();
