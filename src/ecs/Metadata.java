@@ -1,5 +1,6 @@
 package ecs;
 
+import javax.xml.soap.Node;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -7,6 +8,15 @@ import java.util.List;
 public class Metadata implements Serializable {
 	List<NodeInfo> meta = new ArrayList<>();
 
+	/**
+	 * Adds an element to the metadata list
+	 * 
+	 * @param nodeName name of the added node
+	 * @param host IPv4 address of the host in String format
+	 * @param port port on which the ECS connects
+	 * @param start the beginning of the key range the server is responsible for
+	 * @param end the end of the key range the server is responsible for
+	 */
 	public void add(String nodeName, String host, int port, String start, String end) {
 	  System.out.println(String.format("WHAT %s %s", start, end));
 		if (start.equals(end)) {
@@ -15,6 +25,10 @@ public class Metadata implements Serializable {
 		}
 		NodeInfo kvSMeta = new NodeInfo(nodeName, host, port, start, end);
 		this.meta.add(kvSMeta);
+	}
+
+	public void add (NodeInfo nodeInfo) {
+		meta.add(nodeInfo);
 	}
 
 	/**

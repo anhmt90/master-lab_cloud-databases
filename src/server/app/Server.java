@@ -3,7 +3,6 @@ package server.app;
 import ecs.KeyHashRange;
 import ecs.Metadata;
 import ecs.NodeInfo;
-import logger.LogSetup;
 import management.IExternalConfigurationService;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
@@ -97,7 +96,7 @@ public class Server extends Thread implements IExternalConfigurationService {
         }
 
         LOG.info("Server initialized with cache size " + cacheSize
-            + " and displacement strategy " + strategy);
+                + " and displacement strategy " + strategy);
         return true;
     }
 
@@ -166,13 +165,7 @@ public class Server extends Thread implements IExternalConfigurationService {
             return false;
         if (!isWriteLocked())
             return false;
-        BatchDataTransferProcessor processor = null;
-        try {
-            processor = new BatchDataTransferProcessor(target);
-        } catch (IOException ioe) {
-            return LogUtils.exitWithError(LOG, ioe);
-        }
-        return processor.handleTransferData(range);
+        return new BatchDataTransferProcessor(target, cm.getPersistenceManager().getDbPath()).handleTransferData(range);
 
     }
 
@@ -199,7 +192,7 @@ public class Server extends Thread implements IExternalConfigurationService {
                         new Thread(connection).start();
 
                         LOG.info(
-                            "Connected to " + client.getInetAddress().getHostName() + " on port " + client.getPort());
+                                "Connected to " + client.getInetAddress().getHostName() + " on port " + client.getPort());
                     }
                 } catch (IOException e) {
                     LOG.error("Error! " + "Unable to establish connection. \n", e);
@@ -217,7 +210,7 @@ public class Server extends Thread implements IExternalConfigurationService {
     private boolean initServer() {
         LOG.info("Initialize server ...");
         try {
-            kvSocket = new ServerSocket(port);
+                kvSocket = new ServerSocket(port);
             LOG.info("Server listening on port: " + kvSocket.getLocalPort());
             return true;
         } catch (IOException e) {
@@ -249,8 +242,8 @@ public class Server extends Thread implements IExternalConfigurationService {
 
     private KeyHashRange getHashRange(Metadata metadata) throws NoSuchElementException {
         Optional<NodeInfo> nodeData = metadata.get().stream()
-            .filter(md -> md.getPort() == kvSocket.getLocalPort() && md.getHost().equals(kvSocket.getInetAddress().getHostAddress()))
-            .findFirst();
+                .filter(md -> md.getPort() == kvSocket.getLocalPort() && md.getName().equals(serverName))
+                .findFirst();
         if (!nodeData.isPresent())
             throw new NoSuchElementException("Metadata does not contain info for this node");
         return nodeData.get().getRange();
@@ -353,7 +346,7 @@ public class Server extends Thread implements IExternalConfigurationService {
      *                                  recognized Displacement Strategy
      */
     private static CacheDisplacementStrategy getDisplacementStrategyByName(String strategy)
-        throws IllegalArgumentException {
+            throws IllegalArgumentException {
         switch (strategy.toUpperCase()) {
             case "FIFO":
                 return CacheDisplacementStrategy.FIFO;
@@ -381,10 +374,9 @@ public class Server extends Thread implements IExternalConfigurationService {
             }
         }
         System.out.println(
-            "Invalid Log Level. Please choose one of the following: 'ALL', 'INFO', 'DEBUG', 'WARN', 'ERROR', 'FATAL', 'OFF'");
+                "Invalid Log Level. Please choose one of the following: 'ALL', 'INFO', 'DEBUG', 'WARN', 'ERROR', 'FATAL', 'OFF'");
         return false;
     }
-
 
 
     /**
@@ -408,7 +400,7 @@ public class Server extends Thread implements IExternalConfigurationService {
         String portStr = args[1];
         String logLevel = DEFAULT_LOG_LEVEL;
         if (args.length == 3 && isValidLogLevel(args[2]))
-          logLevel = args[2];
+            logLevel = args[2];
 
         int port = -1;
         if (isValidPortNumber(portStr))

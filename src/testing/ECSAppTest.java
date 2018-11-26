@@ -11,7 +11,7 @@ import org.apache.logging.log4j.Logger;
 import org.junit.Test;
 
 import client.app.CommandLineApp;
-import ecs.client.app.ECSApplication;
+import ecs.client.ECSApplication;
 
 import org.junit.Before;
 import org.junit.After;

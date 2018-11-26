@@ -41,7 +41,7 @@ public class HashUtils {
         while (sb.length() < 32) {
             sb.insert(0, '0');
         }
-        return sb.toString();
+        return sb.toString().toLowerCase();
     }
 
     public static String increaseHashBy1 (String hashString) {
@@ -67,13 +67,14 @@ public class HashUtils {
         Validate.isTrue(hashA.length == hashB.length, "Length of 2 hash values do not match");
 
         for (int i = 0; i < hashA.length; i++) {
-            if (hashA[i] < hashB[i])
+            if ((hashA[i] & 0xFF)  < (hashB[i] & 0xFF))
                 return -1;
 
-            else if (hashA[i] > hashB[i])
+            else if ((hashA[i] & 0xFF)  > (hashB[i] & 0xFF))
                 return 1;
 
         }
         return 0;
     }
+
 }
