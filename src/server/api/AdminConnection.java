@@ -88,6 +88,7 @@ public class AdminConnection implements Runnable {
     }
 
     private boolean handleAdminRequest(ConfigMessage configMessage) {
+        LOG.info("handle request from ECS with status " + configMessage.getStatus());
         switch (configMessage.getStatus()) {
             case INIT:
                 return server.initKVServer(configMessage.getMetadata(), configMessage.getCacheSize(), configMessage.getStrategy());
@@ -151,6 +152,6 @@ public class AdminConnection implements Runnable {
 
     @Override
     public void run() {
-
+        pollRequests();
     }
 }

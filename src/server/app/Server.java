@@ -3,6 +3,7 @@ package server.app;
 import ecs.KeyHashRange;
 import ecs.Metadata;
 import ecs.NodeInfo;
+import logger.LogSetup;
 import management.IExternalConfigurationService;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
@@ -392,7 +393,6 @@ public class Server extends Thread implements IExternalConfigurationService {
      * @param args contains the port number at args[0], the cache size at args[1], the cache displacement strategy at args[2] and the logging Level at args[3].
      */
     public static void main(String[] args) {
-        LOG.info("In Server#main()");
         Server server = createServer(args);
         server.setServerName(args[0]);
         LOG.info("Server " + server.getName() + " created and serving on port " + server.getPort());

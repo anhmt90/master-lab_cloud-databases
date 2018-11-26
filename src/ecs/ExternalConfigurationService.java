@@ -41,6 +41,10 @@ public class ExternalConfigurationService implements IECS {
         for (int i = 0; i < numberOfNodes; i++) {
             int n = ThreadLocalRandom.current().nextInt(this.serverPool.size());
             KVServer kvS = this.serverPool.get(n);
+            if(chord.nodes().contains(kvS)) {
+                i--;
+                continue;
+            }
             this.serverPool.remove(n);
             this.chord.add(kvS);
         }

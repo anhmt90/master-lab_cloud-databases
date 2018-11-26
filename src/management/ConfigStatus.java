@@ -1,6 +1,8 @@
 package management;
 
-public enum ConfigStatus {
+import java.io.Serializable;
+
+public enum ConfigStatus implements Serializable {
         INIT,
         START,
         STOP,

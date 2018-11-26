@@ -35,7 +35,7 @@ public class KVServer implements Comparable<KVServer> {
   private BufferedOutputStream bos;
 
   private final static int SSH_PORT = 22;
-  private final static String SSH_BASE_CMD = "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -n ecs@%s -p %d ";
+  private final static String SSH_BASE_CMD = "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -n anhmt90@%s -p %d ";
   private String sshCMD;
 
   public KVServer(String serverName, String host, String port) {
@@ -50,7 +50,7 @@ public class KVServer implements Comparable<KVServer> {
     this.nodeName = serverName;
     this.address = address;
     this.socket = new Socket();
-    this.sshCMD = String.format(SSH_BASE_CMD + "nohup java -jar /opt/app/ms3-server.jar %s %d &",
+    this.sshCMD = String.format(SSH_BASE_CMD + "nohup java -jar ~/gr7/ms3-server.jar %s %d &",
         getHost(),
         SSH_PORT,
         getNodeName(),
@@ -74,14 +74,16 @@ public class KVServer implements Comparable<KVServer> {
     boolean launched = true;
     try {
       proc = run.exec(this.sshCMD);
-      proc.waitFor();
+      Thread.sleep(1000);
       this.initSocket();
       this.bos.write(new byte[]{1});
       this.bos.flush();
       LOG.info(String.format("Started server %s:%d via ssh", this.address.getHostString(), this.address.getPort()));
-    } catch (IOException | InterruptedException e) {
+    } catch (IOException e) {
       launched = false;
-      LOG.error(String.format("Couldn't launch the server %s:%d", this.getHost(), this.getPort()));
+      LOG.error(String.format("Couldn't launch the server %s:%d", this.getHost(), this.getPort()) + e);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
     }
     callback.accept(launched);
   }

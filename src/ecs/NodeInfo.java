@@ -1,6 +1,8 @@
 package ecs;
 
-public class NodeInfo {
+import java.io.Serializable;
+
+public class NodeInfo implements Serializable {
     private String name;
     private String host;
     private int port;

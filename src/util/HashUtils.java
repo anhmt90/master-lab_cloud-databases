@@ -44,6 +44,17 @@ public class HashUtils {
         return sb.toString();
     }
 
+    public static String increaseHashBy1 (String hashString) {
+        byte[] hashBytes = getHashBytesOf(hashString);
+        int i = hashBytes.length - 1;
+        while (hashBytes[i] == 0xFF) {
+            hashBytes[i] = 0x00;
+            i--;
+        }
+        hashBytes[i] += 0x01;
+        return getHashStringOf(hashBytes);
+    }
+
 
     /**
      * Compares 2 MD5 hashes represented as byte arrays

@@ -3,14 +3,16 @@ package ecs;
 import util.HashUtils;
 import util.Validate;
 
-public class KeyHashRange {
+import java.io.Serializable;
+
+public class KeyHashRange implements Serializable {
     String start;
     String end;
 
     public KeyHashRange(String start, String end) {
-        Validate.isTrue(isValidKeyRange(), "Invalid key range");
         this.start = start;
         this.end = end;
+        Validate.isTrue(isValidKeyRange(), "Invalid key range");
     }
 
     /**
