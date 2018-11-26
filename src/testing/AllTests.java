@@ -44,7 +44,7 @@ public class AllTests {
         clientSuite.addTestSuite(FetchBatchDataTest.class);
         clientSuite.addTestSuite(InteractionTest.class);
         clientSuite.addTestSuite(KeyRangeTest.class);
-//        clientSuite.addTestSuite(MarshallingTest.class);
+        clientSuite.addTestSuite(MarshallingTest.class);
         clientSuite.addTestSuite(PersistenceTest.class);
         return clientSuite;
     }
