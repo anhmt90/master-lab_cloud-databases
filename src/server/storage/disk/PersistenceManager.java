@@ -23,10 +23,11 @@ import static util.FileUtils.SEP;
 public class PersistenceManager implements IPersistenceManager {
 	private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
 	
-	private static final String DB_PATH = System.getProperty("user.dir") + SEP + "db" + SEP;
+	private String db_path = System.getProperty("user.dir") + SEP + "db" + SEP;
 
     public PersistenceManager(String serverId) {
-        createDBDir(DB_PATH + serverId + SEP);
+        db_path += serverId + SEP;
+        createDBDir(db_path);
     }
 
     /**
@@ -75,7 +76,7 @@ public class PersistenceManager implements IPersistenceManager {
      * @return a directory path corresponding to the key
      */
 	public Path getFilePath(String key) {
-		String path = DB_PATH  + SEP + StringUtils.insertCharEvery(key, '/',2) + key;
+		String path = db_path  + SEP + StringUtils.insertCharEvery(key, '/',2) + key;
 		return Paths.get(path);
 	}
 
@@ -132,6 +133,10 @@ public class PersistenceManager implements IPersistenceManager {
             }
         }
         return null;
+    }
+
+    public String getDbPath() {
+        return db_path;
     }
 }
 

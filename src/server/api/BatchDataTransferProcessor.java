@@ -21,10 +21,13 @@ import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static util.FileUtils.SEP;
 
 public class BatchDataTransferProcessor {
+    private static final String DATA_TRANSFER_INDEX_FOLDER = System.getProperty("user.dir") + SEP + "dti" + SEP;
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
 
     /**
@@ -35,21 +38,61 @@ public class BatchDataTransferProcessor {
     BufferedInputStream bis;
 
     NodeInfo target;
+    String dbPath;
 
-    public BatchDataTransferProcessor(NodeInfo target) throws IOException {
+    public BatchDataTransferProcessor(NodeInfo target, String dbPath) {
         this.target = target;
+        this.dbPath = dbPath;
+    }
+
+    private void initSocket() throws IOException {
         connect();
         bos = new BufferedOutputStream(moveDataSocket.getOutputStream());
         bis = new BufferedInputStream(moveDataSocket.getInputStream());
     }
 
     public boolean handleTransferData(KeyHashRange range) {
-        if (range.isWrappedAround()) {
-            KeyHashRange leftRange = new KeyHashRange(range.getStart(), new String(new char[4]).replace("\0", "FFFF"));
-            KeyHashRange rightRange = new KeyHashRange(new String(new char[4]).replace("\0", "0000"), range.getEnd());
-            return handleTransferData(leftRange) && handleTransferData(rightRange);
+        String[] indexFiles = new String[0];
+        try {
+            indexFiles = indexRelevantDataFiles(range);
+            return transfer(indexFiles);
+        } catch (IOException ioe) {
+            return LogUtils.exitWithError(LOG, ioe);
+        } finally {
+            try {
+                cleanUp(indexFiles);
+            } catch (IOException ioe) {
+                return LogUtils.exitWithError(LOG, ioe);
+            }
+        }
+    }
+
+    private void cleanUp(String[] indexFiles) throws IOException {
+        if(indexFiles.length > 0) {
+            for (String indexFile : indexFiles) {
+                Path indexFilePath = Paths.get(indexFile);
+                for (String dataFile: Files.readAllLines(indexFilePath)) {
+                    Files.deleteIfExists(Paths.get(dataFile));
+                }
+                Files.deleteIfExists(Paths.get(indexFile));
+            }
         }
 
+        Path[] indexFilesToRemove = Files.list(Paths.get(DATA_TRANSFER_INDEX_FOLDER))
+                .filter(Files::isRegularFile)
+                .toArray(Path[]::new);
+        for (Path p : indexFilesToRemove)
+            Files.deleteIfExists(p);
+        Files.deleteIfExists(Paths.get(DATA_TRANSFER_INDEX_FOLDER));
+    }
+
+    public String[] indexRelevantDataFiles(KeyHashRange range) {
+        if (range.isWrappedAround()) {
+            KeyHashRange leftRange = new KeyHashRange(range.getStart(), new String(new char[8]).replace("\0", "ffff"));
+            KeyHashRange rightRange = new KeyHashRange(new String(new char[8]).replace("\0", "0000"), range.getEnd());
+            return Stream.concat(Arrays.stream(indexRelevantDataFiles(leftRange)), Arrays.stream(indexRelevantDataFiles(rightRange)))
+                    .toArray(String[]::new);
+        }
         String[] start = StringUtils.splitEvery(range.getStart(), 2);
         String[] end = StringUtils.splitEvery(range.getEnd(), 2);
         String commonPrefix = StringUtils.getLongestCommonPrefix(range.getStart(), range.getEnd());
@@ -57,60 +100,96 @@ public class BatchDataTransferProcessor {
         String startDir = start[commonPrefix.length() / 2];
         String endDir = end[commonPrefix.length() / 2];
 
-        String commonParent = StringUtils.joinSeparated(Arrays.copyOfRange(start, 0, commonPrefix.length() / 2 - 1), SEP);
+        String commonParent = commonPrefix.length() == 0 ?
+                StringUtils.EMPTY_STRING :
+                StringUtils.joinSeparated(Arrays.copyOfRange(start, 0, commonPrefix.length() / 2 - 1), SEP);
+
+        String[] firstDiffDirs = new String[0];
         try {
-            String[] directChildDirs = getSortedChildDirs(commonParent);
-            int lowerBoundIndex = Arrays.binarySearch(directChildDirs, startDir);
-            if (lowerBoundIndex == directChildDirs.length)
-                return true;
-            int upperBoundIndex = Arrays.binarySearch(directChildDirs, endDir);
-            String[] middleFullRangeDirs = Arrays.copyOfRange(directChildDirs, lowerBoundIndex + 1, upperBoundIndex);
-            String[] indexFiles = getFilesRecursively(commonParent, middleFullRangeDirs);
+            firstDiffDirs = getSortedChildDirs(commonParent);
+            int lowerBound = getIndex(startDir, firstDiffDirs);
+            int upperBound = getIndex(endDir, firstDiffDirs);
 
-            for (int i = commonPrefix.length() / 2 + 1; i < start.length; i++) {
-                String[] startIndexFiles = walkStart(Arrays.copyOfRange(start, 0, i), start[i]);
-                String[] endIndexFiles = walkEnd(Arrays.copyOfRange(end, 0, i), end[i]);
-                indexFiles = merge(indexFiles, startIndexFiles, endIndexFiles);
+            int from = lowerBound < 0 ? -(lowerBound + 1) : lowerBound + 1;
+            int to = upperBound < 0 ? -(upperBound + 1) : upperBound;
+
+            String[] middleFullRangeDirs = Arrays.copyOfRange(firstDiffDirs, from, to);
+            List<String> indexFiles = Arrays.stream(getFilesRecursively(commonParent, middleFullRangeDirs)).collect(Collectors.toList());
+
+            walkStart(start, commonPrefix, firstDiffDirs, lowerBound, indexFiles);
+            walkEnd(end, commonPrefix, firstDiffDirs, upperBound, indexFiles);
+            return indexFiles.toArray(new String[indexFiles.size()]);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+
+    private void walkStart(String[] start,
+                           String commonPrefix,
+                           String[] firstDiffDirs,
+                           int lowerBound,
+                           List<String> indexFiles) throws IOException {
+        String currDir = StringUtils.EMPTY_STRING;
+        int i = commonPrefix.length() / 2 + 1;
+        String[] directChildren = Arrays.copyOfRange(firstDiffDirs, 0, firstDiffDirs.length);
+        while (lowerBound >= 0) {
+            currDir = currDir + directChildren[lowerBound] + SEP;
+            directChildren = getSortedChildDirs(currDir);
+            if (directChildren.length == 0) {
+                visitLastFile(indexFiles, currDir);
+                break;
             }
-            return transfer(indexFiles);
-
-        } catch (IOException ioe) {
-            return LogUtils.exitWithError(LOG, ioe);
+            lowerBound = getIndex(start[i], directChildren);
+            int from = lowerBound < 0 ? -(lowerBound + 1) : lowerBound + 1;
+            String[] fullRangeDirs = Arrays.copyOfRange(directChildren, from, directChildren.length);
+            String[] startIndexFiles = getFilesRecursively(currDir, fullRangeDirs);
+            indexFiles.addAll(Arrays.asList(startIndexFiles));
+            i++;
         }
     }
 
-    private String[] merge(String[] indexFiles, String[] startIndexFiles, String[] endIndexFiles) {
-        String[] totalIndexFiles = new String[indexFiles.length + startIndexFiles.length + endIndexFiles.length];
-        System.arraycopy(indexFiles, 0, totalIndexFiles, 0, indexFiles.length);
-        System.arraycopy(startIndexFiles, 0, totalIndexFiles, indexFiles.length, startIndexFiles.length);
-        System.arraycopy(endIndexFiles, 0, totalIndexFiles, indexFiles.length + startIndexFiles.length, endIndexFiles.length);
-        indexFiles = totalIndexFiles;
-        totalIndexFiles = null;
-        return indexFiles;
+    private void walkEnd(String[] end,
+                         String commonPrefix,
+                         String[] firstDiffDirs,
+                         int upperBound,
+                         List<String> indexFiles) throws IOException {
+        String currDir = StringUtils.EMPTY_STRING;
+        int i = commonPrefix.length() / 2 + 1;
+        String[] directChildren = Arrays.copyOfRange(firstDiffDirs, 0, firstDiffDirs.length);
+        while (upperBound >= 0) {
+            currDir = currDir + directChildren[upperBound] + SEP;
+            directChildren = getSortedChildDirs(currDir);
+            if (directChildren.length == 0) {
+                visitLastFile(indexFiles, currDir);
+                break;
+            }
+            upperBound = getIndex(end[i], directChildren);
+            int to = upperBound < 0 ? -(upperBound + 1) : upperBound;
+            String[] fullRangeDirs = Arrays.copyOfRange(directChildren, 0, to);
+            String[] endIndexFiles = getFilesRecursively(currDir, fullRangeDirs);
+            indexFiles.addAll(Arrays.asList(endIndexFiles));
+            i++;
+        }
     }
 
-    private String[] walkStart(String[] parentDirs, String lowerBound) throws IOException {
-        String currDir = StringUtils.joinSeparated(parentDirs, SEP);
-        String[] directChildDirs = getSortedChildDirs(currDir);
-        int lowerBoundIndex = Arrays.binarySearch(directChildDirs, lowerBound);
-        if (lowerBoundIndex == directChildDirs.length)
-            return new String[0];
-        String[] fullRangeDirs = Arrays.copyOfRange(directChildDirs, lowerBoundIndex + 1, directChildDirs.length);
-        return getFilesRecursively(currDir, fullRangeDirs);
+    private void visitLastFile(List<String> indexFiles, String currDir) throws IOException {
+        String name = StringUtils.removeChar(currDir, SEP.charAt(0));
+        Path indexFile = Paths.get(DATA_TRANSFER_INDEX_FOLDER + name);
+        Files.deleteIfExists(indexFile);
+        Files.createFile(indexFile);
+        indexFile = Files.write(indexFile, (dbPath + currDir + name).getBytes(), StandardOpenOption.APPEND);
+        indexFiles.add(indexFile.toString());
     }
 
-    private String[] walkEnd(String[] parentDirs, String upperBound) throws IOException {
-        String currDir = StringUtils.joinSeparated(parentDirs, SEP);
-        String[] directChildDirs = getSortedChildDirs(currDir);
-        int upperBoundIndex = Arrays.binarySearch(directChildDirs, upperBound);
-        if (upperBoundIndex == -1)
-            return new String[0];
-        String[] fullRangeDirs = Arrays.copyOfRange(directChildDirs, 0, upperBoundIndex);
-        return getFilesRecursively(currDir, fullRangeDirs);
+    private int getIndex(String startDir, String[] directChildDirs) {
+        return Arrays.binarySearch(directChildDirs, startDir);
     }
 
     private String[] getSortedChildDirs(String currDir) throws IOException {
-        String[] directChildDirs = Files.list(Paths.get(currDir))
+        String[] directChildDirs = Files.list(Paths.get(dbPath + currDir))
                 .filter(Files::isDirectory)
                 .map(path -> path.getFileName().toString())
                 .toArray(String[]::new);
@@ -124,17 +203,23 @@ public class BatchDataTransferProcessor {
      * @param dirs
      * @return array of paths to temp files containing KV-file paths
      */
-    private String[] getFilesRecursively(String pathString, String[] dirs) {
+    private String[] getFilesRecursively(String pathString, String[] dirs) throws IOException {
+        Path indexPath = Paths.get(DATA_TRANSFER_INDEX_FOLDER);
+        Files.createDirectories(indexPath);
+
         String[] indexFiles = new String[dirs.length];
         for (int i = 0; i < dirs.length; i++) {
             try {
                 String indexFileName = StringUtils.removeChar(pathString, SEP.charAt(0)) + dirs[i];
-                Path indexFile = Files.createFile(Paths.get(System.getProperty("user.dir") + SEP + "tmp" + SEP + indexFileName));
+                Path newIndexFile = Paths.get(indexPath.toString() + SEP + indexFileName);
+                Files.deleteIfExists(newIndexFile);
+                Path indexFile = Files.createFile(newIndexFile);
 
-                Files.walkFileTree(Paths.get(pathString + dirs[i] + SEP), new SimpleFileVisitor<Path>() {
+                Path child = Paths.get(dbPath + SEP + pathString + SEP + dirs[i] + SEP);
+                Files.walkFileTree(child, new SimpleFileVisitor<Path>() {
                     @Override
                     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                        if (!attrs.isDirectory()) {
+                        if (!Files.isDirectory(file)) {
                             Files.write(indexFile, file.toString().getBytes(), StandardOpenOption.APPEND);
                         }
                         return FileVisitResult.CONTINUE;
@@ -150,6 +235,8 @@ public class BatchDataTransferProcessor {
     }
 
     public boolean transfer(String[] indexFiles) throws IOException {
+        if (moveDataSocket == null || moveDataSocket.isClosed() || !moveDataSocket.isConnected())
+            initSocket();
         for (String indexFile : indexFiles) {
             List<String> filesToMove = Files.readAllLines(Paths.get(indexFile));
             for (String file : filesToMove) {
@@ -222,5 +309,9 @@ public class BatchDataTransferProcessor {
         } catch (IOException e) {
             LogUtils.printLogError(LOG, e, "Connection is already closed.");
         }
+    }
+
+    public static String getDataTransferIndexFolder() {
+        return DATA_TRANSFER_INDEX_FOLDER;
     }
 }
