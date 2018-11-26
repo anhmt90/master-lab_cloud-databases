@@ -210,7 +210,7 @@ public class Server extends Thread implements IExternalConfigurationService {
     private boolean initServer() {
         LOG.info("Initialize server ...");
         try {
-            kvSocket = new ServerSocket(port);
+                kvSocket = new ServerSocket(port);
             LOG.info("Server listening on port: " + kvSocket.getLocalPort());
             return true;
         } catch (IOException e) {
@@ -242,7 +242,7 @@ public class Server extends Thread implements IExternalConfigurationService {
 
     private KeyHashRange getHashRange(Metadata metadata) throws NoSuchElementException {
         Optional<NodeInfo> nodeData = metadata.get().stream()
-                .filter(md -> md.getPort() == kvSocket.getLocalPort() && md.getHost().equals(kvSocket.getInetAddress().getHostAddress()))
+                .filter(md -> md.getPort() == kvSocket.getLocalPort() && md.getName().equals(serverName))
                 .findFirst();
         if (!nodeData.isPresent())
             throw new NoSuchElementException("Metadata does not contain info for this node");

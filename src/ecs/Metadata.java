@@ -1,5 +1,6 @@
 package ecs;
 
+import javax.xml.soap.Node;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,6 +25,10 @@ public class Metadata implements Serializable {
 		}
 		NodeInfo kvSMeta = new NodeInfo(nodeName, host, port, start, end);
 		this.meta.add(kvSMeta);
+	}
+
+	public void add (NodeInfo nodeInfo) {
+		meta.add(nodeInfo);
 	}
 
 	/**

@@ -180,7 +180,7 @@ public class Client implements IClient {
 	@Override
 	public IMessage put(String key, String value) throws IOException {
 		IMessage serverResponse;
-		if(connectedServerHashRange != null && !connectedServerHashRange.inRange(key)) {
+		if(connectedServerHashRange != null && !connectedServerHashRange.inRange(HashUtils.getHash(key))) {
 			reroute(key);
 		}
 		if (value != null && value.equals("null"))
@@ -244,7 +244,7 @@ public class Client implements IClient {
 
 	@Override
 	public IMessage get(String key) throws IOException {
-		if(connectedServerHashRange != null && !connectedServerHashRange.inRange(key)) {
+		if(connectedServerHashRange != null && !connectedServerHashRange.inRange(HashUtils.getHash(key))) {
 			reroute(key);
 		}
 		IMessage serverResponse = sendWithoutValue(key, Status.GET);

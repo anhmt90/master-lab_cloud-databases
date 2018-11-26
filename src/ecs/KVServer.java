@@ -15,6 +15,10 @@ import java.util.function.Consumer;
 
 import static protocol.IMessage.MAX_MESSAGE_LENGTH;
 
+/**
+ * Handles connection from ECS to one key-value storage server
+ *
+ */
 public class KVServer implements Comparable<KVServer> {
   private static final String ECS_LOG = "ECS";
   private static Logger LOG = LogManager.getLogger(ECS_LOG);
@@ -92,6 +96,12 @@ public class KVServer implements Comparable<KVServer> {
   }
 
 
+  /**
+   * Sends a message to the connected server
+   * 
+   * @param message message to be sent
+   * @throws IOException
+   */
   public void send(ConfigMessage message) throws IOException {
     try {
       bos.write(ConfigMessageMarshaller.marshall(message));
@@ -208,6 +218,13 @@ public class KVServer implements Comparable<KVServer> {
     return false;
   }
 
+  /**
+   * Sends a ConfigMessage and 
+   * @param toSend
+   * @param expected
+   * @return
+   * @throws IOException
+   */
   private boolean sendAndExpect(ConfigMessage toSend, ConfigStatus expected) throws IOException {
     if (bos != null && bis != null) {
       send(toSend);
