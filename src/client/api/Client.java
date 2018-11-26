@@ -159,7 +159,6 @@ public class Client implements IClient {
 		disconnect();
 		this.address = meta.getHost();
 		this.port = meta.getPort();
-		this.connectedServerHashRange = meta.getRange();
 		connect();
 		if (isConnected()) {
 			byte[] bytes = receive();
@@ -181,7 +180,7 @@ public class Client implements IClient {
 	@Override
 	public IMessage put(String key, String value) throws IOException {
 		IMessage serverResponse;
-		if(!connectedServerHashRange.inRange(key)) {
+		if(connectedServerHashRange != null && !connectedServerHashRange.inRange(key)) {
 			reroute(key);
 		}
 		if (value != null && value.equals("null"))
@@ -212,6 +211,8 @@ public class Client implements IClient {
 			throws IOException {
 		if(serverResponse.getMetadata() != null) {
 			this.metadata = serverResponse.getMetadata();
+			NodeInfo meta = metadata.findMatchingServer(key);
+			this.connectedServerHashRange = meta.getRange();
 			switch (command) {
 			case PUT:
 				return put(key, value);
@@ -243,7 +244,7 @@ public class Client implements IClient {
 
 	@Override
 	public IMessage get(String key) throws IOException {
-		if(!connectedServerHashRange.inRange(key)) {
+		if(connectedServerHashRange != null && !connectedServerHashRange.inRange(key)) {
 			reroute(key);
 		}
 		IMessage serverResponse = sendWithoutValue(key, Status.GET);

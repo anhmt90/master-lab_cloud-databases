@@ -15,15 +15,25 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import static util.StringUtils.WHITE_SPACE;
 
+/**
+ * Manages the storage service and the connection to its nodes
+ *
+ */
 public class ExternalConfigurationService implements IECS {
     public static final String ECS_LOG = "ECS";
     private static Logger LOG = LogManager.getLogger(ECS_LOG);
 
+    /**
+     * Structures keeping track of the servers in the storage service and their connections
+     */
     private NodesChord chord = new NodesChord();
     private List<KVServer> serverPool = new ArrayList<>();
     
     private boolean running = false;
 
+    /**
+     * Sends the updated local metadata to all servers participating in the storage service
+     */
     private void publishMetadata() {
         Metadata md = chord.getMetadata();
         for (KVServer kvS : this.chord.nodes()) {
@@ -145,6 +155,7 @@ public class ExternalConfigurationService implements IECS {
 
     }
 
+    
     public ExternalConfigurationService(String configFile) throws IOException {
         List<String> lines = Files.readAllLines(Paths.get(configFile));
         Collections.shuffle(lines);
