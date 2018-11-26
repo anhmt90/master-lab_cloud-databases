@@ -20,9 +20,14 @@ public class EnronDataset {
 
     public KV(String key, String val) {
       this.val = val;
-      this.key = key;
 
-//      Matcher m = keyPattern.matcher(key);
+      Matcher m = keyPattern.matcher(key);
+      String s = "stub";
+      while (m.find()) {
+        s = m.group();
+        // s now contains "BAR"
+      }
+      this.key = s;
     }
 
   }

@@ -32,6 +32,7 @@ public class Server extends Thread implements IExternalConfigurationService {
     private static final String DEFAULT_LOG_LEVEL = "ALL";
     private static final int DEFAULT_CACHE_SIZE = 100;
     private static final int DEFAULT_PORT = 50000;
+    private boolean adminConnected;
 
     private static Logger LOG = LogManager.getLogger(SERVER_LOG);
 
