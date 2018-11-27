@@ -218,7 +218,11 @@ public class Client implements IClient {
 			throws IOException {
 		if(serverResponse.getMetadata() != null) {
 			this.metadata = serverResponse.getMetadata();
-			NodeInfo meta = metadata.findMatchingServer(key);
+			NodeInfo meta = metadata.findMatchingServer(HashUtils.getHash(key));
+			if(meta == null) {
+				print("No server found as responsible for the key.");
+				throw LogUtils.printLogError(LOG, new IOException(), "No server found responsible for key can't route request.");
+			}
 			this.connectedServerHashRange = meta.getRange();
 			switch (command) {
 			case PUT:
