@@ -62,8 +62,12 @@ public class EnronDataset {
     StringBuilder sb = new StringBuilder();
     Iterator<String> iter = lines.iterator();
     String key = iter.next();
+    int limit = 2;
     while (iter.hasNext()) {
       sb.append(iter.next());
+      if (limit-- <= 0 ) {
+        break;
+      }
     }
     String value = sb.toString();
 

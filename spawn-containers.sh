@@ -42,7 +42,7 @@ function write_service {
       performance_test_ntwrk:
         ipv4_address: $host
     volumes:
-      - "./:/opt/app"
+      - "./:/home/ecs"
 
 EOF
 }

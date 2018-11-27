@@ -1,5 +1,6 @@
 package testing.performance;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -50,12 +51,16 @@ class ReportBuilder {
   }
 
   public void writeToFile(String path) throws IOException {
+    addSb();
     Path p = Paths.get(path);
-    writeToFile(p);
+    if (!Files.exists(p)) {
+      File file = new File(path);
+      file.createNewFile();
+    }
+    Files.write(p, lines);
   }
 
   public void writeToFile(Path path) throws IOException {
-    addSb();
-    Files.write(path, lines);
+    writeToFile(path.toString());
   }
 }
