@@ -31,9 +31,9 @@ public class MarshallingTest extends TestCase {
 		String hashKey1 = HashUtils.getHash(String.format("%s:%d", host1, port1));
 		String hashKey2 = HashUtils.getHash(String.format("%s:%d", host2, port2));
 		String hashKey3 = HashUtils.getHash(String.format("%s:%d", host3, port3));
-		metadata.add(name1, host1, port1, hashKey1, hashKey2);
-		metadata.add(name2, host2, port2, hashKey2, hashKey3);
-		metadata.add(name3, host3, port3, hashKey3, hashKey1);
+		metadata.add(name1, host1, port1, HashUtils.increaseHashBy1(hashKey3), hashKey1);
+		metadata.add(name2, host2, port2, HashUtils.increaseHashBy1(hashKey1), hashKey2);
+		metadata.add(name3, host3, port3, HashUtils.increaseHashBy1(hashKey2), hashKey3);
         Message message = new Message(Status.SERVER_NOT_RESPONSIBLE, metadata);
         byte[] marshalledMessage = MessageMarshaller.marshall(message);
         IMessage unmarshalledMessage = MessageMarshaller.unmarshall(marshalledMessage);
