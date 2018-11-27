@@ -7,7 +7,6 @@ import java.io.Serializable;
 
 /**
  * Structure handling Key ranges for the consistent hashing storage ring
- *  
  */
 public class KeyHashRange implements Serializable {
     String start;
@@ -22,23 +21,22 @@ public class KeyHashRange implements Serializable {
     /**
      * Checks if a hex-String is within the hex range
      *
-     * @param hexSample hex-String that is checked
+     * @param hashString hex-String that is checked
      * @return true if hex-String is within hash range
      */
-    public boolean inRange(String hexSample) {
-        if (hexSample.compareTo(start) > -1 && hexSample.compareTo(end) == -1) {
-            return true;
+    public boolean inRange(String hashString) {
+        if(isWrappedAround()) {
+            if(hashString.compareTo(start) > 0 && hashString.compareTo(HashUtils.MAX_HASH) < 1)
+                return true;
+            return hashString.compareTo(HashUtils.MIN_HASH) > -1 && hashString.compareTo(end) < 1;
         }
-        else if (isWrappedAround() && !(hexSample.compareTo(start) == -1 && hexSample.compareTo(end) > -1)) {
-        	return true;
-        }
-        return false;
+        return hashString.compareTo(start) > 0 && hashString.compareTo(end) < 1;
     }
 
     /**
      * Tests if this key range is contained within another range
-     * 
-     * @param otherRange the other range 
+     *
+     * @param otherRange the other range
      * @return true if it is a subrange
      */
     public boolean isSubRangeOf(KeyHashRange otherRange) {

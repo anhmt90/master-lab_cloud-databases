@@ -5,6 +5,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 public class HashUtils {
+    public static final String MAX_HASH = new String(new char[8]).replace("\0", "ffff");
+    public static final String MIN_HASH = new String(new char[8]).replace("\0", "0000");
     private static MessageDigest md5;
 
     static {
@@ -53,6 +55,20 @@ public class HashUtils {
         }
         hashBytes[i] += 0x01;
         return getHashStringOf(hashBytes);
+    }
+
+    /**
+     * Notice: This method is not optimized for running time and should be used only for testing purposes
+     *
+     * @param hashString
+     * @param by
+     * @return
+     */
+    public static String increaseHashBy (String hashString, int by) {
+        for (int i = 1; i <= by ; i++) {
+            hashString = increaseHashBy1(hashString);
+        }
+        return hashString;
     }
 
 

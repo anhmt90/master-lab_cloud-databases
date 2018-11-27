@@ -37,7 +37,7 @@ public class MarshallingTest extends TestCase {
         Message message = new Message(Status.SERVER_NOT_RESPONSIBLE, metadata);
         byte[] marshalledMessage = MessageMarshaller.marshall(message);
         IMessage unmarshalledMessage = MessageMarshaller.unmarshall(marshalledMessage);
-        assertEquals(message.getStatus(), unmarshalledMessage.getStatus());
+        assertEquals(Status.SERVER_NOT_RESPONSIBLE, unmarshalledMessage.getStatus());
         for(int i = 0; i < metadata.getSize(); i++) {
         	assertEquals(message.getMetadata().get().get(i).getHost(), unmarshalledMessage.getMetadata().get().get(i).getHost());
         	assertEquals(message.getMetadata().get().get(i).getPort(), unmarshalledMessage.getMetadata().get().get(i).getPort());
