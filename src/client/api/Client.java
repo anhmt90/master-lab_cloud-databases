@@ -157,7 +157,7 @@ public class Client implements IClient {
 	 */
 	private void reroute(String key) throws IOException{
 		print("Server miss. Reconnecting to appropriate server.");
-		NodeInfo meta = metadata.findMatchingServer(key);
+		NodeInfo meta = metadata.findMatchingServer(HashUtils.getHash(key));
 		if(meta == null) {
 			print("No server found as responsible for the key.");
 			throw LogUtils.printLogError(LOG, new IOException(), "No server found responsible for key can't route request.");
