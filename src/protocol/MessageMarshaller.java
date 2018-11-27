@@ -5,6 +5,10 @@ import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import ecs.NodeInfo;
 import ecs.Metadata;
@@ -12,8 +16,11 @@ import protocol.IMessage.Status;
 import util.HashUtils;
 import util.StringUtils;
 
+import static server.app.Server.SERVER_LOG;
+
 public class MessageMarshaller {
 
+  private static Logger LOG = LogManager.getLogger(SERVER_LOG);
     /**
      * converts a {@link IMessage}  to an byte array to send over the network
      * @param message
@@ -48,18 +55,21 @@ public class MessageMarshaller {
      * @return
      */
     public static IMessage unmarshall(byte[] msgBytes) {
-        if (msgBytes == null || msgBytes[0] == 0x00) {
-            return null;
-        }
-        Status status = Status.getByCode(msgBytes[0]);
-        if (status == null)
-            return null;
-        
-        if (status.equals(Status.SERVER_NOT_RESPONSIBLE)) {
-            return unmarshallMetadata(msgBytes, status);
-        }
-        if(msgBytes.length < 16)
-            return new Message(status);
+      if (msgBytes == null || msgBytes[0] == 0x00) {
+        LOG.error("UNMARSHALLING NULL " + Arrays.toString(msgBytes) + " " + msgBytes.length);
+        return null;
+      }
+      Status status = Status.getByCode(msgBytes[0]);
+      if (status == null){
+        LOG.error("UNMARSHALLING NULL 2 " + Arrays.toString(msgBytes) + " " + msgBytes.length);
+        return null;
+      }
+
+      if (status.equals(Status.SERVER_NOT_RESPONSIBLE)) {
+        return unmarshallMetadata(msgBytes, status);
+      }
+      if(msgBytes.length < 16)
+        return new Message(status);
 
         int valLength = ByteBuffer.wrap(new byte[]{0, msgBytes[1], msgBytes[2], msgBytes[3]}).getInt();
         byte[] keyBytes = new byte[16];
