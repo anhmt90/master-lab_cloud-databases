@@ -36,7 +36,7 @@ public class ECSApplication {
     public static void main(String[] args) throws Exception {
         Scanner input = new Scanner(System.in);
 
-        if(args[0] == null) {
+        if(args[0] != null) {
         	ecsClient = new ExternalConfigurationService(args[0]);
         }
         else {
