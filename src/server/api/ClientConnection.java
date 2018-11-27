@@ -56,9 +56,6 @@ public class ClientConnection implements Runnable {
             output = new BufferedOutputStream(clientSocket.getOutputStream());
             input = new BufferedInputStream(clientSocket.getInputStream());
 
-            send("Connection to KV Storage Server established: "
-                    + clientSocket.getLocalAddress() + " / "
-                    + clientSocket.getLocalPort());
 
             while (isOpen) {
                 try {
@@ -166,17 +163,6 @@ public class ClientConnection implements Runnable {
      */
     public void send(IMessage message) throws IOException {
         writeOutput(message.toString(), MessageMarshaller.marshall(message));
-    }
-
-    /**
-     * Method sends a TextMessage using this socket.
-     *
-     * @param text the message that is to be sent.
-     * @throws IOException some I/O error regarding the output stream
-     */
-    public void send(String text) throws IOException {
-        byte[] messageBytes = StringUtils.toByteArray(text);
-        writeOutput(text, messageBytes);
     }
 
     /**
