@@ -17,7 +17,6 @@ import static util.StringUtils.WHITE_SPACE;
 
 /**
  * Manages the storage service and the connection to its nodes
- *
  */
 public class ExternalConfigurationService implements IECS {
     public static final String ECS_LOG = "ECS";
@@ -28,7 +27,7 @@ public class ExternalConfigurationService implements IECS {
      */
     private NodesChord chord = new NodesChord();
     private List<KVServer> serverPool = new ArrayList<>();
-    
+
     private boolean running = false;
 
     /**
@@ -81,20 +80,19 @@ public class ExternalConfigurationService implements IECS {
 
     @Override
     public void stopService() {
-        for (KVServer kvS : this.chord.nodes()) {
-            chord.remove(kvS);
-            kvS.stopServer();
-            this.serverPool.add(kvS);
+        for (int i = 0; i < chord.size(); i++) {
+            KVServer kvServer = chord.nodes().get(i);
+            kvServer.stopServer();
+            serverPool.add(kvServer);
         }
-        running = false;
     }
 
     @Override
     public void shutDown() {
-        for (KVServer kvS : this.chord.nodes()) {
-            chord.remove(kvS);
-            kvS.shutDown();
-            this.serverPool.add(kvS);
+        for (int i = 0; i < chord.size(); i++) {
+            KVServer kvServer = chord.nodes().get(i);
+            kvServer.shutDown();
+            serverPool.add(kvServer);
         }
         running = false;
     }
@@ -155,7 +153,7 @@ public class ExternalConfigurationService implements IECS {
 
     }
 
-    
+
     public ExternalConfigurationService(String configFile) throws IOException {
         List<String> lines = Files.readAllLines(Paths.get(configFile));
         Collections.shuffle(lines);
@@ -169,23 +167,23 @@ public class ExternalConfigurationService implements IECS {
             this.serverPool.add(kvS);
         }
     }
-    
+
     /**
      * Checks if the storage service is currently running
-     * 
+     *
      * @return true if service is running
      */
     public boolean isRunning() {
-  	  return running;
+        return running;
     }
-    
+
     /**
      * Checks if the current List of active nodes is empty
-     * 
+     *
      * @return boolean true if service has no active nodes
      */
     public boolean isEmpty() {
-  	  return chord.isEmpty();
+        return chord.isEmpty();
     }
 
     public NodesChord getChord() {

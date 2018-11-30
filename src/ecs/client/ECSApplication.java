@@ -14,7 +14,7 @@ import static util.FileUtils.SEP;
 public class ECSApplication {
 
     static Logger LOG = LogManager.getLogger("ECS");
-    private static final String CONFIG_FILE = System.getProperty("user.dir") + SEP + "config" + SEP + "server-info";
+    private static final String CONFIG_FILE = System.getProperty("user.dir") + SEP + "config" + SEP + "default-server-info";
 
     private static final String INIT = "init";
     private static final String START = "start";
@@ -36,12 +36,10 @@ public class ECSApplication {
     public static void main(String[] args) throws Exception {
         Scanner input = new Scanner(System.in);
 
-        if(args[0] != null) {
+        if(args == null || args.length > 0)
         	ecsClient = new ExternalConfigurationService(args[0]);
-        }
-        else {
+        else
         	ecsClient = new ExternalConfigurationService(CONFIG_FILE);
-        }
 
         while (true) {
             printCommandPrompt();

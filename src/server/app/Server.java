@@ -61,7 +61,7 @@ public class Server extends Thread implements IExternalConfigurationService {
         Configurator.setRootLevel(Level.getLevel(logLevel));
         state = NodeState.STOPPED;
 
-        LOG.info("Server created listening on port " + this.port + " with logging Level " + logLevel);
+        LOG.info("Server constructed with port " + this.port + " and  with logging Level " + logLevel);
 
     }
 
@@ -128,8 +128,10 @@ public class Server extends Thread implements IExternalConfigurationService {
 
     @Override
     public boolean shutdown() {
-        if (stopService())
+        if (stopService()){
+
             running = false;
+        }
         return !running;
     }
 
@@ -215,7 +217,7 @@ public class Server extends Thread implements IExternalConfigurationService {
     private boolean initServer() {
         LOG.info("Initialize server ...");
         try {
-                kvSocket = new ServerSocket(port);
+            kvSocket = new ServerSocket(port);
             LOG.info("Server listening on port: " + kvSocket.getLocalPort());
             return true;
         } catch (IOException e) {
@@ -275,6 +277,10 @@ public class Server extends Thread implements IExternalConfigurationService {
 
     public int getPort() {
         return port;
+    }
+
+    public String getServerName() {
+        return serverName;
     }
 
     public void setNodeState(NodeState state) {
@@ -392,32 +398,25 @@ public class Server extends Thread implements IExternalConfigurationService {
     public static void main(String[] args) {
         Server server = createServer(args);
         server.setServerName(args[0]);
-        LOG.info("Server " + server.getName() + " created and serving on port " + server.getPort());
-        server.start();
+        LOG.info("Server " + server.getServerName()+ " created and serving on port " + server.getPort());
+        server.run();
     }
 
 
     private static Server createServer(String[] args) {
         if (args.length < 2 || args.length > 3)
-            throw new IllegalArgumentException("Port must be provided to start the server");
+            throw new IllegalArgumentException("Server name and port must be provided to start the server");
 
-        String serverNameStr = args[0];
-        String portStr = args[1];
+        String serverName = args[0];
+        String portString = args[1];
         String logLevel = DEFAULT_LOG_LEVEL;
         if (args.length == 3 && isValidLogLevel(args[2]))
             logLevel = args[2];
 
         int port = -1;
-        if (isValidPortNumber(portStr))
-            port = Integer.parseInt(portStr);
+        if (isValidPortNumber(portString))
+            port = Integer.parseInt(portString);
 
-        return new Server(serverNameStr, port, logLevel);
-    }
-
-    private static boolean isValidAddress(String address) {
-        if (address.matches("^((0|1\\d?\\d?|2[0-4]?\\d?|25[0-5]?|[3-9]\\d?)\\.){3}(0|1\\d?\\d?|2[0-4]?\\d?|25[0-5]?|[3-9]\\d?)$"))
-            return true;
-        LOG.error("Invalid IP address. IP address should contain 4 octets separated by '.' (dot). Each octet comprises only digits and ranges from 0 to 255.");
-        return false;
+        return new Server(serverName, port, logLevel);
     }
 }

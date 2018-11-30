@@ -6,6 +6,7 @@ import util.Validate;
 import java.lang.reflect.Array;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
 
 /**
  * Maps server connections in a tree structure
@@ -53,7 +54,7 @@ public class NodesChord {
     }
 
     public Optional<KVServer> remove(KVServer node) {
-        Optional<KVServer> successor = this.getSuccessor(node.getHashKey());
+        Optional<KVServer> successor = getSuccessor(node.getHashKey());
         nodes.remove(node.getHashKey());
         this.mdChanged = true;
         return successor;
@@ -93,8 +94,12 @@ public class NodesChord {
         return Optional.empty();
     }
 
-    public Collection<KVServer> nodes() {
-        return this.nodes.values();
+    public List<KVServer> nodes() {
+        return this.nodes.values().stream().sequential().collect(Collectors.toList());
+    }
+
+    public int size() {
+        return nodes.size();
     }
 
     /**

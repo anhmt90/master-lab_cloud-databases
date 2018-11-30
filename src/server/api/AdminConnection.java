@@ -45,6 +45,7 @@ public class AdminConnection implements Runnable {
 
                 boolean success = handleAdminRequest(configMessage);
                 ConfigMessage ack = new ConfigMessage(getAckStatus(configMessage.getStatus(), success));
+                LOG.info("sending ack " + ack.getStatus());
                 send(ack);
 
             }

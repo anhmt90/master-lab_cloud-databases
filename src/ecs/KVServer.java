@@ -1,7 +1,6 @@
 package ecs;
 
 import management.ConfigMessage;
-import management.ConfigMessageMarshaller;
 import management.ConfigStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -10,11 +9,8 @@ import util.HashUtils;
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-
-import static protocol.IMessage.MAX_MESSAGE_LENGTH;
 
 /**
  * Handles connection from ECS to one key-value storage server
@@ -36,7 +32,6 @@ public class KVServer implements Comparable<KVServer> {
   private BufferedInputStream bis;
   private BufferedOutputStream bos;
 
-  private final static int SSH_PORT = 22;
   private String[] sshCMD;
 
   private final static int RETRY_NUM = 5;
@@ -56,8 +51,8 @@ public class KVServer implements Comparable<KVServer> {
     this.socket = new Socket();
 
     String[] cmds = {"ssh", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
-        "ecs@"+getHost(), "-p", ""+SSH_PORT,
-        "nohup java -jar ms3-server.jar " + getNodeName() + " " + getPort() +" > ./logs/server_docker.log & "
+        "tuan-anh@"+getHost(),
+        "nohup java -jar ms3-server.jar " + getNodeName() + " " + getPort() +" >> ./logs/server_docker.log & "
     };
     this.sshCMD = cmds;
     this.hashKey = HashUtils.getHash(String.format("%s:%d", this.getHost(), this.getPort()));
@@ -77,19 +72,12 @@ public class KVServer implements Comparable<KVServer> {
     boolean launched = true;
     try {
       proc = run.exec(this.sshCMD);
-      proc.waitFor();
-      BufferedReader in = new BufferedReader(new InputStreamReader(proc.getInputStream()));
-      String line;
-      while ((line = in.readLine()) != null) {
-        LOG.info("SSH response: " + line);
-      }
-
       LOG.debug("Initializing socket");
       this.initSocket();
       this.bos.write(new byte[]{1});
       this.bos.flush();
       LOG.info(String.format("Started server %s:%d via ssh", this.address.getHostString(), this.address.getPort()));
-    } catch (IOException | InterruptedException e) {
+    } catch (IOException  e) {
       launched = false;
       LOG.error(String.format("Couldn't launch the server %s:%d", this.getHost(), this.getPort()));
       LOG.error(e);
@@ -258,9 +246,10 @@ public class KVServer implements Comparable<KVServer> {
         socket = new Socket();
         TimeUnit.MILLISECONDS.sleep(RETRY_TIME);
         socket.connect(this.address, 5000);
-        socket.setSoTimeout(5000);
+        socket.setSoTimeout(10000);
         break;
       } catch (IOException | InterruptedException e) {
+          LOG.error(e);
         LOG.info(String.format("Couldn't connect trying again (%d/%d)...", i+1, RETRY_NUM));
       }
     }
