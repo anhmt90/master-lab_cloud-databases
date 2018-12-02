@@ -56,4 +56,11 @@ public class Metadata implements Serializable {
     public List<NodeInfo> get() {
         return meta;
     }
+
+    @Override
+    public String toString() {
+        return "Metadata{" +
+                "meta=" + meta +
+                '}';
+    }
 }

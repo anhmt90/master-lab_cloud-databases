@@ -5,6 +5,7 @@ import management.ConfigStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import util.HashUtils;
+import util.LogUtils;
 
 import java.io.*;
 import java.net.InetSocketAddress;
@@ -14,260 +15,264 @@ import java.util.function.Consumer;
 
 /**
  * Handles connection from ECS to one key-value storage server
- *
  */
 public class KVServer implements Comparable<KVServer> {
-  private static final String ECS_LOG = "ECS";
-  private static Logger LOG = LogManager.getLogger(ECS_LOG);
+    private static final String ECS_LOG = "ECS";
+    private static Logger LOG = LogManager.getLogger(ECS_LOG);
 
-  public String getHashKey() {
-    return hashKey;
-  }
-
-  private String hashKey;
-
-  private String nodeName;
-  private InetSocketAddress address;
-  private Socket socket;
-  private BufferedInputStream bis;
-  private BufferedOutputStream bos;
-
-  private String[] sshCMD;
-
-  private final static int RETRY_NUM = 5;
-  private final static int RETRY_TIME = 1000; // milliseconds
-
-  public KVServer(String serverName, String host, String port) {
-    this(serverName, host, Integer.parseInt(port));
-  }
-
-  public KVServer(String serverName, String host, int port) {
-    this(serverName, new InetSocketAddress(host, port));
-  }
-
-  public KVServer(String serverName, InetSocketAddress address) {
-    this.nodeName = serverName;
-    this.address = address;
-    this.socket = new Socket();
-
-    String[] cmds = {"ssh", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
-        "tuan-anh@"+getHost(),
-        "nohup java -jar ms3-server.jar " + getNodeName() + " " + getPort() +" >> ./logs/server_docker.log & "
-    };
-    this.sshCMD = cmds;
-    this.hashKey = HashUtils.getHash(String.format("%s:%d", this.getHost(), this.getPort()));
-  }
-
-  public String getHost() {
-    return this.address.getHostString();
-  }
-
-  public int getPort() {
-    return this.address.getPort();
-  }
-
-  void launch(Consumer<Boolean> callback) {
-    Process proc;
-    Runtime run = Runtime.getRuntime();
-    boolean launched = true;
-    try {
-      proc = run.exec(this.sshCMD);
-      LOG.debug("Initializing socket");
-      this.initSocket();
-      this.bos.write(new byte[]{1});
-      this.bos.flush();
-      LOG.info(String.format("Started server %s:%d via ssh", this.address.getHostString(), this.address.getPort()));
-    } catch (IOException  e) {
-      launched = false;
-      LOG.error(String.format("Couldn't launch the server %s:%d", this.getHost(), this.getPort()));
-      LOG.error(e);
+    public String getHashKey() {
+        return hashKey;
     }
-    callback.accept(launched);
-  }
 
+    private String hashKey;
 
-  /**
-   * Sends a message to the connected server
-   * 
-   * @param message message to be sent
-   * @throws IOException
-   */
-  public void send(ConfigMessage message) throws IOException {
-    try {
-      ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
-      oos.writeObject(message);
-      oos.flush();
-//      byte[] bytes = ConfigMessageMarshaller.marshall(message);
-//      LOG.info("Sending bytes to the server: " + Arrays.toString(bytes));
-//      bos.write(bytes);
-//      bos.flush();
-      LOG.info("SEND \t<"
-          + socket.getInetAddress().getHostAddress() + ":"
-          + socket.getPort() + ">: '"
-          + message.toString() + "'");
+    private String nodeName;
+    private int servicePort;
+    private InetSocketAddress address;
+    private Socket socket;
+    private ObjectInputStream ois;
+    private ObjectOutputStream oos;
 
-    } catch (IOException e) {
-      e.printStackTrace();
+    private String[] sshCMD;
+
+    private final static int RETRY_NUM = 5;
+    private final static int RETRY_WAIT_TIME = 1000; // milliseconds
+
+    public KVServer(String serverName, String hostAddress, String servicePort, String adminPort) {
+        this(serverName, hostAddress, Integer.parseInt(servicePort), Integer.parseInt(adminPort));
     }
-  }
 
-  /**
-   * Receives a message sent by {@link server.app.Server}
-   *
-   * @return the received message
-   * @throws IOException
-   */
-  private ConfigMessage receive() throws IOException {
-//    byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
-//    int bytesCopied = bis.read(messageBuffer);
-//    LOG.info("Read " + bytesCopied + " from input stream");
-//
-//    ConfigMessage message = ConfigMessageMarshaller.unmarshall(messageBuffer);
-    ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
-    ConfigMessage message = null;
-    try {
-      message = (ConfigMessage) ois.readObject();
-    } catch (ClassNotFoundException e) {
-      e.printStackTrace();
+    public KVServer(String serverName, String hostAddress, int servicePort, int adminPort) {
+        this(serverName, servicePort, new InetSocketAddress(hostAddress, adminPort));
+    }
+
+    public KVServer(String serverName, int servicePort, InetSocketAddress address) {
+        this.nodeName = serverName;
+        this.servicePort = servicePort;
+        this.address = address;
+
+        String[] cmds = {"ssh", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
+                "tuan-anh@" + getHost(),
+                "nohup java -jar ms3-server.jar " + nodeName + " " + this.servicePort + " " + getAdminPort() + " > ./logs/" + nodeName + ".log & "
+        };
+        this.sshCMD = cmds;
+        this.hashKey = HashUtils.getHash(String.format("%s:%d", this.getHost(), this.servicePort));
+    }
+
+    public String getHost() {
+        return this.address.getHostString();
+    }
+
+    public int getAdminPort() {
+        return this.address.getPort();
+    }
+
+    void launch(Consumer<Boolean> callback) {
+        boolean launched = false;
+        try {
+            execSSH();
+            initSocket();
+            LOG.info(String.format("Started server %s:%d via ssh", address.getHostString(), getAdminPort()));
+            launched = true;
+        } catch (IOException e) {
+            LOG.error(String.format("Couldn't launch the server %s:%d " + e, this.getHost(), this.getAdminPort()));
+        }
+        callback.accept(launched);
+    }
+
+    private void execSSH() throws IOException {
+        boolean hasError = false;
+        byte count = 0;
+        while (!hasError) {
+            Process proc = Runtime.getRuntime().exec(sshCMD);
+            BufferedReader in = new BufferedReader(new InputStreamReader(proc.getInputStream()));
+            BufferedReader err = new BufferedReader(new InputStreamReader(proc.getErrorStream()));
+            String output;
+            while ((output = in.readLine()) != null) {
+                LOG.info("SSH response: " + output);
+            }
+            while ((output = err.readLine()) != null) {
+                hasError = true;
+                LOG.error("SSH response: " + output);
+            }
+            count++;
+            if (count == RETRY_NUM)
+                break;
+        }
+    }
+
+    private boolean heartbeat() throws IOException {
+        boolean success = false;
+        for (int i = 0; i < 3; i++) {
+            success = sendAndExpect(new ConfigMessage(ConfigStatus.HEART_BEAT), ConfigStatus.ALIVE);
+            if (success)
+                return success;
+            try {
+                TimeUnit.MILLISECONDS.sleep(RETRY_WAIT_TIME);
+            } catch (InterruptedException e) {
+                LogUtils.printLogError(LOG, e);
+            }
+        }
+        return false;
+
     }
 
 
-    LOG.info("RECEIVE \t<"
-        + socket.getInetAddress().getHostAddress() + ":"
-        + socket.getPort() + ">: '"
-        + message.toString().trim() + "'");
+    /**
+     * Sends a message to the connected server
+     *
+     * @param message message to be sent
+     * @throws IOException
+     */
+    public void send(ConfigMessage message) throws IOException {
+        try {
+            oos = new ObjectOutputStream(socket.getOutputStream());
+            oos.writeObject(message);
+            oos.flush();
+            LOG.info("SEND \t<"
+                    + socket.getInetAddress().getHostAddress() + ":"
+                    + socket.getPort() + ">: '"
+                    + message.toString() + "'");
 
-    return message;
-  }
-
-  boolean init(Metadata metadata, int cacheSize, String strategy) {
-    ConfigMessage msg = new ConfigMessage(ConfigStatus.INIT, cacheSize, strategy, metadata);
-    try {
-      return sendAndExpect(msg, ConfigStatus.INIT_SUCCESS);
-    } catch (IOException e) {
-      e.printStackTrace();
+        } catch (IOException e) {
+            LOG.error(e);
+            throw e;
+        }
     }
-    return false;
-  }
 
-  boolean startServer() {
-    ConfigMessage msg = new ConfigMessage(ConfigStatus.START);
-    try {
-      return sendAndExpect(msg, ConfigStatus.START_SUCCESS);
-    } catch (IOException e) {
-      e.printStackTrace();
+    /**
+     * Receives a message sent by {@link server.app.Server}
+     *
+     * @return the received message
+     * @throws IOException
+     */
+    private ConfigMessage receive() throws IOException {
+        ConfigMessage message = null;
+        try {
+            ois = new ObjectInputStream(socket.getInputStream());
+            message = (ConfigMessage) ois.readObject();
+            if (message == null)
+                throw new InvalidObjectException("message is null");
+
+        } catch (ClassNotFoundException | InvalidObjectException e) {
+            LogUtils.printLogError(LOG, e);
+            return null;
+        }
+
+        LOG.info("RECEIVE \t<"
+                + socket.getInetAddress().getHostAddress() + ":"
+                + socket.getPort() + ">: '"
+                + message.toString().trim() + "'");
+
+        return message;
     }
-    return false;
-  }
 
-  boolean stopServer() {
-    ConfigMessage msg = new ConfigMessage(ConfigStatus.STOP);
-    try {
-      return sendAndExpect(msg, ConfigStatus.STOP_SUCCESS);
-    } catch (IOException e) {
-      e.printStackTrace();
+    boolean init(Metadata metadata, int cacheSize, String strategy) {
+        ConfigMessage msg = new ConfigMessage(ConfigStatus.INIT, cacheSize, strategy, metadata);
+        return sendAndExpect(msg, ConfigStatus.INIT_SUCCESS);
     }
-    return false;
-  }
 
-  boolean shutDown() {
-    ConfigMessage msg = new ConfigMessage(ConfigStatus.SHUTDOWN);
-    try {
-      return sendAndExpect(msg, ConfigStatus.SHUTDOWN_SUCCESS);
-    } catch (IOException e) {
-      e.printStackTrace();
+    boolean startServer() {
+        ConfigMessage msg = new ConfigMessage(ConfigStatus.START);
+        return sendAndExpect(msg, ConfigStatus.START_SUCCESS);
     }
-    return false;
-  }
 
-  boolean lockWrite() {
-    ConfigMessage msg = new ConfigMessage(ConfigStatus.LOCK_WRITE);
-    try {
-      return sendAndExpect(msg, ConfigStatus.LOCK_WRITE_SUCCESS);
-    } catch (IOException e) {
-      e.printStackTrace();
+    boolean stopServer() {
+        ConfigMessage msg = new ConfigMessage(ConfigStatus.STOP);
+        return sendAndExpect(msg, ConfigStatus.STOP_SUCCESS);
     }
-    return false;
-  }
 
-  boolean unLockWrite() {
-    ConfigMessage msg = new ConfigMessage(ConfigStatus.UNLOCK_WRITE);
-    try {
-      return sendAndExpect(msg, ConfigStatus.UNLOCK_WRITE_SUCCESS);
-    } catch (IOException e) {
-      e.printStackTrace();
+    boolean shutDown() {
+        ConfigMessage msg = new ConfigMessage(ConfigStatus.SHUTDOWN);
+        return sendAndExpect(msg, ConfigStatus.SHUTDOWN_SUCCESS);
     }
-    return false;
-  }
 
-  boolean moveData(KeyHashRange range, KVServer target) {
-    NodeInfo meta = new NodeInfo(target.getNodeName(), target.getHost(), target.getPort(), range);
-    ConfigMessage msg = new ConfigMessage(ConfigStatus.MOVE_DATA, meta);
-    try {
-      return sendAndExpect(msg, ConfigStatus.MOVE_DATA_SUCCESS);
-    } catch (IOException e) {
-      e.printStackTrace();
+    boolean lockWrite() {
+        ConfigMessage msg = new ConfigMessage(ConfigStatus.LOCK_WRITE);
+        return sendAndExpect(msg, ConfigStatus.LOCK_WRITE_SUCCESS);
     }
-    return false;
-  }
 
-  boolean update(Metadata metadata) {
-    ConfigMessage msg = new ConfigMessage(ConfigStatus.UPDATE_METADATA, metadata);
-    try {
-      return sendAndExpect(msg, ConfigStatus.UPDATE_METADATA_SUCCESS);
-    } catch (IOException e) {
-      e.printStackTrace();
+    boolean unLockWrite() {
+        ConfigMessage msg = new ConfigMessage(ConfigStatus.UNLOCK_WRITE);
+        return sendAndExpect(msg, ConfigStatus.UNLOCK_WRITE_SUCCESS);
     }
-    return false;
-  }
 
-  /**
-   * Sends a ConfigMessage and checks if the server response matches an expected response
-   * 
-   * @param toSend message to be sent to the server
-   * @param expected status of the expected server response
-   * @return true if server response matches the expected one
-   * @throws IOException
-   */
-  private boolean sendAndExpect(ConfigMessage toSend, ConfigStatus expected) throws IOException {
-    if (bos != null && bis != null) {
-      send(toSend);
-      ConfigMessage response = receive();
-      if (response.getStatus().equals(expected))
-        return true;
+    boolean moveData(KeyHashRange range, KVServer target) {
+        NodeInfo meta = new NodeInfo(target.getNodeName(), target.getHost(), target.getAdminPort(), range);
+        ConfigMessage msg = new ConfigMessage(ConfigStatus.MOVE_DATA, meta);
+        return sendAndExpect(msg, ConfigStatus.MOVE_DATA_SUCCESS);
     }
-    return false;
-  }
 
-  private void initSocket() throws IOException {
-    LOG.info("Connecting to the server");
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        socket = new Socket();
-        TimeUnit.MILLISECONDS.sleep(RETRY_TIME);
-        socket.connect(this.address, 5000);
-        socket.setSoTimeout(10000);
-        break;
-      } catch (IOException | InterruptedException e) {
-          LOG.error(e);
-        LOG.info(String.format("Couldn't connect trying again (%d/%d)...", i+1, RETRY_NUM));
-      }
+    boolean update(Metadata metadata) {
+        ConfigMessage msg = new ConfigMessage(ConfigStatus.UPDATE_METADATA, metadata);
+        return sendAndExpect(msg, ConfigStatus.UPDATE_METADATA_SUCCESS);
     }
-    LOG.info("Connected");
-    bos = new BufferedOutputStream(socket.getOutputStream());
-    bis = new BufferedInputStream(socket.getInputStream());
-  }
 
-  public void setNodeName(String nodeName) {
-    this.nodeName = nodeName;
-  }
+    /**
+     * Sends a ConfigMessage and checks if the server response matches an expected response
+     *
+     * @param toSend   message to be sent to the server
+     * @param expected status of the expected server response
+     * @return true if server response matches the expected one
+     * @throws IOException
+     */
+    private boolean sendAndExpect(ConfigMessage toSend, ConfigStatus expected) {
+        try {
+            send(toSend);
+            ConfigMessage response = receive();
+            return response.getStatus().equals(expected);
+        } catch (IOException e) {
+            LOG.error("Error occurs in sendAndExpect()! " + e);
+            return false;
+        }
+    }
 
-  public String getNodeName() {
-    return nodeName;
-  }
+    private void initSocket() {
+        LOG.debug("Initializing socket");
+        if (socket == null || !socket.isConnected() || socket.isClosed()) {
+            LOG.info("Connecting to the server");
+            for (int i = 0; i < RETRY_NUM; i++) {
+                try {
+                    socket = new Socket();
+                    socket.setSoTimeout(10000);
+                    TimeUnit.MILLISECONDS.sleep(RETRY_WAIT_TIME);
+                    socket.connect(address, 5000);
+                    break;
+                } catch (IOException | InterruptedException e) {
+                    LOG.error(e);
+                    LOG.info(String.format("Couldn't connect trying again (%d/%d)...", i + 1, RETRY_NUM));
+                    if (i == RETRY_NUM - 1)
+                        return;
+                }
+            }
+            LOG.info("Connect to server " + address.getHostString() + ":" + address.getPort() + " successfully");
+        }
+    }
 
-  @Override
-  public int compareTo(KVServer kvServer) {
-    return this.getHashKey().compareTo(kvServer.getHashKey());
-  }
+    public void setNodeName(String nodeName) {
+        this.nodeName = nodeName;
+    }
+
+    public String getNodeName() {
+        return nodeName;
+    }
+
+    public void closeSocket() throws IOException {
+        try {
+            socket.close();
+            oos.close();
+            ois.close();
+        } catch (IOException e) {
+            LOG.error("Couldn't close socket or streams");
+            throw e;
+        }
+        socket = null;
+        oos = null;
+        ois = null;
+    }
+
+    @Override
+    public int compareTo(KVServer kvServer) {
+        return this.getHashKey().compareTo(kvServer.getHashKey());
+    }
 }

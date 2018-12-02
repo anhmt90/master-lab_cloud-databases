@@ -41,8 +41,8 @@ public class ConfigMessage implements Serializable {
     }
 
     public ConfigMessage(ConfigStatus status, Metadata md) {
-      this.status = status;
-      this.metadata = md;
+        this.status = status;
+        this.metadata = md;
     }
 
     public int getCacheSize() {
@@ -63,5 +63,10 @@ public class ConfigMessage implements Serializable {
 
     public KeyHashRange getKeyRange() {
         return keyRange;
+    }
+
+    @Override
+    public String toString() {
+        return "ConfigMessage{" +"status=" + status +'}';
     }
 }

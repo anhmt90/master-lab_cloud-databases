@@ -30,16 +30,16 @@ public class ECSApplication {
      * The ECSClient as an instance of {@link ExternalConfigurationService} to communicate with the
      * Storage Service
      */
-    private static ExternalConfigurationService ecsClient;
+    private static ExternalConfigurationService ecs;
 
 
     public static void main(String[] args) throws Exception {
         Scanner input = new Scanner(System.in);
 
         if(args == null || args.length > 0)
-        	ecsClient = new ExternalConfigurationService(args[0]);
+        	ecs = new ExternalConfigurationService(args[0]);
         else
-        	ecsClient = new ExternalConfigurationService(CONFIG_FILE);
+        	ecs = new ExternalConfigurationService(CONFIG_FILE);
 
         while (true) {
             printCommandPrompt();
@@ -98,7 +98,7 @@ public class ECSApplication {
         if (!isValidCacheSize(cmdArgs[0]) || !isValidDisplacementStrategy(cmdArgs[1])) {
             return;
         }
-        ecsClient.addNode(Integer.parseInt(cmdArgs[0]), cmdArgs[1]);
+        ecs.addNode(Integer.parseInt(cmdArgs[0]), cmdArgs[1]);
     }
 
 
@@ -134,7 +134,11 @@ public class ECSApplication {
         if (!isValidCacheSize(cmdArgs[1]) || !isValidDisplacementStrategy(cmdArgs[2])) {
             return;
         }
-        ecsClient.initService(serverNumber, Integer.parseInt(cmdArgs[1]), cmdArgs[2]);
+        if (ecs.isRunning()) {
+            print("Storage service is already running.");
+            return;
+        }
+        ecs.initService(serverNumber, Integer.parseInt(cmdArgs[1]), cmdArgs[2]);
     }
 
 
@@ -142,12 +146,12 @@ public class ECSApplication {
 	 * Handles the command {@see SHUTDOWN}
 	 */
 	private static void handleShutdown() {
-		if(ecsClient.isEmpty()) {
+		if(ecs.isEmpty()) {
 			print("No active nodes that could be shutdown.");
 			return;
 		}
-		if(ecsClient.isRunning()) {
-			ecsClient.shutDown();
+		if(ecs.isRunning()) {
+			ecs.shutDown();
 			print("Storage service shutting down");
 			LOG.info("Shutdown");
 		}
@@ -161,15 +165,15 @@ public class ECSApplication {
 	 * Handles the command {@see STOP}
 	 */
 	private static void handleStop() {
-		if(ecsClient.isEmpty()) {
+		if(ecs.isEmpty()) {
 			print("Service currently has no active nodes.");
 			return;
 		}
-		if (!ecsClient.isRunning()) {
-			print("Storage service is not currently running.");
+		if (!ecs.isServing()) {
+			print("Couldn't stop service! Storage service is already stopped.");
 			return;
 		}
-		ecsClient.stopService();
+		ecs.stopService();
 		
 	}
 	
@@ -177,11 +181,11 @@ public class ECSApplication {
 	 * Handles the command {@see REMOVE}
 	 */
 	private static void handleRemoveNode() {
-		if(ecsClient.isEmpty()) {
+		if(ecs.isEmpty()) {
 			print("Service currently has no active nodes.");
 			return;
 		}
-		ecsClient.removeNode();
+		ecs.removeNode();
 	}
 
 
@@ -189,15 +193,15 @@ public class ECSApplication {
 	 * Handles the command {@see START}
 	 */
 	private static void handleStart() {
-		if(ecsClient.isEmpty()) {
+		if(ecs.isEmpty()) {
 			print("Service currently has no active nodes.");
 			return;
 		}
-		if (ecsClient.isRunning()) {
-			print("Storage service is already running.");
+		if (ecs.isServing()) {
+			print("Couldn't start the service! Storage service has been already started.");
 			return;
 		}
-		ecsClient.startService();
+		ecs.startService();
 		
 	}
     /**
@@ -208,7 +212,7 @@ public class ECSApplication {
     private static void handleQuit(Scanner input) {
         print("Exiting application");
         LOG.info("quit");
-        ecsClient.shutDown();
+        ecs.shutDown();
         input.close();
     }
 

@@ -1,62 +1,61 @@
 package server.api;
 
 import management.ConfigMessage;
-import management.ConfigMessageMarshaller;
 import management.ConfigStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import server.app.Server;
 
-import java.io.*;
-import java.net.BindException;
-import java.net.InetSocketAddress;
-import java.net.ServerSocket;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.Socket;
 
-import static protocol.IMessage.MAX_MESSAGE_LENGTH;
+public class InternalConnection implements Runnable {
 
-public class AdminConnection implements Runnable {
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
-    private static final int BOOT_ACK_PORT = 54321;
+    private final InternalConnectionManager manager;
     private boolean isOpen;
 
-    private Socket ecsSocket;
+    private Socket peer;
 
     private Server server;
-    private BufferedInputStream bis;
-    private BufferedOutputStream bos;
+    private ObjectInputStream ois;
+    private ObjectOutputStream oos;
 
-    public AdminConnection(Server server, Socket socket) {
+    public InternalConnection(InternalConnectionManager manager, Socket peer, Server server) {
+        this.manager = manager;
         this.server = server;
-        this.ecsSocket = socket;
+        this.peer = peer;
+        isOpen = true;
     }
 
     /**
      * Listens to the admin instructions from ECS
      * Loops until the connection is closed or aborted by the ECS.
      */
-    public void pollRequests() {
+    @Override
+    public void run() {
         try {
-            bos = new BufferedOutputStream(ecsSocket.getOutputStream());
-            bis = new BufferedInputStream(ecsSocket.getInputStream());
-
-            while (server.isRunning()) {
+            while (isOpen && server.isRunning()) {
                 ConfigMessage configMessage = poll();
+                boolean success = (!configMessage.getStatus().equals(ConfigStatus.HEART_BEAT))
+                        ? handleRequest(configMessage) : true;
 
-                boolean success = handleAdminRequest(configMessage);
                 ConfigMessage ack = new ConfigMessage(getAckStatus(configMessage.getStatus(), success));
-                LOG.info("sending ack " + ack.getStatus());
+                LOG.info("sending ACK " + ack.getStatus());
                 send(ack);
 
             }
         } catch (IOException ioe) {
-            LOG.error("Error! Connection could not be established!", ioe);
+            LOG.error("Error! Connection lost", ioe);
+            isOpen = false;
         } finally {
             try {
-                if (ecsSocket != null) {
-                    bis.close();
-                    bos.close();
-                    ecsSocket.close();
+                if (peer != null) {
+                    ois.close();
+                    oos.close();
+                    peer.close();
                 }
             } catch (IOException ioe) {
                 LOG.error("Error! Unable to tear down connection!", ioe);
@@ -68,25 +67,31 @@ public class AdminConnection implements Runnable {
      * check the result of handling admin requests and get an appropriate ACK status
      *
      * @param reqStatus admin request status
-     * @param success result of handling admin requests, true or fals
+     * @param success   result of handling admin requests, true or fals
      * @return
      */
     private ConfigStatus getAckStatus(ConfigStatus reqStatus, boolean success) {
+        if(!success)
+            return ConfigStatus.ERROR;
         switch (reqStatus) {
             case INIT:
-                return success ? ConfigStatus.INIT_SUCCESS : ConfigStatus.ERROR;
+                return ConfigStatus.INIT_SUCCESS;
             case START:
-                return success ? ConfigStatus.START_SUCCESS : ConfigStatus.ERROR;
+                return ConfigStatus.START_SUCCESS;
             case LOCK_WRITE:
-                return success ? ConfigStatus.LOCK_WRITE_SUCCESS : ConfigStatus.ERROR;
+                return ConfigStatus.LOCK_WRITE_SUCCESS;
             case UNLOCK_WRITE:
-                return success ? ConfigStatus.UNLOCK_WRITE_SUCCESS : ConfigStatus.ERROR;
+                return ConfigStatus.UNLOCK_WRITE_SUCCESS;
             case UPDATE_METADATA:
-                return success ? ConfigStatus.UPDATE_METADATA_SUCCESS : ConfigStatus.ERROR;
+                return ConfigStatus.UPDATE_METADATA_SUCCESS;
             case MOVE_DATA:
-                return success ? ConfigStatus.MOVE_DATA_SUCCESS : ConfigStatus.ERROR;
+                return ConfigStatus.MOVE_DATA_SUCCESS;
             case STOP:
-                return success ? ConfigStatus.STOP_SUCCESS : ConfigStatus.ERROR;
+                return ConfigStatus.STOP_SUCCESS;
+            case SHUTDOWN:
+                return ConfigStatus.SHUTDOWN_SUCCESS;
+            case HEART_BEAT:
+                return ConfigStatus.ALIVE;
             default:
                 throw new IllegalStateException("Unknown status of request!");
         }
@@ -98,7 +103,7 @@ public class AdminConnection implements Runnable {
      * @param configMessage the message containing admin quests
      * @return
      */
-    private boolean handleAdminRequest(ConfigMessage configMessage) {
+    private boolean handleRequest(ConfigMessage configMessage) {
         LOG.info("handle request from ECS with status " + configMessage.getStatus());
         switch (configMessage.getStatus()) {
             case INIT:
@@ -130,14 +135,13 @@ public class AdminConnection implements Runnable {
      * @throws IOException
      */
     public void send(ConfigMessage message) throws IOException {
-        ObjectOutputStream oos = new ObjectOutputStream(ecsSocket.getOutputStream());
+        LOG.info("sending message to " + peer.getInetAddress() + ":" + peer.getPort());
+        oos = new ObjectOutputStream(peer.getOutputStream());
         oos.writeObject(message);
         oos.flush();
-//        bos.write(ConfigMessageMarshaller.marshall(message));
-//        bos.flush();
         LOG.info("SEND \t<"
-                + ecsSocket.getInetAddress().getHostAddress() + ":"
-                + ecsSocket.getPort() + ">: '"
+                + peer.getInetAddress().getHostAddress() + ":"
+                + peer.getPort() + ">: '"
                 + message.toString() + "'");
 
     }
@@ -149,31 +153,28 @@ public class AdminConnection implements Runnable {
      * @throws IOException
      */
     private ConfigMessage poll() throws IOException {
-//        byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
-//
-//        LOG.info("Polling...");
-//        int bytesCopied = bis.read(messageBuffer);
-//        LOG.info("Read " + bytesCopied + " from input stream");
-//
-//        ConfigMessage message = ConfigMessageMarshaller.unmarshall(messageBuffer);
-        ObjectInputStream ois = new ObjectInputStream(ecsSocket.getInputStream());
+        LOG.info("polling message from " + peer.getInetAddress() + ":" + peer.getPort());
+        ois = new ObjectInputStream(peer.getInputStream());
         ConfigMessage message = null;
         try {
             message = (ConfigMessage) ois.readObject();
         } catch (ClassNotFoundException e) {
-            e.printStackTrace();
+            LOG.error(e);
         }
 
         LOG.info("RECEIVE \t<"
-                + ecsSocket.getInetAddress().getHostAddress() + ":"
-                + ecsSocket.getPort() + ">: '"
+                + peer.getInetAddress().getHostAddress() + ":"
+                + peer.getPort() + ">: '"
                 + message.toString().trim() + "'");
 
         return message;
     }
 
-    @Override
-    public void run() {
-        pollRequests();
+    public void setOpen(boolean open) {
+        isOpen = open;
+    }
+
+    public boolean isOpen() {
+        return isOpen;
     }
 }

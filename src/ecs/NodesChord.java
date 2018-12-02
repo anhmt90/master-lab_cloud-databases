@@ -1,9 +1,7 @@
 package ecs;
 
 import util.HashUtils;
-import util.Validate;
 
-import java.lang.reflect.Array;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
@@ -13,14 +11,14 @@ import java.util.stream.Collectors;
  *
  */
 public class NodesChord {
-    private TreeMap<String, KVServer> nodes = new TreeMap<>();
+    private TreeMap<String, KVServer> nodesByKeyMap = new TreeMap<>();
     private Metadata md = new Metadata();
     private boolean mdChanged;
 
     public Optional<KVServer> getSuccessor(String hashKey) {
-        Map.Entry<String, KVServer> successor = this.nodes.ceilingEntry(hashKey);
+        Map.Entry<String, KVServer> successor = this.nodesByKeyMap.ceilingEntry(hashKey);
         if (successor == null) {
-            successor = this.nodes.firstEntry();
+            successor = this.nodesByKeyMap.firstEntry();
         }
         if (successor != null && successor.getKey().equals(hashKey)) {
             successor = null;
@@ -29,9 +27,9 @@ public class NodesChord {
     }
 
     public Optional<KVServer> getPredecessor(String hashKey) {
-        Map.Entry<String, KVServer> predecessor = this.nodes.lowerEntry(hashKey);
+        Map.Entry<String, KVServer> predecessor = this.nodesByKeyMap.lowerEntry(hashKey);
         if (predecessor == null) {
-            predecessor = this.nodes.lastEntry();
+            predecessor = this.nodesByKeyMap.lastEntry();
         }
         if (predecessor != null && predecessor.getKey().equals(hashKey)) {
             predecessor = null;
@@ -48,14 +46,14 @@ public class NodesChord {
                 throw new IllegalArgumentException("Node is already in the chord");
             }
         });
-        nodes.put(node.getHashKey(), node);
+        nodesByKeyMap.put(node.getHashKey(), node);
         this.mdChanged = true;
         return successor;
     }
 
     public Optional<KVServer> remove(KVServer node) {
         Optional<KVServer> successor = getSuccessor(node.getHashKey());
-        nodes.remove(node.getHashKey());
+        nodesByKeyMap.remove(node.getHashKey());
         this.mdChanged = true;
         return successor;
     }
@@ -64,19 +62,19 @@ public class NodesChord {
         if (this.mdChanged) {
             this.md = new Metadata();
 
-            String[] keys = new String[nodes.size()];
-            keys = new ArrayList<>(nodes.keySet()).toArray(keys);
+            String[] keys = new String[nodesByKeyMap.size()];
+            keys = new ArrayList<>(nodesByKeyMap.keySet()).toArray(keys);
 
-            KVServer[] kvServers = new KVServer[nodes.size()];
-            kvServers = new ArrayList<>(nodes.values()).toArray(kvServers);
+            KVServer[] kvServers = new KVServer[nodesByKeyMap.size()];
+            kvServers = new ArrayList<>(nodesByKeyMap.values()).toArray(kvServers);
 
 
-            for (int i = 0; i < nodes.size(); i++){
+            for (int i = 0; i < nodesByKeyMap.size(); i++){
                 String end = keys[i];
-                int j  = i - 1 < 0 ? nodes.size() - 1 : i - 1;
+                int j  = i - 1 < 0 ? nodesByKeyMap.size() - 1 : i - 1;
                 String start = HashUtils.increaseHashBy1(keys[j]);
                 KVServer node = kvServers[i];
-                md.add(node.getNodeName(), node.getHost(), node.getPort(), start, end);
+                md.add(node.getNodeName(), node.getHost(), node.getAdminPort(), start, end);
             }
             this.mdChanged = false;
         }
@@ -84,7 +82,7 @@ public class NodesChord {
     }
 
     public Optional<KVServer> randomNode() {
-        int n = ThreadLocalRandom.current().nextInt(this.nodes.size());
+        int n = ThreadLocalRandom.current().nextInt(this.nodesByKeyMap.size());
         for (KVServer kvS : this.nodes()) {
             if (n == 0) {
                 return Optional.ofNullable(kvS);
@@ -95,11 +93,11 @@ public class NodesChord {
     }
 
     public List<KVServer> nodes() {
-        return this.nodes.values().stream().sequential().collect(Collectors.toList());
+        return this.nodesByKeyMap.values().stream().sequential().collect(Collectors.toList());
     }
 
     public int size() {
-        return nodes.size();
+        return nodesByKeyMap.size();
     }
 
     /**
@@ -108,6 +106,10 @@ public class NodesChord {
      * @return true if treemap is empty
      */
     public boolean isEmpty() {
-        return nodes.isEmpty();
+        return nodesByKeyMap.isEmpty();
+    }
+
+    public TreeMap<String, KVServer> getNodesByKeyMap() {
+        return nodesByKeyMap;
     }
 }

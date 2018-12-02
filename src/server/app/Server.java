@@ -8,14 +8,12 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
-import server.api.AdminConnection;
+import server.api.InternalConnectionManager;
 import server.api.BatchDataTransferProcessor;
 import server.api.ClientConnection;
 import server.storage.CacheManager;
 import server.storage.cache.CacheDisplacementStrategy;
-import util.LogUtils;
 
-import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.net.BindException;
 import java.net.ServerSocket;
@@ -36,7 +34,8 @@ public class Server extends Thread implements IExternalConfigurationService {
 
     private static Logger LOG = LogManager.getLogger(SERVER_LOG);
 
-    private int port;
+    private int servicePort;
+    private int adminPort;
     private CacheManager cm;
 
     NodeState state;
@@ -48,20 +47,23 @@ public class Server extends Thread implements IExternalConfigurationService {
     private KeyHashRange hashRange;
     private String serverName;
 
+    private final InternalConnectionManager internalConnectionManager;
 
     /**
-     * Start KV Server at given port
+     * Start KV Server at given servicePort
      *
-     * @param port     given port for disk server to operate
-     * @param logLevel specifies the logging Level on the server
+     * @param servicePort given servicePort for disk server to operate
+     * @param logLevel    specifies the logging Level on the server
      */
-    public Server(String serverName, int port, String logLevel) {
-        this.port = port;
+    public Server(String serverName, int servicePort, int adminPort, String logLevel) {
         this.serverName = serverName;
+        this.servicePort = servicePort;
+        this.adminPort = adminPort;
         Configurator.setRootLevel(Level.getLevel(logLevel));
         state = NodeState.STOPPED;
-
-        LOG.info("Server constructed with port " + this.port + " and  with logging Level " + logLevel);
+        
+        internalConnectionManager = new InternalConnectionManager(this);
+        LOG.info("Server constructed with servicePort " + this.servicePort + " and  with logging Level " + logLevel);
 
     }
 
@@ -93,7 +95,8 @@ public class Server extends Thread implements IExternalConfigurationService {
         try {
             hashRange = getHashRange(metadata);
         } catch (NoSuchElementException nsee) {
-            return LogUtils.exitWithError(LOG, nsee);
+            LOG.error(nsee);
+            return false;
         }
 
         LOG.info("Server initialized with cache size " + cacheSize
@@ -102,18 +105,13 @@ public class Server extends Thread implements IExternalConfigurationService {
     }
 
     /**
-     * Stops the server insofar that it won't listen at the given port any more.
+     * Stops the server insofar that it won't listen at the given servicePort any more.
      */
     @Override
     public boolean stopService() {
         if (isStarted() || isWriteLocked()) {
-            try {
-                kvSocket.close();
-                state = NodeState.STOPPED;
-                return true;
-            } catch (IOException e) {
-                LOG.error("Error! " + "Unable to close socket on port: " + port, e);
-            }
+            state = NodeState.STOPPED;
+            return true;
         }
         return false;
     }
@@ -128,9 +126,14 @@ public class Server extends Thread implements IExternalConfigurationService {
 
     @Override
     public boolean shutdown() {
-        if (stopService()){
-
-            running = false;
+        if(state.equals(NodeState.STOPPED) || stopService()) {
+            try {
+                internalConnectionManager.getAdminSocket().close();
+                kvSocket.close();
+                running = false;
+            } catch (IOException e) {
+                LOG.error("Unable to close internal management socket or KV-socket! \n" + e);
+            }
         }
         return !running;
     }
@@ -156,7 +159,8 @@ public class Server extends Thread implements IExternalConfigurationService {
         try {
             hashRange = getHashRange(metadata);
         } catch (NoSuchElementException nsee) {
-            return LogUtils.exitWithError(LOG, nsee);
+            LOG.error(nsee);
+            return false;
         }
         this.metadata = metadata;
         return false;
@@ -177,30 +181,22 @@ public class Server extends Thread implements IExternalConfigurationService {
      * Initializes and starts the server. Loops until the the server should be
      * closed.
      */
+    @Override
     public void run() {
         running = initServer();
+        LOG.info("Server's running = " + running);
+        new Thread(internalConnectionManager).start();
+
         if (kvSocket != null) {
             while (isRunning()) {
                 try {
                     Socket client = kvSocket.accept();
-                    BufferedInputStream input = new BufferedInputStream(client.getInputStream());
-                    byte[] messageBytes = new byte[1];
+                    ClientConnection connection = new ClientConnection(this, client, cm);
+                    new Thread(connection).start();
+                    LOG.info("Client connection initialized");
 
-                    int bytesCopied = input.read(messageBytes);
-                    LOG.info("MessageBytes: " + Arrays.toString(messageBytes));
-
-                    if (messageBytes[0] == 1) {
-                        LOG.info("Admin connection initialized");
-                        AdminConnection ecs = new AdminConnection(this, client);
-                        new Thread(ecs).start();
-                    } else {
-                        ClientConnection connection = new ClientConnection(this, client, cm);
-                        new Thread(connection).start();
-                        LOG.info("Client connection initialized");
-
-                        LOG.info(
-                                "Connected to " + client.getInetAddress().getHostName() + " on port " + client.getPort());
-                    }
+                    LOG.info(
+                            "Connected to " + client.getInetAddress().getHostName() + " on servicePort " + client.getPort());
                 } catch (IOException e) {
                     LOG.error("Error! " + "Unable to establish connection. \n", e);
                 }
@@ -217,13 +213,13 @@ public class Server extends Thread implements IExternalConfigurationService {
     private boolean initServer() {
         LOG.info("Initialize server ...");
         try {
-            kvSocket = new ServerSocket(port);
-            LOG.info("Server listening on port: " + kvSocket.getLocalPort());
+            kvSocket = new ServerSocket(servicePort);
+            LOG.info("Server listening on servicePort: " + kvSocket.getLocalPort());
             return true;
         } catch (IOException e) {
-            LOG.error("Error! Cannot open server socket:");
+            LOG.error("Error! Cannot poll server socket:");
             if (e instanceof BindException) {
-                LOG.error("Port " + port + " is already bound!");
+                LOG.error("Port " + servicePort + " is already bound!");
             }
             return false;
         }
@@ -248,8 +244,11 @@ public class Server extends Thread implements IExternalConfigurationService {
     }
 
     private KeyHashRange getHashRange(Metadata metadata) throws NoSuchElementException {
+        LOG.info(metadata);
+        LOG.info("kvSocket.getLocalPort() = " + kvSocket.getLocalPort());
+        LOG.info("serverName = " + serverName);
         Optional<NodeInfo> nodeData = metadata.get().stream()
-                .filter(md -> md.getPort() == kvSocket.getLocalPort() && md.getName().equals(serverName))
+                .filter(md -> md.getPort() == adminPort && md.getName().equals(serverName))
                 .findFirst();
         if (!nodeData.isPresent())
             throw new NoSuchElementException("Metadata does not contain info for this node");
@@ -275,8 +274,8 @@ public class Server extends Thread implements IExternalConfigurationService {
         return state;
     }
 
-    public int getPort() {
-        return port;
+    public int getServicePort() {
+        return servicePort;
     }
 
     public String getServerName() {
@@ -313,16 +312,16 @@ public class Server extends Thread implements IExternalConfigurationService {
     }
 
     /**
-     * Checks whether the {@param portAsString} is a valid port number
+     * Checks whether the {@param portAsString} is a valid servicePort number
      *
-     * @param portAsString The port number in string format
-     * @return boolean value indicating the {@param portAsString} is a valid port
+     * @param portAsString The servicePort number in string format
+     * @return boolean value indicating the {@param portAsString} is a valid servicePort
      * number or not
      */
     private static boolean isValidPortNumber(String portAsString) {
         if (portAsString.matches("^([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$"))
             return true;
-        LOG.error("Invalid port number. Port number should contain only digits and range from 0 to 65535.");
+        LOG.error("Invalid servicePort number. Port number should contain only digits and range from 0 to 65535.");
         return false;
     }
 
@@ -393,30 +392,39 @@ public class Server extends Thread implements IExternalConfigurationService {
     /**
      * Main entry point for the echo server application.
      *
-     * @param args contains the port number at args[0], the cache size at args[1], the cache displacement strategy at args[2] and the logging Level at args[3].
+     * @param args contains the servicePort number at args[0], the cache size at args[1], the cache displacement strategy at args[2] and the logging Level at args[3].
      */
     public static void main(String[] args) {
         Server server = createServer(args);
-        server.setServerName(args[0]);
-        LOG.info("Server " + server.getServerName()+ " created and serving on port " + server.getPort());
-        server.run();
+        LOG.info("Server " + server.getServerName() + " created and serving on servicePort " + server.getServicePort());
+        server.start();
     }
 
 
     private static Server createServer(String[] args) {
-        if (args.length < 2 || args.length > 3)
-            throw new IllegalArgumentException("Server name and port must be provided to start the server");
+        if (args.length < 3 || args.length > 4)
+            throw new IllegalArgumentException("Server name and servicePort must be provided to start the server");
 
         String serverName = args[0];
         String portString = args[1];
+        String adminPortString = args[2];
         String logLevel = DEFAULT_LOG_LEVEL;
-        if (args.length == 3 && isValidLogLevel(args[2]))
-            logLevel = args[2];
+        if (args.length == 4 && isValidLogLevel(args[3]))
+            logLevel = args[3];
 
-        int port = -1;
-        if (isValidPortNumber(portString))
-            port = Integer.parseInt(portString);
+        int port = isValidPortNumber(portString) ? Integer.parseInt(portString) : -1;
+        int adminPort = isValidPortNumber(adminPortString) ? Integer.parseInt(adminPortString) : -1;
 
-        return new Server(serverName, port, logLevel);
+        if (port < 0 || adminPort < 0) {
+            IllegalArgumentException e = new IllegalArgumentException("Invalid service servicePort or administration servicePort!");
+            LOG.error(e);
+            throw e;
+        }
+
+        return new Server(serverName, port, adminPort, logLevel);
+    }
+
+    public int getAdminPort() {
+        return adminPort;
     }
 }

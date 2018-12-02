@@ -24,7 +24,7 @@ public class AllTests {
 
     static {
         try {
-            server = new Server("node1", 50000, "ERROR");
+            server = new Server("node1", 50000, 60000, "ERROR");
             server.start();
             server.initKVServer(getMetadata(), 100, "FIFO");
             server.startService();

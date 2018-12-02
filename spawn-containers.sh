@@ -26,18 +26,18 @@ function inc_ip {
 
 function write_service {
   idx=$1
-  port=$((START_PORT + idx))
+  servicePort=$((START_PORT + idx))
   ip_inc=$((idx + 1))
   host=$(inc_ip $NETWORK_HEX $ip_inc)
 
-  echo "node$idx $host $port" >> "$CONFIG_FILE"
+  echo "node$idx $host $servicePort" >> "$CONFIG_FILE"
 
   cat >> "$OUT_FILE" << EOF
   kv$idx:
     build: ./docker/.
     expose:
       - "22"
-      - "$port"
+      - "$servicePort"
     networks:
       performance_test_ntwrk:
         ipv4_address: $host

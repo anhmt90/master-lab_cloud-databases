@@ -27,7 +27,7 @@ public class ConfigMessageMarshaller {
 
         try (ByteArrayOutputStream byteArrayOS = new ByteArrayOutputStream();
              BufferedOutputStream bufferedOS = new BufferedOutputStream(byteArrayOS);
-             ObjectOutput output = new ObjectOutputStream(bufferedOS)) {
+             ObjectOutputStream output = new ObjectOutputStream(bufferedOS)) {
 
             output.writeObject(message);
             return byteArrayOS.toByteArray();
@@ -46,7 +46,7 @@ public class ConfigMessageMarshaller {
         }
         try (ByteArrayInputStream byteArrayIS = new ByteArrayInputStream(msgBytes);
              BufferedInputStream bufferedIS = new BufferedInputStream(byteArrayIS);
-             ObjectInput input = new ObjectInputStream(bufferedIS)) {
+             ObjectInputStream input = new ObjectInputStream(bufferedIS)) {
             try {
                 return (ConfigMessage) input.readObject();
             } catch (ClassNotFoundException e) {

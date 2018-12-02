@@ -26,11 +26,11 @@ public class KeyHashRange implements Serializable {
      */
     public boolean inRange(String hashString) {
         if(isWrappedAround()) {
-            if(hashString.compareTo(start) > 0 && hashString.compareTo(HashUtils.MAX_HASH) < 1)
+            if(hashString.compareTo(start) > -1 && hashString.compareTo(HashUtils.MAX_HASH) < 1)
                 return true;
             return hashString.compareTo(HashUtils.MIN_HASH) > -1 && hashString.compareTo(end) < 1;
         }
-        return hashString.compareTo(start) > 0 && hashString.compareTo(end) < 1;
+        return hashString.compareTo(start) > -1 && hashString.compareTo(end) < 1;
     }
 
     /**
@@ -79,4 +79,11 @@ public class KeyHashRange implements Serializable {
         return start.length() == end.length() && !start.equals(end);
     }
 
+    @Override
+    public String toString() {
+        return "KeyHashRange{" +
+                "start='" + start + '\'' +
+                ", end='" + end + '\'' +
+                '}';
+    }
 }

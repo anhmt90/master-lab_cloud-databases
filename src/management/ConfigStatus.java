@@ -12,7 +12,6 @@ public enum ConfigStatus implements Serializable {
         MOVE_DATA,
         UPDATE_METADATA,
 
-        BOOT_SUCCESS, /*Reply the SSH command*/
         INIT_SUCCESS,
         START_SUCCESS,
         STOP_SUCCESS,
@@ -21,6 +20,9 @@ public enum ConfigStatus implements Serializable {
         UNLOCK_WRITE_SUCCESS,
         MOVE_DATA_SUCCESS,
         UPDATE_METADATA_SUCCESS,
+
+        HEART_BEAT,
+        ALIVE,
 
         ERROR
 }

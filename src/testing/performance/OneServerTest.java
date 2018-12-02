@@ -30,7 +30,7 @@ public class OneServerTest {
     ecs.startService();
     KVServer kvS = ecs.getChord().nodes().iterator().next();
     for (int i = 0; i < clients.length; i++) {
-      Client client = new Client(kvS.getHost(), kvS.getPort());
+      Client client = new Client(kvS.getHost(), kvS.getAdminPort());
       clients[i] = new ClientRunner(client, enronDataset, putRatio, opsPerClient);
     }
 

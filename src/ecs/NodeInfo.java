@@ -38,4 +38,14 @@ public class NodeInfo implements Serializable {
     public KeyHashRange getRange() {
         return range;
     }
+
+    @Override
+    public String toString() {
+        return "\nNodeInfo{" +
+                "name='" + name + '\'' +
+                ", host='" + host + '\'' +
+                ", port=" + port +
+                ", range=" + range +
+                "}\n";
+    }
 }

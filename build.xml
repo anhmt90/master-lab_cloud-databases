@@ -67,7 +67,7 @@
     <target name="cleanall" depends="clean"/>
 
     <!-- build complete project -->
-    <target name="build" depends="init, doc">
+    <target name="build" depends="init">
         <echo message="${ant.project.name}: ${ant.file}"/>
         <javac debug="true" debuglevel="${debuglevel}" destdir="bin"
                source="${source}" target="${target}"
@@ -133,7 +133,7 @@
     <!-- generate separate jar files for client, server and ECS application -->
     <target name="build-jar" depends="build-client-jar, build-server-jar, build-ecs-jar"/>
 
-    <!-- run test cases -->
+    <!-- poll test cases -->
     <target name="test" depends="build">
         <junit>
             <classpath refid="project.classpath"/>
