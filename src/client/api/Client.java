@@ -157,15 +157,21 @@ public class Client implements IClient {
 	 */
 	private void reroute(String key) throws IOException{
 		print("Server miss. Reconnecting to appropriate server.");
-		NodeInfo meta = metadata.findByHashRange(connectedServerHashRange);
+		NodeInfo meta = metadata.findMatchingServer(HashUtils.getHash(key));
 		if(meta == null) {
-			print("No server corresponding to current hash range.");
+			print("No server found as responsible for the key.");
 			throw LogUtils.printLogError(LOG, new IOException(), "No server found responsible for key can't route request.");
 		}
 		disconnect();
 		this.address = meta.getHost();
 		this.port = meta.getPort();
 		connect();
+		if (isConnected()) {
+			byte[] bytes = receive();
+			String message = new String(bytes, StandardCharsets.US_ASCII).trim();
+			LOG.info("Message from server: " + message);
+			print(message);
+		}
 	}
 
 	/**
@@ -198,12 +204,7 @@ public class Client implements IClient {
 		}
 		return serverResponse;
 	}
-	
-	public IMessage put(String key) throws IOException {
-		return put(key, null);
-	}
-	
-	
+
 	/**
 	 * Handles retrying an operation if it targeted the wrong server
 	 * @param key used in the storage operation
@@ -217,20 +218,12 @@ public class Client implements IClient {
 			throws IOException {
 		if(serverResponse.getMetadata() != null) {
 			this.metadata = serverResponse.getMetadata();
-			NodeInfo meta = null;
-			if(command == GET) {
-				meta = metadata.findMatchingServerOrReplicator(HashUtils.getHash(key));
-			}
-			else {				
-				meta = metadata.findMatchingServer(HashUtils.getHash(key));
-			}
+			NodeInfo meta = metadata.findMatchingServer(HashUtils.getHash(key));
 			if(meta == null) {
 				print("No server found as responsible for the key.");
 				throw LogUtils.printLogError(LOG, new IOException(), "No server found responsible for key can't route request.");
 			}
-			
 			this.connectedServerHashRange = meta.getRange();
-			
 			switch (command) {
 			case PUT:
 				return put(key, value);
@@ -245,7 +238,9 @@ public class Client implements IClient {
 		}
 	}
 
-	
+	public IMessage put(String key) throws IOException {
+		return put(key, null);
+	}
 
 	/**
 	 * Intermediary method for deletion of key-value pairs on server
@@ -260,7 +255,7 @@ public class Client implements IClient {
 
 	@Override
 	public IMessage get(String key) throws IOException {
-		if(connectedServerHashRange != null && metadata != null && !metadata.isReplicaOrCoordinatorKeyrange(HashUtils.getHash(key), connectedServerHashRange)) {
+		if(connectedServerHashRange != null && !connectedServerHashRange.inRange(HashUtils.getHash(key))) {
 			reroute(key);
 		}
 		IMessage serverResponse = sendWithoutValue(key, Status.GET);
