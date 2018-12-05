@@ -21,7 +21,7 @@ import static util.StringUtils.WHITE_SPACE;
 public class ExternalConfigurationService implements IECS {
     public static final String ECS_LOG = "ECS";
     private static Logger LOG = LogManager.getLogger(ECS_LOG);
-    private static final int BOOT_ACK_PORT = 54321;
+    private static final int REPORT_PORT = 54321;
 
 
     /**

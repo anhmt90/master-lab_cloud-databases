@@ -68,7 +68,6 @@ public class NodesChord {
             KVServer[] kvServers = new KVServer[nodesByKeyMap.size()];
             kvServers = new ArrayList<>(nodesByKeyMap.values()).toArray(kvServers);
 
-
             for (int i = 0; i < nodesByKeyMap.size(); i++){
                 String end = keys[i];
                 int j  = i - 1 < 0 ? nodesByKeyMap.size() - 1 : i - 1;

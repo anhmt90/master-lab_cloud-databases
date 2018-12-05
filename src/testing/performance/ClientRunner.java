@@ -1,62 +1,82 @@
 package testing.performance;
 
 import client.api.Client;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import protocol.IMessage.Status;
+import testing.AllTests;
 
 import java.io.IOException;
-import java.util.concurrent.ThreadLocalRandom;
 
 class ClientRunner implements Runnable {
+    private static Logger LOG = LogManager.getLogger(AllTests.TEST_LOG);
 
-  private final Client client;
-  private final int putRatio;
-  private final int ops;
-  private final EnronDataset enronDataset;
+    private final Client client;
+    private final Status opType;
+    private final int ops;
+    private final EnronDataset enronDataset;
 
-  private long maxLatency = 0;
-  private long minLatency = Long.MAX_VALUE;
+    private Performance perf;
 
-  public long getMaxLatency() {
-    return maxLatency;
-  }
+    public ClientRunner(Client client, EnronDataset enronDataset, Status opType, int ops) {
 
-  public long getMinLatency() {
-    return minLatency;
-  }
+        if(!opType.equals(Status.PUT) || !opType.equals(Status.GET))
+                throw new IllegalArgumentException("Not supported opType");
 
-  public ClientRunner(Client client, EnronDataset enronDataset, int putRatio, int ops) {
-    this.enronDataset = enronDataset;
-    this.client = client;
-    this.putRatio = putRatio;
-    this.ops = ops;
-  }
+        this.enronDataset = enronDataset;
+        this.client = client;
+        this.opType = opType;
+        this.ops = ops;
 
-  @Override
-  public void run() {
-    try {
-      client.connect();
-    } catch (IOException e) {
-      e.printStackTrace();
     }
-    Stopwatch sw = new Stopwatch();
-    for (int i = 0; i < ops; i++) {
-      int n = ThreadLocalRandom.current().nextInt(100);
-      EnronDataset.KV kv = enronDataset.getRandom();
-      String key = kv.key == null? "stub" : kv.key;
-      String val = kv.val == null? "stub" : kv.val;
-      try {
-        sw.tick();
-        if (n >= putRatio) {
-          client.put(kv.key, kv.val);
-        } else {
-          client.put(kv.key, kv.val);
+
+    @Override
+    public void run() {
+        try {
+            client.connect();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        long tick = sw.tick();
-        if (tick > maxLatency) maxLatency = tick;
-        if (tick < minLatency) minLatency = tick;
-      } catch(IOException e){
-        e.printStackTrace();
-      }
+        Stopwatch sw = new Stopwatch();
+        System.out.println(opType.equals(Status.PUT) ? "putting...": "getting...");
+        sw.tick();
+        switch (opType) {
+            case PUT:
+                putAll();
+            case GET:
+                getAll();
+        }
+        sw.tock();
+        perf = new Performance()
+                .withNumOps(ops)
+                .withRuntime(sw.getRuntimeInMiliseconds());
     }
-  }
 
+
+    private void getAll() {
+        for (int i = 0; i < ops; i++) {
+            EnronDataset.KV kvPair = enronDataset.getRandom();
+            try {
+                client.get(kvPair.key);
+
+            } catch (IOException e) {
+                LOG.error("Failed to get " + kvPair.key);
+            }
+        }
+    }
+
+    private void putAll() {
+        for (int i = 0; i < ops; i++) {
+            EnronDataset.KV kvPair = enronDataset.getRandom();
+            try {
+                client.put(kvPair.key, kvPair.val);
+            } catch (IOException e) {
+                LOG.error("Failed to put " + kvPair.key);
+            }
+        }
+    }
+
+    public Performance getPerf() {
+        return perf;
+    }
 }

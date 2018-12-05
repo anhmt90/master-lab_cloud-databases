@@ -153,7 +153,7 @@ public class CommandLineApp {
 
         String value = keyAndValue[1];
         if (value.length() > MAX_VALUE_SIZE) {
-            String msg = "Value exceeds maximum size";
+            String msg = "Value exceeds maximum loadedDataSize";
             print(msg);
             LOG.info(msg + ": " + value.length());
             return;

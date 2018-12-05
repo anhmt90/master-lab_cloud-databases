@@ -67,6 +67,10 @@ public class KVServer implements Comparable<KVServer> {
         return this.address.getPort();
     }
 
+    public int getServicePort() {
+        return servicePort;
+    }
+
     void launch(Consumer<Boolean> callback) {
         boolean launched = false;
         try {

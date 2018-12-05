@@ -80,7 +80,7 @@ public class Server extends Thread implements IExternalConfigurationService {
     @Override
     public boolean initKVServer(Metadata metadata, int cacheSize, String strategy) {
         if (!isValidCacheSize(cacheSize)) {
-            LOG.error("Invalid cache size");
+            LOG.error("Invalid cache loadedDataSize");
             return false;
         }
 
@@ -99,7 +99,7 @@ public class Server extends Thread implements IExternalConfigurationService {
             return false;
         }
 
-        LOG.info("Server initialized with cache size " + cacheSize
+        LOG.info("Server initialized with cache loadedDataSize " + cacheSize
                 + " and displacement strategy " + strategy);
         return true;
     }
@@ -326,17 +326,17 @@ public class Server extends Thread implements IExternalConfigurationService {
     }
 
     /**
-     * Checks whether the {@param cacheSizeString} is a valid cache size
+     * Checks whether the {@param cacheSizeString} is a valid cache loadedDataSize
      *
-     * @param cacheSize The cache size to be checked
+     * @param cacheSize The cache loadedDataSize to be checked
      * @return boolean value indicating the {@param cacheSize} is a valid cache
-     * size or not
+     * loadedDataSize or not
      */
     private static boolean isValidCacheSize(int cacheSize) {
         if (cacheSize > 1 && cacheSize < 1073741824)
             return true;
         else {
-            LOG.error("Invalid cache size. Cache Size has to be a number between 1 and 2^30.");
+            LOG.error("Invalid cache loadedDataSize. Cache Size has to be a number between 1 and 2^30.");
             return false;
         }
     }
@@ -392,7 +392,7 @@ public class Server extends Thread implements IExternalConfigurationService {
     /**
      * Main entry point for the echo server application.
      *
-     * @param args contains the servicePort number at args[0], the cache size at args[1], the cache displacement strategy at args[2] and the logging Level at args[3].
+     * @param args contains the servicePort number at args[0], the cache loadedDataSize at args[1], the cache displacement strategy at args[2] and the logging Level at args[3].
      */
     public static void main(String[] args) {
         Server server = createServer(args);

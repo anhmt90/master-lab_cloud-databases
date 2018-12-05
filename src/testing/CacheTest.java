@@ -120,7 +120,7 @@ public class CacheTest extends TestCase {
   }
 
   /**
-   * Test one of the edge cases when there is a cache of size one, check if eviction works
+   * Test one of the edge cases when there is a cache of loadedDataSize one, check if eviction works
    * @param strategy {@link CacheDisplacementStrategy}
    */
   private void testCacheOneItemEvict(CacheDisplacementStrategy strategy) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {

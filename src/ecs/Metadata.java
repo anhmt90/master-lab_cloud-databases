@@ -21,7 +21,7 @@ public class Metadata implements Serializable {
      * @param end      the end of the key range the server is responsible for
      */
     public void add(String nodeName, String host, int port, String start, String end) {
-        System.out.println(String.format("WHAT %s %s", start, end));
+        System.out.println(String.format("RANGE %s %s", start, end));
         NodeInfo kvSMeta = new NodeInfo(nodeName, host, port, start, end);
         this.meta.add(kvSMeta);
     }
@@ -97,9 +97,9 @@ public class Metadata implements Serializable {
     }
 
     /**
-     * get metadata size
+     * get metadata loadedDataSize
      *
-     * @return metadata size
+     * @return metadata loadedDataSize
      */
     public int getSize() {
         return meta.size();

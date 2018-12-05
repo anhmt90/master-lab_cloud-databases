@@ -1,13 +1,25 @@
 package testing.performance;
 
 class Stopwatch {
-  private long tick = System.nanoTime();
+    private long tick;
+    private long tock;
+    private long runtime;
 
-  long tick() {
-    long tock = System.nanoTime();
-    long elapsed = tock - tick;
-    this.tick = tock;
-    return elapsed;
-  }
+    public void tick() {
+        tick = System.nanoTime();
+    }
 
+    public long tock() {
+        tock = System.nanoTime();
+        runtime = tock - tick;
+        return runtime;
+    }
+
+    public long getRuntimeInSeconds() {
+        return runtime / 1_000_000_000;
+    }
+
+    public long getRuntimeInMiliseconds() {
+        return runtime / 1_000_000;
+    }
 }

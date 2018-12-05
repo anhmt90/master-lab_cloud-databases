@@ -3,181 +3,170 @@ package testing.performance;
 import client.api.Client;
 import ecs.ExternalConfigurationService;
 import ecs.KVServer;
+import org.junit.Test;
+import protocol.IMessage.Status;
 import util.FileUtils;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import static util.FileUtils.SEP;
 
 public class OneServerTest {
-  private static final String enronPath = FileUtils.WORKING_DIR + "/../../maildir";
-  private EnronDataset enronDataset;
-  private static final String ecsConfigPath = System.getProperty("user.dir") + SEP + "config" + SEP + "server-info";
-  private ExternalConfigurationService ecs;
-  private Stopwatch sw = new Stopwatch();
+    private static final String ENRON_DATASET = FileUtils.WORKING_DIR + "/../enron_mail_20150507/maildir";
+    private static final String ECS_CONFIG_PATH = System.getProperty("user.dir") + SEP + "config" + SEP + "server-info";
 
-  public void init() throws IOException, NoSuchFieldException, IllegalAccessException {
-    ecs = new ExternalConfigurationService(ecsConfigPath);
-    enronDataset = new EnronDataset(enronPath);
-    enronDataset.loadMessages(3000);
-  }
+    private static final int[] CLIENT_NUMBERS = new int[]{1, 5, 20};
+    private static final int[] SERVER_NUMBERS = new int[]{1, 5, 10};
 
-  public long[] testServersClients(int numClients, int putRatio, int opsPerClient,
-                                 int numServers, int cacheSize, String strategy) throws Exception {
+    private static final int OPS_PER_CLIENT = 1000;
 
-    ClientRunner[] clients = new ClientRunner[numClients];
-    ecs.initService(numServers, cacheSize, strategy);
-    ecs.startService();
-    KVServer kvS = ecs.getChord().nodes().iterator().next();
-    for (int i = 0; i < clients.length; i++) {
-      Client client = new Client(kvS.getHost(), kvS.getAdminPort());
-      clients[i] = new ClientRunner(client, enronDataset, putRatio, opsPerClient);
+    private EnronDataset enronDataset;
+    private ExternalConfigurationService ecs;
+    private ReportBuilder reportBuilder;
+    List<Performance> perfResults;
+
+    private void init() throws IOException {
+        ecs = new ExternalConfigurationService(ECS_CONFIG_PATH);
+        reportBuilder = new ReportBuilder();
+        enronDataset = new EnronDataset(ENRON_DATASET);
+        enronDataset.loadData(3000);
     }
 
-    Thread[] threads = new Thread[clients.length];
-    for (int i = 0; i < clients.length; i++) {
-      ClientRunner clientRunner = clients[i];
-      threads[i] = new Thread(clientRunner);
+    @Test
+    public void test_cacheSizes_and_strategies() {
+        final int numClients = 5; // 5
+        final int numServers = 1; // 1
+
+        try {
+            init();
+            Status[] opTypes = new Status[]{Status.PUT, Status.GET};
+            for (Status opType : opTypes) {
+                reportBuilder.appendToLine("num_clients");
+                reportBuilder.appendToLine("ops_per_client");
+                reportBuilder.appendToLine("op_type");
+                reportBuilder.startNewLine();
+
+                reportBuilder.appendToLine(numClients);
+                reportBuilder.appendToLine(OPS_PER_CLIENT);
+                reportBuilder.appendToLine(opType.name());
+                reportBuilder.startNewLine();
+
+                Integer[] cacheSizes = new Integer[]{1, 50, 100, 250, 500, 2000, 5000};
+                String[] strategies = {"FIFO", "LFU", "LRU"};
+
+                for (String strategy : strategies) {
+                    reportBuilder.addHeader(strategy);
+
+                    for (int i = 0; i < cacheSizes.length; i++) {
+                        int cacheSize = cacheSizes[i];
+                        perfResults = runTest(numClients, opType, OPS_PER_CLIENT, numServers, cacheSize, strategy);
+                    }
+
+                    reportBuilder.addHeader("cache_size");
+                    reportBuilder.addNewLineWith(cacheSizes);
+                    reportBuilder.addHeader("elapsed_time");
+                    reportBuilder.addNewLineWith(perfResults.stream().map(Performance::getRuntime).toArray(Long[]::new));
+                    reportBuilder.addHeader("latency");
+                    reportBuilder.addNewLineWith(perfResults.stream().map(Performance::getLatency).toArray(Double[]::new));
+                    reportBuilder.addHeader("throughput");
+                    reportBuilder.addNewLineWith(perfResults.stream().map(Performance::getThroughput).toArray(Double[]::new));
+                }
+
+                String outputPath = FileUtils.WORKING_DIR + SEP + "performance_results" + SEP + "cachesizes_strategies.txt";
+                reportBuilder.writeToFile(outputPath);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (NoSuchFieldException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
-    sw.tick();
-    for (Thread t: threads) {
-      t.start();
+
+//    @Test
+//    public void test_multiple_clients_servers() throws Exception {
+//
+//        final int CACHE_SIZE = 100;
+//        final String STRATEGY = "LFU";
+//
+//        init();
+//        for (int numClient : CLIENT_NUMBERS) {
+//            reportBuilder.addHeader("clients_number");
+//            reportBuilder.appendToLine(numClient);
+//            reportBuilder.startNewLine();
+//            long[] times = new long[SERVER_NUMBERS.length];
+//            long[] minLatencies = new long[SERVER_NUMBERS.length];
+//            long[] maxLatencies = new long[SERVER_NUMBERS.length];
+//            long[] opsPerSec = new long[SERVER_NUMBERS.length];
+//
+//            for (int i = 0; i < SERVER_NUMBERS.length; i++) {
+//                int numServer = CLIENT_NUMBERS[i];
+//                long totalOps = numClient * OPS_PER_CLIENT;
+//                long[] results = runTest(numClient, PUT_RATIO, OPS_PER_CLIENT, numServer, CACHE_SIZE, STRATEGY);
+//                times[i] = results[0];
+//                minLatencies[i] = results[1];
+//                maxLatencies[i] = results[2];
+//                double seconds = (double) results[0] / 1_000_000_000.0;
+//                long opps = (long) (seconds / totalOps);
+//                opsPerSec[i] = opps;
+//            }
+//            reportBuilder.addHeader("servers_number");
+//            reportBuilder.addNewLineWith(SERVER_NUMBERS);
+//            reportBuilder.addHeader("elapsed_time");
+//            reportBuilder.addNewLineWith(times);
+//            reportBuilder.addHeader("min_latency");
+//            reportBuilder.addNewLineWith(minLatencies);
+//            reportBuilder.addHeader("max_latency");
+//            reportBuilder.addNewLineWith(maxLatencies);
+//            reportBuilder.addHeader("ops_per_second");
+//            reportBuilder.addNewLineWith(opsPerSec);
+//        }
+//        String outputPath = FileUtils.WORKING_DIR + SEP + "performance_results" + SEP + "servers_clients.txt";
+//        reportBuilder.writeToFile(outputPath);
+//    }
+
+    private List<Performance> runTest(int numClients, Status opType, int opsPerClient,
+                                      int numServers, int cacheSize, String strategy) throws Exception {
+
+        ClientRunner[] clientRunners = new ClientRunner[numClients];
+        ecs.initService(numServers, cacheSize, strategy);
+        ecs.startService();
+        KVServer kvServer = ecs.getChord().nodes().iterator().next();
+
+        for (int i = 0; i < numClients; i++) {
+            Client client = new Client(kvServer.getHost(), kvServer.getServicePort());
+            clientRunners[i] = new ClientRunner(client, enronDataset, opType, opsPerClient);
+        }
+
+        Thread[] threads = new Thread[numClients];
+        for (int i = 0; i < numClients; i++) {
+            ClientRunner clientRunner = clientRunners[i];
+            threads[i] = new Thread(clientRunner);
+        }
+
+        for (Thread t : threads)
+            t.start();
+
+        for (Thread t : threads)
+            t.join();
+
+        ecs.shutDown();
+        return Arrays.stream(clientRunners).map(ClientRunner::getPerf).collect(Collectors.toList());
     }
 
-    for (Thread t: threads) {
-      t.join();
-    }
-    long elapsedTime = sw.tick();
-    long maxLatency = 0;
-    long minLatency = Long.MAX_VALUE;
-    for (ClientRunner cr: clients) {
-      if (cr.getMaxLatency() > maxLatency) maxLatency = cr.getMaxLatency();
-      if (cr.getMaxLatency() < minLatency) minLatency = cr.getMinLatency();
-    }
-    ecs.shutDown();
+//    private double averageThrougput(ClientRunner[] clientRunners) {
+//        double sum = 0;
+//        for (ClientRunner clientRunner : clientRunners) {
+//            sum += clientRunner.getThroughput();
+//        }
+//        return sum / clientRunners.length;
+//    }
 
-    return new long[]{elapsedTime, minLatency, maxLatency};
-  }
-
-  public void testCacheToTime(int numClients, int opsPerClient, int putRatio) throws Exception {
-    ReportBuilder rb = new ReportBuilder();
-    long totalOps = numClients * opsPerClient;
-
-    rb.addValue("num_clients");
-    rb.addValue("ops_per_client");
-    rb.addValue("put_ratio");
-    rb.addSb();
-
-    rb.addValue(numClients);
-    rb.addValue(opsPerClient);
-    rb.addValue(putRatio);
-    rb.addSb();
-
-    int[] cacheSizes = new int[5];
-    cacheSizes[0] = 1;
-    for (int i = 1; i < cacheSizes.length; i++) {
-      cacheSizes[i] = cacheSizes[i-1] * 10;
-    }
-    String[] strategies = {"FIFO", "LFU", "LRU"};
-
-    for (String strategy: strategies) {
-      rb.addHeader(strategy);
-      long[] times = new long[cacheSizes.length];
-      long[] minLatencies = new long[cacheSizes.length];
-      long[] maxLatencies = new long[cacheSizes.length];
-      long[] opsPerSec = new long[cacheSizes.length];
-
-      for (int i = 0; i < cacheSizes.length; i++) {
-        int cacheSize = cacheSizes[i];
-        long[] results = testServersClients(numClients, putRatio, opsPerClient, 1, cacheSize, strategy);
-        times[i] = results[0];
-        minLatencies[i] = results[1];
-        maxLatencies[i] = results[2];
-        double seconds = (double)results[0]/ 1_000_000_000.0;
-        long opps = (long) (seconds / totalOps);
-        opsPerSec[i] = opps;
-      }
-
-      rb.addHeader("cache_size");
-      rb.addValues(cacheSizes);
-      rb.addHeader("elapsed_time");
-      rb.addValues(times);
-      rb.addHeader("min_latency");
-      rb.addValues(minLatencies);
-      rb.addHeader("max_latency");
-      rb.addValues(maxLatencies);
-      rb.addHeader("ops_per_second");
-      rb.addValues(opsPerSec);
-    }
-
-    String outputPath = FileUtils.WORKING_DIR  + SEP + "performance_results" + SEP + "cache_to_time.txt";
-    rb.writeToFile(outputPath);
-  }
-
-  public void testDifferentNumberClientsServers(int[] serverNums, String strategy, int cacheSize,
-                                                int[] clientNums, int putRatio, int opsPerClient) throws Exception {
-    ReportBuilder rb = new ReportBuilder();
-    for (int cn: clientNums) {
-      rb.addHeader("clients_number");
-      rb.addValue(cn);
-      rb.addSb();
-      long[] times = new long[serverNums.length];
-      long[] minLatencies = new long[serverNums.length];
-      long[] maxLatencies = new long[serverNums.length];
-      long[] opsPerSec = new long[serverNums.length];
-      for (int i = 0; i < serverNums.length; i++) {
-        int sn = clientNums[i];
-        long totalOps = cn * opsPerClient;
-        long[] results = testServersClients(cn, putRatio, opsPerClient, sn, cacheSize, strategy);
-        times[i] = results[0];
-        minLatencies[i] = results[1];
-        maxLatencies[i] = results[2];
-        double seconds = (double)results[0]/ 1_000_000_000.0;
-        long opps = (long) (seconds / totalOps);
-        opsPerSec[i] = opps;
-      }
-      rb.addHeader("servers_number");
-      rb.addValues(serverNums);
-      rb.addHeader("elapsed_time");
-      rb.addValues(times);
-      rb.addHeader("min_latency");
-      rb.addValues(minLatencies);
-      rb.addHeader("max_latency");
-      rb.addValues(maxLatencies);
-      rb.addHeader("ops_per_second");
-      rb.addValues(opsPerSec);
-    }
-    String outputPath = FileUtils.WORKING_DIR  + SEP + "performance_results" + SEP + "servers_clients.txt";
-    rb.writeToFile(outputPath);
-  }
-
-  public static void main(String[] args) {
-    OneServerTest ost = new OneServerTest();
-    try {
-      ost.init();
-    } catch (IOException | NoSuchFieldException | IllegalAccessException e) {
-      e.printStackTrace();
-    }
-
-    int numClients = 1;
-    int opsPerClient = 1000;
-    int putRatio = 50;
-
-    try {
-      ost.testCacheToTime(numClients, opsPerClient, putRatio);
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-
-    int[] numClientsss = new int[]{1, 5, 20};
-    int[] numServersss = new int[]{1, 5, 10};
-    int cacheSize = 100;
-    String strategy = "LFU";
-    try {
-      ost.testDifferentNumberClientsServers(numServersss, strategy, cacheSize, numClientsss, putRatio, opsPerClient);
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-  }
 }

@@ -306,11 +306,11 @@ public class ECSApplication {
     }
 
     /**
-     * Checks whether the {@param cacheSizeString} is a valid cache size
+     * Checks whether the {@param cacheSizeString} is a valid cache loadedDataSize
      *
-     * @param cacheSizeString The cache size number in string format
+     * @param cacheSizeString The cache loadedDataSize number in string format
      * @return boolean value indicating the {@param cacheSizeString} is a valid cache
-     * size or not
+     * loadedDataSize or not
      */
     private static boolean isValidCacheSize(String cacheSizeString) {
         try {
@@ -321,7 +321,7 @@ public class ECSApplication {
         } catch (NumberFormatException nex) {
 
         }
-        print("Invalid cache size. Cache Size has to be a number between 1 and 1073741824.");
+        print("Invalid cache loadedDataSize. Cache Size has to be a number between 1 and 1073741824.");
         return false;
     }
 
