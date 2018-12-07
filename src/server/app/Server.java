@@ -8,26 +8,32 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
-import server.api.InternalConnectionManager;
 import server.api.BatchDataTransferProcessor;
 import server.api.ClientConnection;
+import server.api.InternalConnectionManager;
 import server.storage.CacheManager;
 import server.storage.cache.CacheDisplacementStrategy;
+import util.FileUtils;
+import util.HashUtils;
 
+import java.io.File;
 import java.io.IOException;
-import java.net.BindException;
-import java.net.ServerSocket;
-import java.net.Socket;
+import java.net.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+
+import static util.FileUtils.WORKING_DIR;
 
 /**
  * Storage server implementation.
  */
 public class Server extends Thread implements IExternalConfigurationService {
     public static final String SERVER_LOG = "kvServer";
-    private static final String DEFAULT_LOG_LEVEL = "ALL";
+    private static final String DEFAULT_LOG_LEVEL = "ERROR";
     private static final int DEFAULT_CACHE_SIZE = 100;
     private static final int DEFAULT_PORT = 50000;
     private boolean adminConnected;
@@ -61,7 +67,7 @@ public class Server extends Thread implements IExternalConfigurationService {
         this.adminPort = adminPort;
         Configurator.setRootLevel(Level.getLevel(logLevel));
         state = NodeState.STOPPED;
-        
+
         internalConnectionManager = new InternalConnectionManager(this);
         LOG.info("Server constructed with servicePort " + this.servicePort + " and  with logging Level " + logLevel);
 
@@ -80,7 +86,7 @@ public class Server extends Thread implements IExternalConfigurationService {
     @Override
     public boolean initKVServer(Metadata metadata, int cacheSize, String strategy) {
         if (!isValidCacheSize(cacheSize)) {
-            LOG.error("Invalid cache loadedDataSize");
+            LOG.error("Invalid cache size");
             return false;
         }
 
@@ -99,7 +105,7 @@ public class Server extends Thread implements IExternalConfigurationService {
             return false;
         }
 
-        LOG.info("Server initialized with cache loadedDataSize " + cacheSize
+        LOG.info("Server initialized with cache size " + cacheSize
                 + " and displacement strategy " + strategy);
         return true;
     }
@@ -111,6 +117,11 @@ public class Server extends Thread implements IExternalConfigurationService {
     public boolean stopService() {
         if (isStarted() || isWriteLocked()) {
             state = NodeState.STOPPED;
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                LOG.error(e);
+            }
             return true;
         }
         return false;
@@ -126,7 +137,7 @@ public class Server extends Thread implements IExternalConfigurationService {
 
     @Override
     public boolean shutdown() {
-        if(state.equals(NodeState.STOPPED) || stopService()) {
+        if (state.equals(NodeState.STOPPED) || stopService()) {
             try {
                 internalConnectionManager.getAdminSocket().close();
                 kvSocket.close();
@@ -252,6 +263,7 @@ public class Server extends Thread implements IExternalConfigurationService {
                 .findFirst();
         if (!nodeData.isPresent())
             throw new NoSuchElementException("Metadata does not contain info for this node");
+        LOG.info("SERVER RANGE = " + nodeData.get().getRange());
         return nodeData.get().getRange();
     }
 
@@ -333,10 +345,10 @@ public class Server extends Thread implements IExternalConfigurationService {
      * loadedDataSize or not
      */
     private static boolean isValidCacheSize(int cacheSize) {
-        if (cacheSize > 1 && cacheSize < 1073741824)
+        if (cacheSize >= 1 && cacheSize <= 1073741824)
             return true;
         else {
-            LOG.error("Invalid cache loadedDataSize. Cache Size has to be a number between 1 and 2^30.");
+            LOG.error("Invalid cache size. Cache Size has to be a number between 1 and 2^30. Provided cacheSize is " + cacheSize);
             return false;
         }
     }
@@ -394,7 +406,12 @@ public class Server extends Thread implements IExternalConfigurationService {
      *
      * @param args contains the servicePort number at args[0], the cache loadedDataSize at args[1], the cache displacement strategy at args[2] and the logging Level at args[3].
      */
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
+        Path logDir = Paths.get(WORKING_DIR + "/logs");
+        System.out.println("LOGS DIR ==========================================================> " + logDir);
+        if (!Files.exists(logDir))
+            Files.createDirectories(logDir);
+
         Server server = createServer(args);
         LOG.info("Server " + server.getServerName() + " created and serving on servicePort " + server.getServicePort());
         server.start();

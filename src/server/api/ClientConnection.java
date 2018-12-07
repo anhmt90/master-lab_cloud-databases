@@ -9,6 +9,7 @@ import server.storage.PUTStatus;
 import server.storage.CacheManager;
 import util.HashUtils;
 import util.StringUtils;
+
 import static protocol.IMessage.MAX_MESSAGE_LENGTH;
 
 import java.io.*;
@@ -52,30 +53,31 @@ public class ClientConnection implements Runnable {
      * Loops until the connection is closed or aborted by the client.
      */
     public void run() {
+        IMessage requestMessage = null;
+        IMessage responseMessage = null;
         try {
-            output = new BufferedOutputStream(clientSocket.getOutputStream());
-            input = new BufferedInputStream(clientSocket.getInputStream());
-
-
             while (isOpen) {
                 try {
-                    IMessage requestMessage = receive();
-                    IMessage responseMessage = handleRequest(requestMessage);
+                    responseMessage = null;
+                    requestMessage = receive();
+                    responseMessage = handleRequest(requestMessage);
                     send(responseMessage);
 
-                    /* connection either terminated by the client or lost due to
-                     * network problems*/
                 } catch (IOException ioe) {
-                    LOG.error("Error! Connection lost!");
+                    LOG.error("Error! Connection lost!" + ioe);
+                    LOG.warn("Setting isOpen to false");
                     isOpen = false;
                 }
             }
-
-        } catch (IOException ioe) {
-            LOG.error("Error! Connection could not be established!", ioe);
-
         } finally {
             try {
+                LOG.warn("isOpen = " + isOpen);
+                LOG.warn("Is clienSocket connected = " + clientSocket.isConnected());
+                LOG.warn("Is clienSocket closed = " + clientSocket.isClosed());
+                LOG.warn("request= " + requestMessage.toString() + ":" + requestMessage.getValue());
+                if (responseMessage != null)
+                    LOG.warn("response= " + responseMessage.toString() + ":" + responseMessage.getValue());
+                LOG.warn("CLOSING SOCKET...");
                 if (clientSocket != null) {
                     input.close();
                     output.close();
@@ -95,13 +97,16 @@ public class ClientConnection implements Runnable {
      * @return a response message to the client
      */
     private IMessage handleRequest(IMessage message) {
-        if (server.isStopped())
+        if (server.isStopped()) {
+            LOG.info("Server is stopped");
             return new Message(Status.SERVER_STOPPED);
+        }
 
         K key = message.getK();
         V val = message.getV();
 
         if (!server.getHashRange().inRange(key.getString())) {
+            LOG.info("Server not responsible! Server hash range is " + server.getHashRange() + ", key is " + key.getString());
             return new Message(Status.SERVER_NOT_RESPONSIBLE, server.getMetadata());
         }
 
@@ -109,8 +114,10 @@ public class ClientConnection implements Runnable {
             case GET:
                 return handleGET(message);
             case PUT:
-                if (server.isWriteLocked() && !message.isMovingData())
+                if (server.isWriteLocked() && !message.isMovingData()) {
+                    LOG.info("Server is write-locked");
                     return new Message(Status.SERVER_WRITE_LOCK);
+                }
                 return handlePUT(key, val);
             default:
                 throw new IllegalArgumentException("Unknown Request Type");
@@ -162,23 +169,14 @@ public class ClientConnection implements Runnable {
      * @throws IOException
      */
     public void send(IMessage message) throws IOException {
-        writeOutput(message.toString(), MessageMarshaller.marshall(message));
-    }
-
-    /**
-     * Send a marshalled message out through the server socket
-     *
-     * @param object       Message in String format for logging
-     * @param messageBytes The marshalled message
-     * @throws IOException
-     */
-    private void writeOutput(String object, byte[] messageBytes) throws IOException {
-        output.write(messageBytes);
+        byte[] toSend = MessageMarshaller.marshall(message);
+        output = new BufferedOutputStream(clientSocket.getOutputStream());
+        output.write(toSend);
         output.flush();
-        LOG.info("SEND \t<"
+        LOG.info("SEND " + toSend.length + " bytes \t<"
                 + clientSocket.getInetAddress().getHostAddress() + ":"
-                + clientSocket.getPort() + ">: '"
-                + object + "'");
+                + clientSocket.getPort() + "> ===> '"
+                + message.toString() + "'");
     }
 
 
@@ -189,17 +187,25 @@ public class ClientConnection implements Runnable {
      * @throws IOException
      */
     private IMessage receive() throws IOException {
-        byte[] messageBytes = new byte[MAX_MESSAGE_LENGTH];
+        byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
+        input = new BufferedInputStream(clientSocket.getInputStream());
+        int justRead = input.read(messageBuffer);
 
-        int bytesCopied = input.read(messageBytes);
-        LOG.info("Read " + bytesCopied + " from input stream");
+        int inBuffer = justRead;
+        while (!MessageMarshaller.isMessageComplete(messageBuffer, inBuffer)) {
+            LOG.warn("input hasn't reached EndOfStream, " + input.available() + " more to read");
+            justRead = input.read(messageBuffer, inBuffer, messageBuffer.length - inBuffer);
+            inBuffer += justRead;
+        }
 
-        IMessage message = MessageMarshaller.unmarshall(messageBytes);
+        LOG.info("Read " + inBuffer + " bytes from input stream");
+
+        IMessage message = MessageMarshaller.unmarshall(messageBuffer);
 
         LOG.info("RECEIVE \t<"
                 + clientSocket.getInetAddress().getHostAddress() + ":"
-                + clientSocket.getPort() + ">: '"
-                + message.toString().trim() + "'");
+                + clientSocket.getPort() + "> ===>'"
+                + message.toString() + "'");
         return message;
     }
 

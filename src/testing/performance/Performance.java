@@ -2,7 +2,7 @@ package testing.performance;
 
 public class Performance {
     /**
-     * time spent to execute in millisecond
+     * time spent to execute in second
      */
     private long runtime;
     private long numOps;
@@ -13,19 +13,19 @@ public class Performance {
     }
 
     /**
-     * calculates the average throughput
+     * calculates how many operations can be executed in a ms
      * @return the average throughput (ops/ms)
      */
     public double getThroughput() {
-        return numOps / runtime;
+        return ((double) numOps) / ((double) runtime);
     }
 
     /**
-     * calculates the average latency per operation
+     * calculates much time an operation need in average
      * @return the average latency (ms/op)
      */
     public double getLatency() {
-        return runtime / numOps;
+        return ((double) runtime) / ((double) numOps);
     }
 
     public long getRuntime() {

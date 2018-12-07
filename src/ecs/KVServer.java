@@ -53,7 +53,9 @@ public class KVServer implements Comparable<KVServer> {
 
         String[] cmds = {"ssh", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
                 "tuan-anh@" + getHost(),
-                "nohup java -jar ms3-server.jar " + nodeName + " " + this.servicePort + " " + getAdminPort() + " > ./logs/" + nodeName + ".log & "
+                "nohup java -jar /mnt/14F2F79EF2F781F2/Workspace/uni-project/cloud-databases/gr7-ms3/ms3-server.jar " + nodeName + " " + this.servicePort + " " + getAdminPort()
+                        + " > /mnt/14F2F79EF2F781F2/Workspace/uni-project/cloud-databases/gr7-ms3/logs/" + nodeName + ".log"
+                        + " &"
         };
         this.sshCMD = cmds;
         this.hashKey = HashUtils.getHash(String.format("%s:%d", this.getHost(), this.servicePort));
@@ -93,11 +95,11 @@ public class KVServer implements Comparable<KVServer> {
             BufferedReader err = new BufferedReader(new InputStreamReader(proc.getErrorStream()));
             String output;
             while ((output = in.readLine()) != null) {
-                LOG.info("SSH response: " + output);
+                LOG.info("SSH output: " + output);
             }
             while ((output = err.readLine()) != null) {
                 hasError = true;
-                LOG.error("SSH response: " + output);
+                LOG.error("SSH error: " + output);
             }
             count++;
             if (count == RETRY_NUM)

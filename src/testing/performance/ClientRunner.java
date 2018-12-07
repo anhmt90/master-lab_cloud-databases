@@ -20,8 +20,8 @@ class ClientRunner implements Runnable {
 
     public ClientRunner(Client client, EnronDataset enronDataset, Status opType, int ops) {
 
-        if(!opType.equals(Status.PUT) || !opType.equals(Status.GET))
-                throw new IllegalArgumentException("Not supported opType");
+        if(!opType.equals(Status.PUT) && !opType.equals(Status.GET))
+                throw new IllegalArgumentException("Not supported opType " + opType);
 
         this.enronDataset = enronDataset;
         this.client = client;
@@ -43,13 +43,15 @@ class ClientRunner implements Runnable {
         switch (opType) {
             case PUT:
                 putAll();
+                break;
             case GET:
                 getAll();
+                break;
         }
         sw.tock();
         perf = new Performance()
                 .withNumOps(ops)
-                .withRuntime(sw.getRuntimeInMiliseconds());
+                .withRuntime(sw.getRuntimeInSeconds());
     }
 
 

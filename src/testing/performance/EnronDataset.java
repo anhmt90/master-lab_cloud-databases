@@ -3,7 +3,6 @@ package testing.performance;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import testing.AllTests;
-import util.FileUtils;
 import util.StringUtils;
 
 import java.io.IOException;
@@ -41,7 +40,7 @@ public class EnronDataset {
 
     private static final int MAX_VAL_LENGTH = 122880;
     private final Path datasetPath;
-    private CopyOnWriteArrayList<KV> loadedData;
+    private CopyOnWriteArrayList<KV> dataLoaded;
     private List<Path> files = new ArrayList<>();
 
     public EnronDataset(String datasetPath) throws IOException {
@@ -60,24 +59,27 @@ public class EnronDataset {
 
 
     public void loadData(int amount) {
-        this.loadedData = new CopyOnWriteArrayList<>();
+        this.dataLoaded = new CopyOnWriteArrayList<>();
         Collections.shuffle(files);
 
         List<Thread> threads = new ArrayList<>(amount);
         for (int i = 0; i < amount; i++) {
             Path filePath = this.files.get(i);
-            Thread t = new Thread(() -> readFile(filePath));
-            t.start();
-            threads.add(t);
+//            Thread t = new Thread(() -> readFile(filePath));
+//            t.start();
+//            threads.add(t);
+            readFile(filePath);
         }
 
-        for (Thread t : threads) {
-            try {
-                t.join();
-            } catch (InterruptedException e) {
-                LOG.error(e);
-            }
-        }
+//        for (Thread t : threads) {
+//            try {
+//                t.join();
+//            } catch (InterruptedException e) {
+//                LOG.error(e);
+//            }
+//        }
+
+        LOG.info("Numbers of data loaded " + dataLoaded.size());
     }
 
     private void readFile(Path filePath) {
@@ -95,13 +97,17 @@ public class EnronDataset {
         while (iter.hasNext() && sb.length() <= MAX_VAL_LENGTH)
             sb.append(iter.next());
 
+        if (sb.length() > MAX_VAL_LENGTH) {
+            System.out.println("VALUE too large!");
+            return;
+        }
         String value = sb.toString();
         if(StringUtils.isEmpty(key) || StringUtils.isEmpty(value)) {
             LOG.warn("Key or value is empty. Skipping file " + filePath.toString());
             return;
         }
 
-        this.loadedData.add(new KV(key, value));
+        this.dataLoaded.add(new KV(key, value));
     }
 
     public void loadEntireDataset() {
@@ -109,15 +115,15 @@ public class EnronDataset {
     }
 
     public CopyOnWriteArrayList<KV> loadedEntries() {
-        return this.loadedData;
+        return this.dataLoaded;
     }
 
     public int loadedDataSize() {
-        return loadedData.size();
+        return dataLoaded.size();
     }
 
     public KV getRandom() {
         int n = ThreadLocalRandom.current().nextInt(loadedDataSize());
-        return loadedData.get(n);
+        return dataLoaded.get(n);
     }
 }

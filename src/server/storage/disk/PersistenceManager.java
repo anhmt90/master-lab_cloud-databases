@@ -19,11 +19,12 @@ import util.FileUtils;
 import util.StringUtils;
 
 import static util.FileUtils.SEP;
+import static util.FileUtils.WORKING_DIR;
 
 public class PersistenceManager implements IPersistenceManager {
-	private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
-	
-	private String db_path = System.getProperty("user.dir") + SEP + "db" + SEP;
+    private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
+
+    private String db_path = WORKING_DIR + "/db" + SEP;
 
     public PersistenceManager(String serverId) {
         db_path += serverId + SEP;
@@ -32,7 +33,7 @@ public class PersistenceManager implements IPersistenceManager {
 
     /**
      * Creates a directory structure from a given path
-     * 
+     *
      * @param path the directory path that should be
      *             constructed
      * @return true if the creation was successful
@@ -54,10 +55,10 @@ public class PersistenceManager implements IPersistenceManager {
     @Override
     public synchronized PUTStatus write(String key, byte[] value) {
         Path file = getFilePath(key);
-        PUTStatus putStatus = FileUtils.isExisted(file) ? PUTStatus.UPDATE_ERROR : PUTStatus.CREATE_ERROR;
         try {
-            Files.createDirectories(file.getParent());
-            putStatus = createOrUpdate(file, value);
+            if (!Files.exists(file.getParent()))
+                Files.createDirectories(file.getParent());
+            return createOrUpdate(file, value);
         } catch (FileAlreadyExistsException faee) {
             faee.printStackTrace();
             LOG.error(faee);
@@ -65,7 +66,7 @@ public class PersistenceManager implements IPersistenceManager {
             LOG.error(e);
             e.printStackTrace();
         }
-        return putStatus;
+        return FileUtils.isExisted(file) ? PUTStatus.UPDATE_ERROR : PUTStatus.CREATE_ERROR;
     }
 
     /**
@@ -75,36 +76,35 @@ public class PersistenceManager implements IPersistenceManager {
      * @param key key from which the path is constructed
      * @return a directory path corresponding to the key
      */
-	public Path getFilePath(String key) {
-		String path = db_path  + SEP + StringUtils.insertCharEvery(key, '/',2) + key;
-		return Paths.get(path);
-	}
-
+    public Path getFilePath(String key) {
+        String path = db_path + SEP + StringUtils.insertCharEvery(key, '/', 2) + key;
+        return Paths.get(path);
+    }
 
 
     /**
      * Handles creating or updating a value in a given path
-     * 
+     *
      * @param file        path in which the value is supposed
      *                    to be stored
      * @param fileContent value being stored in a file
      * @return Status if operation was successful or failed
      */
-	private synchronized PUTStatus createOrUpdate(Path file, byte[] fileContent) {
-		try {
-			if (!FileUtils.isExisted(file)) {
-				Files.createFile(file);
-				Files.write(file, fileContent);
-				return PUTStatus.CREATE_SUCCESS;
-			}
-			Files.write(file, fileContent);
-			return PUTStatus.UPDATE_SUCCESS;
-		} catch (IOException e) {
-			LOG.error(e);
-			e.printStackTrace();
-		}
-		return (FileUtils.isExisted(file)) ? PUTStatus.UPDATE_ERROR : PUTStatus.CREATE_ERROR;
-	}
+    private synchronized PUTStatus createOrUpdate(Path file, byte[] fileContent) {
+        try {
+            if (!FileUtils.isExisted(file)) {
+                Files.createFile(file);
+                Files.write(file, fileContent);
+                return PUTStatus.CREATE_SUCCESS;
+            }
+            Files.write(file, fileContent);
+            return PUTStatus.UPDATE_SUCCESS;
+        } catch (IOException e) {
+            LOG.error(e);
+            e.printStackTrace();
+        }
+        return (FileUtils.isExisted(file)) ? PUTStatus.UPDATE_ERROR : PUTStatus.CREATE_ERROR;
+    }
 
     @Override
     public byte[] read(String key) {
@@ -132,7 +132,7 @@ public class PersistenceManager implements IPersistenceManager {
                 e.printStackTrace();
             }
         }
-        return null;
+        return PUTStatus.DELETE_ERROR;
     }
 
     public String getDbPath() {

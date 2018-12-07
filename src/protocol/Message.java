@@ -82,6 +82,6 @@ public class Message implements IMessage {
 
 	@Override
 	public String toString() {
-		return status.name() + "<" + key + ", " + value + '>';
+		return status.name() + "<" + getKey() + '>';
 	}
 }

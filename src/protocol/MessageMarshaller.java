@@ -7,12 +7,14 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
+import ecs.ExternalConfigurationService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import ecs.NodeInfo;
 import ecs.Metadata;
 import protocol.IMessage.Status;
+import server.app.Server;
 import util.HashUtils;
 import util.StringUtils;
 
@@ -20,7 +22,7 @@ import static server.app.Server.SERVER_LOG;
 
 public class MessageMarshaller {
 
-  private static Logger LOG = LogManager.getLogger(SERVER_LOG);
+  private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
     /**
      * converts a {@link IMessage}  to an byte array to send over the network
      * @param message
@@ -71,7 +73,7 @@ public class MessageMarshaller {
       if(msgBytes.length < 16)
         return new Message(status);
 
-        int valLength = ByteBuffer.wrap(new byte[]{0, msgBytes[1], msgBytes[2], msgBytes[3]}).getInt();
+        int valLength = getValueLength(msgBytes[1], msgBytes[2], msgBytes[3]);
         byte[] keyBytes = new byte[16];
 
         System.arraycopy(msgBytes, 1 + 3, keyBytes, 0, keyBytes.length);
@@ -161,5 +163,15 @@ public class MessageMarshaller {
     	}
     	return output;
     }
-    
+
+    private static int getValueLength(byte first, byte second, byte third) {
+        return ByteBuffer.wrap(new byte[]{0, first, second, third}).getInt();
+    }
+
+    public static boolean isMessageComplete(byte[] messageBytes, int bytesRead) {
+        int valLength = getValueLength(messageBytes[1], messageBytes[2], messageBytes[3]);
+        return 1 + 3 + 16 + valLength == bytesRead;
+    }
 }
+
+

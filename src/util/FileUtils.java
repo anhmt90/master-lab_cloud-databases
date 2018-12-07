@@ -1,12 +1,27 @@
 package util;
 
+import server.app.Server;
+
+import java.io.File;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class FileUtils {
-    public static final String WORKING_DIR = System.getProperty("user.dir");
     public static final String SEP = "/";
+    public static final String WORKING_DIR = getWorkingDir();
+    public static final String USER_DIR = System.getProperty("user.dir");
+
+    private static String getWorkingDir() {
+//        String path = FileUtils.class.getClassLoader().getResource("util").getPath();
+        try {
+            String path =  new File(FileUtils.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getPath();
+            return path.substring(0, path.lastIndexOf('/'));
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException(e);
+        }
+    }
 
 
     /**

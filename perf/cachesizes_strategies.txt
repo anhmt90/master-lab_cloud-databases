@@ -1,0 +1,12 @@
+num_clients;ops_per_client;op_type
+5;200;PUT
+LRU
+cache_size
+250
+elapsed_time
+2;2;2;2;2
+latency
+0.01;0.01;0.01;0.01;0.01
+throughput
+100.0;100.0;100.0;100.0;100.0
+
