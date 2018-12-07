@@ -1,5 +1,7 @@
 package testing.performance;
 
+import util.FileUtils;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -65,7 +67,7 @@ class ReportBuilder {
     public void writeToFile(String path) throws IOException {
         startNewLine();
         Path p = Paths.get(path);
-        if (!Files.exists(p)) {
+        if (!FileUtils.exists(p)) {
             File file = new File(path);
             file.createNewFile();
         }

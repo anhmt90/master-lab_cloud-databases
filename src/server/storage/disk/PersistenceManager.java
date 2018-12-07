@@ -1,22 +1,21 @@
 package server.storage.disk;
 
-import server.api.ClientConnection;
 import server.app.Server;
 import server.storage.PUTStatus;
 
-import java.io.File;
 import java.io.IOException;
-import java.io.Serializable;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
+import java.nio.channels.OverlappingFileLockException;
+import java.nio.file.*;
 import java.util.Arrays;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import util.FileUtils;
 import util.StringUtils;
+import util.Validate;
 
 import static util.FileUtils.SEP;
 import static util.FileUtils.WORKING_DIR;
@@ -40,7 +39,7 @@ public class PersistenceManager implements IPersistenceManager {
      */
     public boolean createDBDir(String path) {
         Path dbPath = Paths.get(path);
-        if (!Files.exists(dbPath)) {
+        if (!FileUtils.dirExists(dbPath)) {
             try {
                 Files.createDirectories(dbPath);
                 LOG.info("New Directory Successfully Created at " + dbPath);
@@ -53,10 +52,10 @@ public class PersistenceManager implements IPersistenceManager {
     }
 
     @Override
-    public synchronized PUTStatus write(String key, byte[] value) {
+    public PUTStatus write(String key, byte[] value) {
         Path file = getFilePath(key);
         try {
-            if (!Files.exists(file.getParent()))
+            if (!FileUtils.dirExists(file.getParent()))
                 Files.createDirectories(file.getParent());
             return createOrUpdate(file, value);
         } catch (FileAlreadyExistsException faee) {
@@ -66,7 +65,7 @@ public class PersistenceManager implements IPersistenceManager {
             LOG.error(e);
             e.printStackTrace();
         }
-        return FileUtils.isExisted(file) ? PUTStatus.UPDATE_ERROR : PUTStatus.CREATE_ERROR;
+        return FileUtils.exists(file) ? PUTStatus.UPDATE_ERROR : PUTStatus.CREATE_ERROR;
     }
 
     /**
@@ -90,26 +89,87 @@ public class PersistenceManager implements IPersistenceManager {
      * @param fileContent value being stored in a file
      * @return Status if operation was successful or failed
      */
-    private synchronized PUTStatus createOrUpdate(Path file, byte[] fileContent) {
+    private PUTStatus createOrUpdate(Path file, byte[] fileContent) {
         try {
-            if (!FileUtils.isExisted(file)) {
-                Files.createFile(file);
+            synchronized (file) {
+                if (!FileUtils.exists(file)) {
+                    Files.createFile(file);
+                    Files.write(file, fileContent);
+                    return PUTStatus.CREATE_SUCCESS;
+                }
                 Files.write(file, fileContent);
-                return PUTStatus.CREATE_SUCCESS;
+                return PUTStatus.UPDATE_SUCCESS;
             }
-            Files.write(file, fileContent);
-            return PUTStatus.UPDATE_SUCCESS;
         } catch (IOException e) {
             LOG.error(e);
             e.printStackTrace();
         }
-        return (FileUtils.isExisted(file)) ? PUTStatus.UPDATE_ERROR : PUTStatus.CREATE_ERROR;
+        return (FileUtils.exists(file)) ? PUTStatus.UPDATE_ERROR : PUTStatus.CREATE_ERROR;
     }
+
+//    private PUTStatus createOrUpdate(Path file, byte[] fileContent) {
+//        PUTStatus opType;
+//        try {
+//            try {
+//                Files.createFile(file);
+////            if (!FileUtils.exists(file) && !FileUtils.isBeingCreated(file.getFileName().toString())) {
+////                createNewFile(file);
+//                opType = PUTStatus.CREATE_SUCCESS;
+////            }
+//            } catch (FileAlreadyExistsException faee) {
+//                opType = PUTStatus.UPDATE_SUCCESS;
+//            }
+//            write(file, fileContent);
+//            return opType;
+//        } catch (IOException e) {
+//            LOG.error(e);
+//            e.printStackTrace();
+//        }
+//        return (FileUtils.exists(file)) ? PUTStatus.UPDATE_ERROR : PUTStatus.CREATE_ERROR;
+//    }
+
+//    private void createNewFile(Path file) throws IOException {
+//        boolean success = false;
+//        while (!success) {
+//            success = FileUtils.lockForCreating(file.getFileName().toString());
+//            if (success) {
+////                FileChannel fileChannel = FileChannel.open(file, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+////                fileChannel.close();
+//
+////                Files.createFile(file);
+//            }
+//        }
+//        FileUtils.doneCreating(file.getFileName().toString());
+//    }
+
+//    private void write(Path file, byte[] fileContent) throws IOException {
+//        while (true) {
+//            try {
+//                FileChannel fileChannel = FileChannel.open(file, StandardOpenOption.WRITE);
+//                fileChannel.lock();
+//                fileChannel.truncate(0);
+//                ByteBuffer buffer = ByteBuffer.wrap(fileContent);
+//                while (buffer.hasRemaining())
+//                    fileChannel.write(buffer);
+//                fileChannel.force(true);
+//                fileChannel.close();
+//                break;
+//            } catch (OverlappingFileLockException e) {
+//                LOG.error("Lock error!", e);
+//                try {
+//                    Thread.sleep(2);
+//                } catch (InterruptedException ie) {
+//                    LOG.error(ie);
+//                    ie.printStackTrace();
+//                }
+//            }
+//        }
+//    }
 
     @Override
     public byte[] read(String key) {
         Path file = getFilePath(key);
-        if (FileUtils.isExisted(file)) {
+        if (FileUtils.exists(file)) {
             try {
                 return Files.readAllBytes(file);
             } catch (IOException e) {
@@ -120,8 +180,29 @@ public class PersistenceManager implements IPersistenceManager {
         return null;
     }
 
+//    public byte[] read(String key) {
+//        Path file = getFilePath(key);
+//        if (FileUtils.exists(file)) {
+//            try {
+//                FileChannel fileChannel = FileChannel.open(file, StandardOpenOption.READ);
+//                fileChannel.lock(0, Long.MAX_VALUE, true);
+//                ByteBuffer buffer = ByteBuffer.allocate(1024 * 120);
+//                int bytesRead = fileChannel.read(buffer);
+//                byte[] ret = new byte[bytesRead];
+//                fileChannel.close();
+//                System.arraycopy(buffer.array(), 0, ret, 0, bytesRead);
+//                return ret;
+//
+//            } catch (IOException e) {
+//                LOG.error(e);
+//                e.printStackTrace();
+//            }
+//        }
+//        return null;
+//    }
+
     @Override
-    public PUTStatus delete(String key) {
+    public synchronized PUTStatus delete(String key) {
         Path file = getFilePath(key);
         if (!Files.isDirectory(file)) {
             try {
@@ -132,8 +213,23 @@ public class PersistenceManager implements IPersistenceManager {
                 e.printStackTrace();
             }
         }
-        return PUTStatus.DELETE_ERROR;
+        return null;
     }
+
+//    public PUTStatus delete(String key) {
+//        Path file = getFilePath(key);
+//        if (!FileUtils.isDir(file)) {
+//            try {
+//                FileChannel fileChannel = FileChannel.open(file, StandardOpenOption.DELETE_ON_CLOSE);
+//                fileChannel.close();
+//                return PUTStatus.DELETE_SUCCESS;
+//            } catch (IOException e) {
+//                LOG.error(e);
+//                e.printStackTrace();
+//            }
+//        }
+//        return PUTStatus.DELETE_ERROR;
+//    }
 
     public String getDbPath() {
         return db_path;

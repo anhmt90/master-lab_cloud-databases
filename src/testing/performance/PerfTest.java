@@ -26,7 +26,7 @@ public class PerfTest {
     private static final int[] CLIENT_NUMBERS = new int[]{1, 5, 20};
     private static final int[] SERVER_NUMBERS = new int[]{1, 5, 10};
 
-    private static final int OPS_PER_CLIENT = 200;
+    private static final int OPS_PER_CLIENT = 1000;
 
     private EnronDataset enronDataset;
     private ExternalConfigurationService ecs;
@@ -37,7 +37,7 @@ public class PerfTest {
         ecs = new ExternalConfigurationService(ECS_CONFIG_PATH);
         reportBuilder = new ReportBuilder();
         enronDataset = new EnronDataset(ENRON_DATASET);
-        enronDataset.loadData(500);
+        enronDataset.loadData(3000);
     }
 
 
@@ -87,7 +87,7 @@ public class PerfTest {
 
         try {
             init();
-            Status[] opTypes = new Status[]{Status.PUT};
+            Status[] opTypes = new Status[]{Status.PUT, Status.GET};
             for (Status opType : opTypes) {
                 reportBuilder.appendToLine("num_clients");
                 reportBuilder.appendToLine("ops_per_client");
@@ -99,10 +99,10 @@ public class PerfTest {
                 reportBuilder.appendToLine(opType.name());
                 reportBuilder.startNewLine();
 
-//                Integer[] cacheSizes = new Integer[]{1, 50, 100, 250, 500, 2000, 5000};
+//                Integer[] cacheSizes = new Integer[]{1, 100, 500, 1000, 2000, 5000};
 //                String[] strategies = {"FIFO", "LFU", "LRU"};
-                Integer[] cacheSizes = new Integer[]{250};
-                String[] strategies = {"LRU"};
+                Integer[] cacheSizes = new Integer[]{1000};
+                String[] strategies = {"FIFO"};
 
                 for (String strategy : strategies) {
                     reportBuilder.addHeader(strategy);
@@ -115,14 +115,14 @@ public class PerfTest {
                     reportBuilder.addHeader("cache_size");
                     reportBuilder.addNewLineWith(cacheSizes);
                     reportBuilder.addHeader("elapsed_time");
-                    reportBuilder.addNewLineWith(perfResults.stream().map(Performance::getRuntime).toArray(Long[]::new));
+                    reportBuilder.addNewLineWith(perfResults.stream().map(Performance::getRuntime).toArray(Double[]::new));
                     reportBuilder.addHeader("latency");
                     reportBuilder.addNewLineWith(perfResults.stream().map(Performance::getLatency).toArray(Double[]::new));
                     reportBuilder.addHeader("throughput");
                     reportBuilder.addNewLineWith(perfResults.stream().map(Performance::getThroughput).toArray(Double[]::new));
                 }
                 Path perfDir = Paths.get(FileUtils.USER_DIR + SEP + "perf");
-                if (!Files.exists(perfDir))
+                if (!FileUtils.dirExists(perfDir))
                     Files.createDirectories(perfDir);
 
                 reportBuilder.writeToFile(Paths.get(perfDir.toString() + SEP + "cachesizes_strategies.txt"));

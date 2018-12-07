@@ -15,11 +15,11 @@ class Stopwatch {
         return runtime;
     }
 
-    public long getRuntimeInSeconds() {
-        return runtime / 1_000_000_000;
+    public double getRuntimeInSeconds() {
+        return runtime / 1000000000.0;
     }
 
-    public long getRuntimeInMiliseconds() {
-        return runtime / 1_000_000;
+    public double getRuntimeInMiliseconds() {
+        return runtime / 1000000.0;
     }
 }

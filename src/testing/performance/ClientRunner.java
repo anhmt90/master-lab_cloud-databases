@@ -17,6 +17,7 @@ class ClientRunner implements Runnable {
     private final EnronDataset enronDataset;
 
     private Performance perf;
+    int count = 0;
 
     public ClientRunner(Client client, EnronDataset enronDataset, Status opType, int ops) {
 
@@ -60,9 +61,10 @@ class ClientRunner implements Runnable {
             EnronDataset.KV kvPair = enronDataset.getRandom();
             try {
                 client.get(kvPair.key);
-
+//                count++;
+//                LOG.info("COUNT = " + count);
             } catch (IOException e) {
-                LOG.error("Failed to get " + kvPair.key);
+                LOG.error("Failed to get " + kvPair.key, e);
             }
         }
     }
@@ -72,8 +74,10 @@ class ClientRunner implements Runnable {
             EnronDataset.KV kvPair = enronDataset.getRandom();
             try {
                 client.put(kvPair.key, kvPair.val);
+//                count++;
+//                LOG.info("COUNT = " + count);
             } catch (IOException e) {
-                LOG.error("Failed to put " + kvPair.key);
+                LOG.error("Failed to put " + kvPair.key, e);
             }
         }
     }

@@ -3,6 +3,7 @@ package testing.performance;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import testing.AllTests;
+import util.FileUtils;
 import util.StringUtils;
 
 import java.io.IOException;
@@ -45,14 +46,14 @@ public class EnronDataset {
 
     public EnronDataset(String datasetPath) throws IOException {
         this.datasetPath = Paths.get(datasetPath);
-        if (!Files.exists(this.datasetPath))
+        if (!FileUtils.dirExists(this.datasetPath))
             throw new IOException("Enron dataset was not found");
         loadFileLocations();
     }
 
     private void loadFileLocations() throws IOException {
         Files.walk(this.datasetPath)
-                .filter(Files::isRegularFile)
+                .filter(FileUtils::isFile)
                 .forEach(filePath -> files.add(filePath));
         LOG.info(String.format("Number of entries in the dataset: %d", files.size()));
     }

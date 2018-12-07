@@ -409,7 +409,7 @@ public class Server extends Thread implements IExternalConfigurationService {
     public static void main(String[] args) throws IOException {
         Path logDir = Paths.get(WORKING_DIR + "/logs");
         System.out.println("LOGS DIR ==========================================================> " + logDir);
-        if (!Files.exists(logDir))
+        if (!FileUtils.dirExists(logDir))
             Files.createDirectories(logDir);
 
         Server server = createServer(args);

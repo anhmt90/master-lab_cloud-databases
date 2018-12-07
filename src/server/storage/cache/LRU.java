@@ -17,21 +17,21 @@ public class LRU implements ICacheDisplacementTracker {
   }
 
   @Override
-  public K evict() {
+  public synchronized K evict() {
     K k = registry.iterator().next();
     registry.remove(k);
     return k;
   }
 
   @Override
-  public K register(K k) {
+  public synchronized K register(K k) {
     registry.remove(k);
     registry.add(k);
     return k;
   }
 
   @Override
-  public void unregister(K k) {
+  public synchronized void unregister(K k) {
     this.registry.remove(k);
   }
 

@@ -6,6 +6,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import protocol.*;
 import server.app.Server;
+import util.FileUtils;
 import util.HashUtils;
 import util.StringUtils;
 
@@ -109,7 +110,7 @@ public class BatchDataTransferProcessor {
         }
 
         Path[] indexFilesToRemove = Files.list(Paths.get(DATA_TRANSFER_INDEX_FOLDER))
-                .filter(Files::isRegularFile)
+                .filter(FileUtils::isFile)
                 .toArray(Path[]::new);
         for (Path p : indexFilesToRemove)
             Files.deleteIfExists(p);
@@ -293,7 +294,7 @@ public class BatchDataTransferProcessor {
                 Files.walkFileTree(child, new SimpleFileVisitor<Path>() {
                     @Override
                     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                        if (!Files.isDirectory(file)) {
+                        if (!FileUtils.isDir(file)) {
                             Files.write(indexFile, file.toString().getBytes(), StandardOpenOption.APPEND);
                         }
                         return FileVisitResult.CONTINUE;

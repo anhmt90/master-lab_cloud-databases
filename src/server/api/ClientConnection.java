@@ -8,6 +8,7 @@ import server.app.Server;
 import server.storage.PUTStatus;
 import server.storage.CacheManager;
 import util.HashUtils;
+import util.LogUtils;
 import util.StringUtils;
 
 import static protocol.IMessage.MAX_MESSAGE_LENGTH;
@@ -54,29 +55,35 @@ public class ClientConnection implements Runnable {
      */
     public void run() {
         IMessage requestMessage = null;
-        IMessage responseMessage = null;
+        IMessage responseMessage;
         try {
             while (isOpen) {
                 try {
-                    responseMessage = null;
                     requestMessage = receive();
                     responseMessage = handleRequest(requestMessage);
                     send(responseMessage);
 
+                } catch (IllegalArgumentException iae) {
+                    LOG.error("IllegalArgumentException", iae);
+                    LOG.error(requestMessage.toString());
+                    try {
+                        send(new Message(Status.PUT_ERROR));
+                    } catch (IOException ioe) {
+                        LOG.error("Error! Connection lost!", ioe);
+                    }
+                    LOG.warn(iae);
                 } catch (IOException ioe) {
-                    LOG.error("Error! Connection lost!" + ioe);
+                    LOG.error("Error! Connection lost!", ioe);
                     LOG.warn("Setting isOpen to false");
+                    isOpen = false;
+                } catch (Exception e) {
+                    LOG.error("Exception", e);
+                    e.printStackTrace();
                     isOpen = false;
                 }
             }
         } finally {
             try {
-                LOG.warn("isOpen = " + isOpen);
-                LOG.warn("Is clienSocket connected = " + clientSocket.isConnected());
-                LOG.warn("Is clienSocket closed = " + clientSocket.isClosed());
-                LOG.warn("request= " + requestMessage.toString() + ":" + requestMessage.getValue());
-                if (responseMessage != null)
-                    LOG.warn("response= " + responseMessage.toString() + ":" + responseMessage.getValue());
                 LOG.warn("CLOSING SOCKET...");
                 if (clientSocket != null) {
                     input.close();
@@ -120,7 +127,7 @@ public class ClientConnection implements Runnable {
                 }
                 return handlePUT(key, val);
             default:
-                throw new IllegalArgumentException("Unknown Request Type");
+                throw LogUtils.printLogError(LOG, new IllegalArgumentException("Unknown Request Type " + message.getStatus()));
         }
     }
 
@@ -131,7 +138,7 @@ public class ClientConnection implements Runnable {
      * @param val value of the key-value pair
      * @return server response
      */
-    private synchronized IMessage handlePUT(K key, V val) {
+    private IMessage handlePUT(K key, V val) {
         PUTStatus status = cm.put(key, val);
         switch (status) {
             case CREATE_SUCCESS:
@@ -146,7 +153,8 @@ public class ClientConnection implements Runnable {
             case DELETE_ERROR:
                 return new Message(Status.DELETE_ERROR, key);
             default:
-                throw new IllegalStateException("Unknown PUTStatus");
+                LOG.error(new IllegalStateException("Unknown PUTStatus " + status));
+                throw new IllegalStateException("Unknown PUTStatus " + status);
         }
     }
 
@@ -156,7 +164,7 @@ public class ClientConnection implements Runnable {
      * @param message the get-request message sent by a client
      * @return server response to client request
      */
-    private synchronized IMessage handleGET(IMessage message) {
+    private IMessage handleGET(IMessage message) {
         V val = cm.get(message.getK());
         return (val == null) ? new Message(Status.GET_ERROR, message.getK())
                 : new Message(Status.GET_SUCCESS, message.getK(), val);
@@ -193,7 +201,7 @@ public class ClientConnection implements Runnable {
 
         int inBuffer = justRead;
         while (!MessageMarshaller.isMessageComplete(messageBuffer, inBuffer)) {
-            LOG.warn("input hasn't reached EndOfStream, " + input.available() + " more to read");
+            LOG.warn("input hasn't reached EndOfStream, keep reading...");
             justRead = input.read(messageBuffer, inBuffer, messageBuffer.length - inBuffer);
             inBuffer += justRead;
         }

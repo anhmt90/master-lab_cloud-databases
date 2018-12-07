@@ -58,12 +58,12 @@ public class MessageMarshaller {
      */
     public static IMessage unmarshall(byte[] msgBytes) {
       if (msgBytes == null || msgBytes[0] == 0x00) {
-        LOG.error("UNMARSHALLING NULL " + Arrays.toString(msgBytes) + " " + msgBytes.length);
+        LOG.error("UNMARSHALLING NULL 1 ### " + msgBytes.length);
         return null;
       }
       Status status = Status.getByCode(msgBytes[0]);
       if (status == null){
-        LOG.error("UNMARSHALLING NULL 2 " + Arrays.toString(msgBytes) + " " + msgBytes.length);
+        LOG.error("UNMARSHALLING NULL 2 ### "  + msgBytes.length);
         return null;
       }
 
@@ -169,6 +169,8 @@ public class MessageMarshaller {
     }
 
     public static boolean isMessageComplete(byte[] messageBytes, int bytesRead) {
+        if(bytesRead < 0)
+            return true;
         int valLength = getValueLength(messageBytes[1], messageBytes[2], messageBytes[3]);
         return 1 + 3 + 16 + valLength == bytesRead;
     }

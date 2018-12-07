@@ -8,10 +8,11 @@ import protocol.K;
 import protocol.V;
 import server.storage.PUTStatus;
 import server.storage.disk.PersistenceManager;
+import util.FileUtils;
 import util.HashUtils;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -22,7 +23,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 public class PersistenceTest extends TestCase {
     PersistenceManager persistenceManager = new PersistenceManager(AllTests.DB_DIR);
     private final K key = new K(HashUtils.getHashBytes("SomeKey=09"));
-    private V value = new V("==Abc09$8".getBytes());
+    private V value = new V(getMaxLengthString().getBytes());
 
 
     @Test
@@ -30,7 +31,7 @@ public class PersistenceTest extends TestCase {
         PUTStatus status = persistenceManager.write(key.getString(), value.get());
         assertThat(status, is(PUTStatus.CREATE_SUCCESS));
         Path filePath = persistenceManager.getFilePath(key.getString());
-        assertThat(Files.exists(filePath) && !Files.isDirectory(filePath), equalTo(Boolean.TRUE));
+        assertThat(FileUtils.exists(filePath) && !FileUtils.isDir(filePath), equalTo(Boolean.TRUE));
     }
 
     @Test
@@ -59,6 +60,11 @@ public class PersistenceTest extends TestCase {
         assertThat(status, is(PUTStatus.DELETE_SUCCESS));
 
         Path filePath = persistenceManager.getFilePath(key.getString());
-        assertThat(!Files.exists(filePath) && !Files.isDirectory(filePath), equalTo(Boolean.TRUE));
+        assertThat(!FileUtils.exists(filePath) && !FileUtils.isDir(filePath), equalTo(Boolean.TRUE));
     }
+
+    private String getMaxLengthString() {
+        return new String(new char[1024*24]).replace("\0", "ab cd");
+    }
+
 }

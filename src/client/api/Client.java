@@ -117,20 +117,24 @@ public class Client implements IClient {
         }
     }
 
-    int count = 0;
     @Override
     public byte[] receive() {
-        byte[] data = new byte[MAX_MESSAGE_LENGTH];
+        byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
         try {
             socket.setSoTimeout(50000);
             bis = new BufferedInputStream(socket.getInputStream());
-            int bytesCopied = bis.read(data);
-            LOG.info("received " + bytesCopied + " bytes from server");
+            int justRead = bis.read(messageBuffer);
 
-            count++;
-            LOG.info("COUNT = " + count);
-            if (bytesCopied == -1)
-                return new byte[]{0};
+            int inBuffer = justRead;
+            while (!MessageMarshaller.isMessageComplete(messageBuffer, inBuffer)) {
+                LOG.warn("input hasn't reached EndOfStream, keep reading...");
+                LOG.warn("inBuffer = " + inBuffer);
+                LOG.warn("messageBuffer.length - inBuffer = " + (messageBuffer.length - inBuffer));
+                justRead = bis.read(messageBuffer, inBuffer, messageBuffer.length - inBuffer);
+                inBuffer += justRead;
+            }
+            LOG.info("received " + inBuffer + " bytes from server");
+
         } catch (SocketTimeoutException ste) {
             LogUtils.printLogError(LOG, ste, "'receive' timeout. Client will disconnect from server.");
             disconnect();
@@ -138,7 +142,7 @@ public class Client implements IClient {
             LogUtils.printLogError(LOG, e, "Could't connect to the server. Disconnecting...");
             disconnect();
         }
-        return data;
+        return messageBuffer;
     }
 
     @Override
@@ -307,7 +311,10 @@ public class Client implements IClient {
         IMessage toSend = new Message(Status.PUT, new K(keyBytes), new V(valueBytes));
         send(MessageMarshaller.marshall(toSend));
         IMessage response = MessageMarshaller.unmarshall(receive());
-        LOG.info("Received from server: " + response == null ? "null" : response.toString());
+        if(response == null)
+            LOG.info("Received from server: null");
+        else
+            LOG.info("Received from server: " + response.toString());
         return response;
     }
 }

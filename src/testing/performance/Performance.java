@@ -4,7 +4,7 @@ public class Performance {
     /**
      * time spent to execute in second
      */
-    private long runtime;
+    private double runtime;
     private long numOps;
 
     public Performance() {
@@ -17,7 +17,7 @@ public class Performance {
      * @return the average throughput (ops/ms)
      */
     public double getThroughput() {
-        return ((double) numOps) / ((double) runtime);
+        return ((double) numOps) /  runtime;
     }
 
     /**
@@ -25,10 +25,10 @@ public class Performance {
      * @return the average latency (ms/op)
      */
     public double getLatency() {
-        return ((double) runtime) / ((double) numOps);
+        return runtime / ((double) numOps);
     }
 
-    public long getRuntime() {
+    public double getRuntime() {
         return runtime;
     }
 
@@ -36,7 +36,7 @@ public class Performance {
         return numOps;
     }
 
-    public Performance withRuntime(long runtime) {
+    public Performance withRuntime(double runtime) {
         this.runtime = runtime;
         return this;
     }

@@ -16,3 +16,4 @@ data
 db/
 *.log
 config/server-info
+perf/*
