@@ -7,7 +7,7 @@ import org.apache.logging.log4j.Logger;
 import org.junit.Test;
 import protocol.K;
 import protocol.V;
-import server.storage.CacheManager;
+import server.storage.cache.CacheManager;
 import server.storage.cache.CacheDisplacementStrategy;
 
 import java.lang.reflect.InvocationTargetException;

@@ -22,7 +22,7 @@ import static util.FileUtils.USER_DIR;
 public class PerfTest {
     private static final String ECS_CONFIG_PATH = USER_DIR + SEP + "config" + SEP + "server-info";
 
-    private static final int OPS_PER_CLIENT = 100;
+    private static final int OPS_PER_CLIENT = 1000;
 
     private EnronDataset enronDataset;
     private ExternalConfigurationService ecs;
@@ -33,7 +33,7 @@ public class PerfTest {
         ecs = new ExternalConfigurationService(ECS_CONFIG_PATH);
         reportBuilder = new ReportBuilder();
         enronDataset = new EnronDataset();
-        enronDataset.loadData(50);
+        enronDataset.loadData(5000);
     }
 
 
@@ -47,10 +47,10 @@ public class PerfTest {
         Status[] opTypes = new Status[]{Status.PUT, Status.GET};
         reportBuilder.blankLine();
         reportBuilder.lineSeparator();
-        reportBuilder.insert("number_of_servers: " + numServers);
-        reportBuilder.insert("number_of_clients: " + numClients);
-//        reportBuilder.insert("strategy: " + strategy);
-//        reportBuilder.insert("cache_size: " + cacheSize);
+//        reportBuilder.insert("number_of_servers: " + numServers);
+//        reportBuilder.insert("number_of_clients: " + numClients);
+        reportBuilder.insert("strategy: " + strategy);
+        reportBuilder.insert("cache_size: " + cacheSize);
         reportBuilder.lineSeparator();
 
         for (Status opType : opTypes) {
@@ -101,8 +101,8 @@ public class PerfTest {
 
 //        final int[] numClients = new int[]{1, 5, 10, 20};
 //        final int[] numServers = new int[]{1, 5, 20};
-        final int[] numClients = new int[]{5};
-        final int[] numServers = new int[]{10};
+        final int[] numClients = new int[]{1};
+        final int[] numServers = new int[]{1};
 
         try {
             init();
@@ -110,6 +110,7 @@ public class PerfTest {
 
             for (int numClient : numClients) {
                 for (int numServer : numServers) {
+                    reportBuilder.insert("number_loaded_mails: " + enronDataset.getDataLoaded().size());
                     reportBuilder.insert("cache_size: " + CACHE_SIZE);
                     reportBuilder.insert("strategy: " + STRATEGY);
                     reportBuilder.insert("ops_per_client: " + OPS_PER_CLIENT);
@@ -132,40 +133,40 @@ public class PerfTest {
     }
 
 
-//    @Test
-//    public void test_cacheSizes_and_strategies() {
-//        final int numClients = 5; // 5
-//        final int numServers = 1; // 1
-//
-//        try {
-//            init();
-//
-//            reportBuilder.insert("num_clients: " + numClients);
-//            reportBuilder.insert("num_servers: " + numServers);
-//            reportBuilder.insert("ops_per_client: " + OPS_PER_CLIENT);
-//
-//            Integer[] cacheSizes = new Integer[]{1, 100, 500, 1000, 2000, 5000};
-//            String[] strategies = {"FIFO", "LFU", "LRU"};
-////                Integer[] cacheSizes = new Integer[]{1000};
-////                String[] strategies = {"FIFO"};
-//
-//            for (String strategy : strategies) {
-//                for (int cacheSize : cacheSizes) {
-//
-//                    runTest(numClients, OPS_PER_CLIENT, numServers, cacheSize, strategy);
-//                }
-//            }
-//            reportBuilder.blankLine();
-//
-//            Path perfDir = Paths.get(FileUtils.USER_DIR + SEP + "perf");
-//            if (!FileUtils.dirExists(perfDir))
-//                Files.createDirectories(perfDir);
-//
-//            reportBuilder.save(Paths.get(perfDir.toString() + SEP + "cachesizes_strategies.txt"));
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        } catch (InterruptedException e) {
-//            e.printStackTrace();
-//        }
-//    }
+    @Test
+    public void test_cacheSizes_and_strategies() {
+        final int numClients = 5; // 5
+        final int numServers = 1; // 1
+
+        try {
+            init();
+            reportBuilder.insert("number_loaded_mails: " + enronDataset.getDataLoaded().size());
+            reportBuilder.insert("num_clients: " + numClients);
+            reportBuilder.insert("num_servers: " + numServers);
+            reportBuilder.insert("ops_per_client: " + OPS_PER_CLIENT);
+
+            Integer[] cacheSizes = new Integer[]{1, 100, 500, 1000, 2000, 5000};
+            String[] strategies = {"FIFO", "LFU", "LRU"};
+//                Integer[] cacheSizes = new Integer[]{1000};
+//                String[] strategies = {"FIFO"};
+
+            for (String strategy : strategies) {
+                for (int cacheSize : cacheSizes) {
+
+                    runTest(numClients, OPS_PER_CLIENT, numServers, cacheSize, strategy);
+                }
+            }
+            reportBuilder.blankLine();
+
+            Path perfDir = Paths.get(FileUtils.USER_DIR + SEP + "perf");
+            if (!FileUtils.dirExists(perfDir))
+                Files.createDirectories(perfDir);
+
+            reportBuilder.save(Paths.get(perfDir.toString() + SEP + "cachesizes_strategies.txt"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
 }

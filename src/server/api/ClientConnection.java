@@ -6,10 +6,8 @@ import protocol.*;
 import protocol.IMessage.Status;
 import server.app.Server;
 import server.storage.PUTStatus;
-import server.storage.CacheManager;
-import util.HashUtils;
+import server.storage.cache.CacheManager;
 import util.LogUtils;
-import util.StringUtils;
 
 import static protocol.IMessage.MAX_MESSAGE_LENGTH;
 

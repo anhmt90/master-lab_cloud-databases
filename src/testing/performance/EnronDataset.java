@@ -41,11 +41,11 @@ public class EnronDataset {
     private static Logger LOG = LogManager.getLogger(AllTests.TEST_LOG);
 
     private static final int MAX_VAL_LENGTH = 122880;
-//    private static final String ENRON_DATASET = USER_DIR + "/../enron_mail_20150507/maildir";
-    private static final String ENRON_DATASET = USER_DIR + "/../maildir";
+    private static final String ENRON_DATASET = USER_DIR + "/../enron_mail_20150507/maildir";
+//    private static final String ENRON_DATASET = USER_DIR + "/../maildir";
 
     private final Path datasetPath;
-    private CopyOnWriteArrayList<KV> dataLoaded;
+    private ArrayList<KV> dataLoaded;
     private List<Path> files = new ArrayList<>();
 
     public EnronDataset() throws IOException {
@@ -64,25 +64,13 @@ public class EnronDataset {
 
 
     public void loadData(int amount) {
-        this.dataLoaded = new CopyOnWriteArrayList<>();
+        this.dataLoaded = new ArrayList<>(amount * 2);
         Collections.shuffle(files);
 
-        List<Thread> threads = new ArrayList<>(amount);
         for (int i = 0; i < amount; i++) {
             Path filePath = this.files.get(i);
-//            Thread t = new Thread(() -> readFile(filePath));
-//            t.start();
-//            threads.add(t);
             readFile(filePath);
         }
-
-//        for (Thread t : threads) {
-//            try {
-//                t.join();
-//            } catch (InterruptedException e) {
-//                LOG.error(e);
-//            }
-//        }
 
         LOG.info("Numbers of data loaded " + dataLoaded.size());
     }
@@ -119,7 +107,7 @@ public class EnronDataset {
         this.loadData(this.files.size());
     }
 
-    public CopyOnWriteArrayList<KV> loadedEntries() {
+    public ArrayList<KV> getDataLoaded() {
         return this.dataLoaded;
     }
 

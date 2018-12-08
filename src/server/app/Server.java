@@ -11,7 +11,7 @@ import org.apache.logging.log4j.core.config.Configurator;
 import server.api.BatchDataTransferProcessor;
 import server.api.ClientConnection;
 import server.api.InternalConnectionManager;
-import server.storage.CacheManager;
+import server.storage.cache.CacheManager;
 import server.storage.cache.CacheDisplacementStrategy;
 import util.FileUtils;
 

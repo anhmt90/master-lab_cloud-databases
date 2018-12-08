@@ -1,12 +1,12 @@
-package server.storage;
+package server.storage.cache;
 
 import protocol.K;
 import protocol.V;
-import server.storage.cache.*;
+import server.storage.IStorageCRUD;
+import server.storage.PUTStatus;
 import server.storage.disk.PersistenceManager;
 import util.Validate;
 
-import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * This class handles client's put and get requests by maintaning a {@link this.cache} for quick access. In case the requested key
  * does not reside in the cache, {@link CacheManager} will forward the request to {@link PersistenceManager} to lookup the key
  * in persistence layer e.g. file system.
- * If the {@link this.cache} reach its {@link this.cacheCapacity}, {@link CacheManager} will replace a <{@link K}, {@link V}> pair in {@link cache}
+ * If the {@link this.cache} reach its {@link this.cacheCapacity}, {@link CacheManager} will replace a <{@link K}, {@link V}> pair in {@link this.cache}
  * by the pair having the currently requested key according to the current {@link CacheDisplacementStrategy}, which is implemented
  * by the {@link this.cacheTracker}
  */
@@ -82,6 +82,7 @@ public class CacheManager implements IStorageCRUD {
         if (cache.containsKey(key)) {
             val = cache.get(key);
             updateCache(key, val);
+//            new Thread(new CacheUpdater(this, key, val)).start();
             return val;
         }
         byte[] res = pm.read(key.getString());
@@ -89,6 +90,7 @@ public class CacheManager implements IStorageCRUD {
             return null;
         val = new V(res);
         updateCache(key, val);
+//        new Thread(new CacheUpdater(this, key, val)).start();
         return val;
     }
 
@@ -98,7 +100,7 @@ public class CacheManager implements IStorageCRUD {
      * its {@link this.cacheCapacity}.
      *
      * @param key key in <K,V> pair. Being used to search for the relevant pair in file system
-     * @param val key in <K,V> pair. The value that should be stored or deleted on the server.
+     * @param val key in <K,V> pair. The value that should be stored or deleted on the server.r
      * @return {@link PUTStatus} as exit code of the function. This will be used to send an appropriate response back to the client.
      */
     @Override
@@ -107,6 +109,7 @@ public class CacheManager implements IStorageCRUD {
         if (status.name().contains(ERROR))
             return status;
         updateCache(key, val);
+//        new Thread(new CacheUpdater(this, key, val)).start();
         return status;
     }
 
@@ -117,7 +120,7 @@ public class CacheManager implements IStorageCRUD {
      * @param key key in <K,V> pair. Being used to search for the relevant pair in {@link this.cache}
      * @param val key in <K,V> pair. The value that should be stored/updated on the {@link this.cache}.
      */
-    private synchronized void updateCache(K key, V val) {
+    synchronized void updateCache(K key, V val) {
         if (val != null) {
             updateCacheForReadWriteOp(key, val);
         } else if (val == null && cache.containsKey(key)) {
@@ -140,7 +143,6 @@ public class CacheManager implements IStorageCRUD {
         cache.put(key, val);
         cacheTracker.register(key);
     }
-
 
     public boolean isCacheFull() {
         return cache.mappingCount() >= this.cacheCapacity;

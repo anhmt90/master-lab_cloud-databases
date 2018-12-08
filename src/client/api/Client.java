@@ -127,8 +127,7 @@ public class Client implements IClient {
 
             int inBuffer = justRead;
             while (justRead > 0 && !MessageMarshaller.isMessageComplete(messageBuffer, inBuffer)) {
-                LOG.warn("input hasn't reached EndOfStream, keep reading...");
-                LOG.warn("inBuffer = " + inBuffer);
+                LOG.info("input hasn't reached EndOfStream, keep reading...");
                 justRead = bis.read(messageBuffer, inBuffer, messageBuffer.length - inBuffer);
                 if (justRead > 0)
                     inBuffer += justRead;
