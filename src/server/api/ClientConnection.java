@@ -105,15 +105,18 @@ public class ClientConnection implements Runnable {
         K key = message.getK();
         V val = message.getV();
 
-        if (!server.getHashRange().inRange(key.getString())) {
-            LOG.info("Server not responsible! Server hash range is " + server.getHashRange() + ", key is " + key.getString());
-            return new Message(Status.SERVER_NOT_RESPONSIBLE, server.getMetadata());
-        }
-
         switch (message.getStatus()) {
             case GET:
+            	if (!server.getMetadata().isReplicaOrCoordinatorKeyrange(key.getString(), server.getHashRange())) {
+                    LOG.info("Server not responsible! Server hash range is " + server.getHashRange() + ", key is " + key.getString());
+                    return new Message(Status.SERVER_NOT_RESPONSIBLE, server.getMetadata());
+                }
                 return handleGET(message);
             case PUT:
+            	if (!server.getHashRange().inRange(key.getString())) {
+                    LOG.info("Server not responsible! Server hash range is " + server.getHashRange() + ", key is " + key.getString());
+                    return new Message(Status.SERVER_NOT_RESPONSIBLE, server.getMetadata());
+                }
                 if (server.isWriteLocked() && !message.isMovingData()) {
                     LOG.info("Server is write-locked");
                     return new Message(Status.SERVER_WRITE_LOCK);
