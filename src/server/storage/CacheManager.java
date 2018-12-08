@@ -6,6 +6,7 @@ import server.storage.cache.*;
 import server.storage.disk.PersistenceManager;
 import util.Validate;
 
+import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -41,7 +42,7 @@ public class CacheManager implements IStorageCRUD {
 
     public CacheManager(String serverName, int cacheCapacity, CacheDisplacementStrategy strategy) {
         this.cacheCapacity = cacheCapacity;
-        this.cache = new ConcurrentHashMap<>(cacheCapacity + 1, 1);
+        this.cache = new ConcurrentHashMap<K, V>(cacheCapacity + 1, 1);
         pm = new PersistenceManager(serverName);
         cacheTracker = initTracker(cacheCapacity, strategy);
     }
@@ -116,7 +117,7 @@ public class CacheManager implements IStorageCRUD {
      * @param key key in <K,V> pair. Being used to search for the relevant pair in {@link this.cache}
      * @param val key in <K,V> pair. The value that should be stored/updated on the {@link this.cache}.
      */
-    private void updateCache(K key, V val) {
+    private synchronized void updateCache(K key, V val) {
         if (val != null) {
             updateCacheForReadWriteOp(key, val);
         } else if (val == null && cache.containsKey(key)) {

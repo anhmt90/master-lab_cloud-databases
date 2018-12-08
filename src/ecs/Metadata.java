@@ -20,9 +20,9 @@ public class Metadata implements Serializable {
      * @param end      the end of the key range the server is responsible for
      */
     public void add(String nodeName, String host, int port, String start, String end) {
-        System.out.println(String.format("RANGE %s %s", start, end));
-        NodeInfo kvSMeta = new NodeInfo(nodeName, host, port, start, end);
-        this.meta.add(kvSMeta);
+//        System.out.println(String.format("add RANGE %s %s", start, end));
+        NodeInfo nodeInfo = new NodeInfo(nodeName, host, port, start, end);
+        meta.add(nodeInfo);
     }
 
     public void add(NodeInfo nodeInfo) {
@@ -32,12 +32,12 @@ public class Metadata implements Serializable {
     /**
      * Finds a matching server for a hex key
      *
-     * @param hexKey hashed key in hex format
+     * @param keyHashed hashed key in hex format
      * @return String containing server address and port
      */
-    public NodeInfo findMatchingServer(String hexKey) {
+    public NodeInfo findMatchingServer(String keyHashed) {
         for (NodeInfo nodeInfo : meta) {
-            if (nodeInfo.getRange().inRange(hexKey)) {
+            if (nodeInfo.getRange().inRange(keyHashed)) {
                 return nodeInfo;
             }
         }
@@ -49,7 +49,7 @@ public class Metadata implements Serializable {
      *
      * @return metadata loadedDataSize
      */
-    public int getSize() {
+    public int getLength() {
         return meta.size();
     }
 

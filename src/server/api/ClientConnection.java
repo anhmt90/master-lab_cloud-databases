@@ -114,6 +114,7 @@ public class ClientConnection implements Runnable {
 
         if (!server.getHashRange().inRange(key.getString())) {
             LOG.info("Server not responsible! Server hash range is " + server.getHashRange() + ", key is " + key.getString());
+            LOG.info("Sending following metadata to client: " + server.getMetadata());
             return new Message(Status.SERVER_NOT_RESPONSIBLE, server.getMetadata());
         }
 

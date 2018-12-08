@@ -3,11 +3,7 @@ package protocol;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 
-import ecs.ExternalConfigurationService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -18,11 +14,10 @@ import server.app.Server;
 import util.HashUtils;
 import util.StringUtils;
 
-import static server.app.Server.SERVER_LOG;
-
 public class MessageMarshaller {
 
-  private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
+    private static final int NODE_INFO_SIZE = 4 + 2 + 16 + 16;
+    private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
     /**
      * converts a {@link IMessage}  to an byte array to send over the network
      * @param message
@@ -93,9 +88,9 @@ public class MessageMarshaller {
      * @return Message containing the metadata from the byte array
      */
     private static IMessage unmarshallMetadata(byte[] msgBytes, Status status) {
-        int metadataSize = msgBytes[1];
+        int metadataLength = msgBytes[1]; // currenty support upto 256 nodes
         Metadata metadata = new Metadata();
-        for (int i = 0; i < metadataSize; i++) {
+        for (int i = 0; i < metadataLength; i++) {
             byte[] hostBytes = {msgBytes[2 + i*38], msgBytes[3 + i*38], msgBytes[4 + i*38], msgBytes[5 + i*38]};
             String host = "";
             try {
@@ -128,13 +123,13 @@ public class MessageMarshaller {
      */
     public static byte[] marshallMetadata(IMessage message) {
     	Metadata metadata = message.getMetadata();
-    	byte[] output = new byte[1 + 1 + metadata.getSize()*(4 + 2 + 16 + 16)];
+    	byte[] output = new byte[1 + 1 + metadata.getLength()* NODE_INFO_SIZE];
     	
         
     	output[0] = message.getStatus().getCode();    	
-    	output[1] = (byte)metadata.getSize();
+    	output[1] = (byte)metadata.getLength();
     	
-    	for(int j = 0; j < metadata.getSize(); j++) {
+    	for(int j = 0; j < metadata.getLength(); j++) {
     		NodeInfo meta = metadata.get().get(j);
     		byte[] hostBytes = new byte[4];
     		try {
@@ -168,10 +163,13 @@ public class MessageMarshaller {
         return ByteBuffer.wrap(new byte[]{0, first, second, third}).getInt();
     }
 
-    public static boolean isMessageComplete(byte[] messageBytes, int bytesRead) {
-        if(bytesRead < 0)
-            return true;
-        int valLength = getValueLength(messageBytes[1], messageBytes[2], messageBytes[3]);
+    public static boolean isMessageComplete(byte[] msgBytes, int bytesRead) {
+        Status status = Status.getByCode(msgBytes[0]);
+        if (status.equals(Status.SERVER_NOT_RESPONSIBLE)) {
+            int metadataLength = msgBytes[1];
+            return 1 + 1 + metadataLength * NODE_INFO_SIZE == bytesRead;
+        }
+        int valLength = getValueLength(msgBytes[1], msgBytes[2], msgBytes[3]);
         return 1 + 3 + 16 + valLength == bytesRead;
     }
 }

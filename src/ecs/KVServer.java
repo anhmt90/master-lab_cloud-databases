@@ -78,10 +78,10 @@ public class KVServer implements Comparable<KVServer> {
         try {
             execSSH();
             initSocket();
-            LOG.info(String.format("Started server %s:%d via ssh", address.getHostString(), getAdminPort()));
+            LOG.info(String.format("Started server %s:%d via ssh. Internal management port at %d", address.getHostString(), getServicePort(), getAdminPort()));
             launched = true;
         } catch (IOException e) {
-            LOG.error(String.format("Couldn't launch the server %s:%d " + e, this.getHost(), this.getAdminPort()));
+            LOG.error(String.format("Couldn't launch the server %s:%d with internal management port at %d" + e, this.getHost(), this.getServicePort(), getAdminPort()));
         }
         callback.accept(launched);
     }

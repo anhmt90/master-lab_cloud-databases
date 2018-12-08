@@ -16,6 +16,8 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static util.FileUtils.USER_DIR;
+
 public class EnronDataset {
     class KV {
 
@@ -27,10 +29,9 @@ public class EnronDataset {
             this.val = val;
 
             Matcher m = keyPattern.matcher(key);
-            String s = "stub";
+            String s = "";
             while (m.find()) {
                 s = m.group();
-                // s now contains "BAR"
             }
             this.key = s;
         }
@@ -40,12 +41,15 @@ public class EnronDataset {
     private static Logger LOG = LogManager.getLogger(AllTests.TEST_LOG);
 
     private static final int MAX_VAL_LENGTH = 122880;
+//    private static final String ENRON_DATASET = USER_DIR + "/../enron_mail_20150507/maildir";
+    private static final String ENRON_DATASET = USER_DIR + "/../maildir";
+
     private final Path datasetPath;
     private CopyOnWriteArrayList<KV> dataLoaded;
     private List<Path> files = new ArrayList<>();
 
-    public EnronDataset(String datasetPath) throws IOException {
-        this.datasetPath = Paths.get(datasetPath);
+    public EnronDataset() throws IOException {
+        this.datasetPath = Paths.get(ENRON_DATASET);
         if (!FileUtils.dirExists(this.datasetPath))
             throw new IOException("Enron dataset was not found");
         loadFileLocations();

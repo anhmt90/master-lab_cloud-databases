@@ -14,9 +14,7 @@ import server.api.InternalConnectionManager;
 import server.storage.CacheManager;
 import server.storage.cache.CacheDisplacementStrategy;
 import util.FileUtils;
-import util.HashUtils;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.*;
 import java.nio.file.Files;
@@ -97,9 +95,9 @@ public class Server extends Thread implements IExternalConfigurationService {
 
         this.cm = new CacheManager(serverName, cacheSize, getDisplacementStrategyByName(strategy));
         this.metadata = metadata;
-
+        LOG.info("Current Metadata = " + this.metadata);
         try {
-            hashRange = getHashRange(metadata);
+            setHashRange(metadata);
         } catch (NoSuchElementException nsee) {
             LOG.error(nsee);
             return false;
@@ -168,13 +166,14 @@ public class Server extends Thread implements IExternalConfigurationService {
     @Override
     public boolean update(Metadata metadata) {
         try {
-            hashRange = getHashRange(metadata);
+            setHashRange(metadata);
         } catch (NoSuchElementException nsee) {
             LOG.error(nsee);
             return false;
         }
         this.metadata = metadata;
-        return false;
+        LOG.info("Current Metadata = " + this.metadata);
+        return true;
     }
 
 
@@ -194,7 +193,7 @@ public class Server extends Thread implements IExternalConfigurationService {
      */
     @Override
     public void run() {
-        running = initServer();
+        running = openServiceSocket();
         LOG.info("Server's running = " + running);
         new Thread(internalConnectionManager).start();
 
@@ -221,8 +220,7 @@ public class Server extends Thread implements IExternalConfigurationService {
      *
      * @return boolean value indicating if socket was successfully set up
      */
-    private boolean initServer() {
-        LOG.info("Initialize server ...");
+    private boolean openServiceSocket() {
         try {
             kvSocket = new ServerSocket(servicePort);
             LOG.info("Server listening on servicePort: " + kvSocket.getLocalPort());
@@ -254,17 +252,17 @@ public class Server extends Thread implements IExternalConfigurationService {
         return hashRange;
     }
 
-    private KeyHashRange getHashRange(Metadata metadata) throws NoSuchElementException {
+    private void setHashRange(Metadata metadata) throws NoSuchElementException {
         LOG.info(metadata);
         LOG.info("kvSocket.getLocalPort() = " + kvSocket.getLocalPort());
         LOG.info("serverName = " + serverName);
         Optional<NodeInfo> nodeData = metadata.get().stream()
-                .filter(md -> md.getPort() == adminPort && md.getName().equals(serverName))
+                .filter(md -> md.getPort() == servicePort && md.getName().equals(serverName))
                 .findFirst();
         if (!nodeData.isPresent())
             throw new NoSuchElementException("Metadata does not contain info for this node");
         LOG.info("SERVER RANGE = " + nodeData.get().getRange());
-        return nodeData.get().getRange();
+        hashRange =  nodeData.get().getRange();
     }
 
     /**

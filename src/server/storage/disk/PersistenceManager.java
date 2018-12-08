@@ -10,6 +10,8 @@ import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
 import java.nio.file.*;
 import java.util.Arrays;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -22,6 +24,7 @@ import static util.FileUtils.WORKING_DIR;
 
 public class PersistenceManager implements IPersistenceManager {
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
+    private final ConcurrentMap<String, Object> fileLocks = new ConcurrentHashMap<>();
 
     private String db_path = WORKING_DIR + "/db" + SEP;
 
@@ -89,14 +92,22 @@ public class PersistenceManager implements IPersistenceManager {
      * @param fileContent value being stored in a file
      * @return Status if operation was successful or failed
      */
-    private PUTStatus createOrUpdate(Path file, byte[] fileContent) {
+    private synchronized PUTStatus createOrUpdate(Path file, byte[] fileContent) {
         try {
-            synchronized (file) {
+            String fileName = file.getFileName().toString();
+            Object lock = fileLocks.get(fileName);
+            if (lock == null) {
+                fileLocks.put(fileName, new Object());
+                lock = fileLocks.get(fileName);
+            }
+            synchronized (lock) {
                 if (!FileUtils.exists(file)) {
                     Files.createFile(file);
                     Files.write(file, fileContent);
+                    fileLocks.remove(fileName);
                     return PUTStatus.CREATE_SUCCESS;
                 }
+                fileLocks.remove(fileName);
                 Files.write(file, fileContent);
                 return PUTStatus.UPDATE_SUCCESS;
             }

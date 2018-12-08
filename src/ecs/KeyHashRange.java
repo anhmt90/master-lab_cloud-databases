@@ -81,7 +81,7 @@ public class KeyHashRange implements Serializable {
 
     @Override
     public String toString() {
-        return "KeyHashRange{" +
+        return "\nKeyHashRange{" +
                 "start='" + start + '\'' +
                 ", end='" + end + '\'' +
                 '}';

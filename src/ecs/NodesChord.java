@@ -11,14 +11,14 @@ import java.util.stream.Collectors;
  *
  */
 public class NodesChord {
-    private TreeMap<String, KVServer> nodesByKeyMap = new TreeMap<>();
+    private TreeMap<String, KVServer> nodesMap = new TreeMap<>();
     private Metadata md = new Metadata();
     private boolean mdChanged;
 
     public Optional<KVServer> getSuccessor(String hashKey) {
-        Map.Entry<String, KVServer> successor = this.nodesByKeyMap.ceilingEntry(hashKey);
+        Map.Entry<String, KVServer> successor = this.nodesMap.ceilingEntry(hashKey);
         if (successor == null) {
-            successor = this.nodesByKeyMap.firstEntry();
+            successor = this.nodesMap.firstEntry();
         }
         if (successor != null && successor.getKey().equals(hashKey)) {
             successor = null;
@@ -27,9 +27,9 @@ public class NodesChord {
     }
 
     public Optional<KVServer> getPredecessor(String hashKey) {
-        Map.Entry<String, KVServer> predecessor = this.nodesByKeyMap.lowerEntry(hashKey);
+        Map.Entry<String, KVServer> predecessor = this.nodesMap.lowerEntry(hashKey);
         if (predecessor == null) {
-            predecessor = this.nodesByKeyMap.lastEntry();
+            predecessor = this.nodesMap.lastEntry();
         }
         if (predecessor != null && predecessor.getKey().equals(hashKey)) {
             predecessor = null;
@@ -46,14 +46,14 @@ public class NodesChord {
                 throw new IllegalArgumentException("Node is already in the chord");
             }
         });
-        nodesByKeyMap.put(node.getHashKey(), node);
+        nodesMap.put(node.getHashKey(), node);
         this.mdChanged = true;
         return successor;
     }
 
     public Optional<KVServer> remove(KVServer node) {
         Optional<KVServer> successor = getSuccessor(node.getHashKey());
-        nodesByKeyMap.remove(node.getHashKey());
+        nodesMap.remove(node.getHashKey());
         this.mdChanged = true;
         return successor;
     }
@@ -62,18 +62,18 @@ public class NodesChord {
         if (this.mdChanged) {
             this.md = new Metadata();
 
-            String[] keys = new String[nodesByKeyMap.size()];
-            keys = new ArrayList<>(nodesByKeyMap.keySet()).toArray(keys);
+            String[] keys = new String[nodesMap.size()];
+            keys = new ArrayList<>(nodesMap.keySet()).toArray(keys);
 
-            KVServer[] kvServers = new KVServer[nodesByKeyMap.size()];
-            kvServers = new ArrayList<>(nodesByKeyMap.values()).toArray(kvServers);
+            KVServer[] kvServers = new KVServer[nodesMap.size()];
+            kvServers = new ArrayList<>(nodesMap.values()).toArray(kvServers);
 
-            for (int i = 0; i < nodesByKeyMap.size(); i++){
+            for (int i = 0; i < nodesMap.size(); i++){
                 String end = keys[i];
-                int j  = i - 1 < 0 ? nodesByKeyMap.size() - 1 : i - 1;
+                int j  = i - 1 < 0 ? nodesMap.size() - 1 : i - 1;
                 String start = HashUtils.increaseHashBy1(keys[j]);
                 KVServer node = kvServers[i];
-                md.add(node.getNodeName(), node.getHost(), node.getAdminPort(), start, end);
+                md.add(node.getNodeName(), node.getHost(), node.getServicePort(), start, end);
             }
             this.mdChanged = false;
         }
@@ -81,7 +81,7 @@ public class NodesChord {
     }
 
     public Optional<KVServer> randomNode() {
-        int n = ThreadLocalRandom.current().nextInt(this.nodesByKeyMap.size());
+        int n = ThreadLocalRandom.current().nextInt(this.nodesMap.size());
         for (KVServer kvS : this.nodes()) {
             if (n == 0) {
                 return Optional.ofNullable(kvS);
@@ -92,11 +92,11 @@ public class NodesChord {
     }
 
     public List<KVServer> nodes() {
-        return this.nodesByKeyMap.values().stream().sequential().collect(Collectors.toList());
+        return this.nodesMap.values().stream().sequential().collect(Collectors.toList());
     }
 
     public int size() {
-        return nodesByKeyMap.size();
+        return nodesMap.size();
     }
 
     /**
@@ -105,10 +105,10 @@ public class NodesChord {
      * @return true if treemap is empty
      */
     public boolean isEmpty() {
-        return nodesByKeyMap.isEmpty();
+        return nodesMap.isEmpty();
     }
 
-    public TreeMap<String, KVServer> getNodesByKeyMap() {
-        return nodesByKeyMap;
+    public TreeMap<String, KVServer> getNodesMap() {
+        return nodesMap;
     }
 }

@@ -44,7 +44,7 @@ public class ExternalConfigurationService implements IECS {
     }
 
     @Override
-    public void initService(int numberOfNodes, int cacheSize, String displacementStrategy) throws Exception {
+    public void initService(int numberOfNodes, int cacheSize, String displacementStrategy) {
         if (numberOfNodes > serverPool.size()) {
             LOG.warn("Number of available servers is less than chosen to initialize. Starting all available servers");
             numberOfNodes = this.serverPool.size();
@@ -63,7 +63,7 @@ public class ExternalConfigurationService implements IECS {
         for (KVServer kvServer : chord.nodes()) {
             kvServer.launch(launched -> {
                 if (launched) {
-                    LOG.debug(String.format("Server %s:%d launched", kvServer.getHost(), kvServer.getAdminPort()));
+                    LOG.debug(String.format("Server %s:%d launched with admin port %d", kvServer.getHost(), kvServer.getServicePort(), kvServer.getAdminPort()));
                     kvServer.init(this.chord.getMetadata(), cacheSize, displacementStrategy);
                 } else {
                     LOG.error("Couldn't initialize the service, shutting down");
@@ -121,7 +121,7 @@ public class ExternalConfigurationService implements IECS {
         if (numServerShutdown == chord.size() && chord.size() > 0) {
             if(closeSockets()) {
                 serverPool.addAll(chord.nodes());
-                chord.getNodesByKeyMap().clear();
+                chord.getNodesMap().clear();
                 serving = false;
                 running = false;
             }

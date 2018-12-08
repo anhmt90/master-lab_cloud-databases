@@ -9,16 +9,18 @@ import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 
+import ecs.KeyHashRange;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import ecs.NodeInfo;
-import ecs.KeyHashRange;
 import ecs.Metadata;
 import protocol.*;
-import protocol.IMessage.*;
+import protocol.IMessage;
+import protocol.IMessage.Status;
 import util.HashUtils;
 import util.LogUtils;
+import util.Validate;
 
 import static protocol.IMessage.MAX_MESSAGE_LENGTH;
 
@@ -44,18 +46,15 @@ public class Client implements IClient {
     private String address;
     private int port;
 
-    private static final String PUT = "put";
-    private static final String GET = "get";
-
     /**
      * List of the storage servers with their addresses
      */
     private Metadata metadata;
 
     /**
-     * Range of keys which the server the client is currently connected to handles
+     * Info of the server the client is currently connected to
      */
-    private KeyHashRange connectedServerHashRange;
+    private NodeInfo connectedNode;
 
     /**
      * Creates a new client and opens a client socket to immediately connect to the
@@ -67,6 +66,7 @@ public class Client implements IClient {
     public Client(String address, int port) {
         this.address = address;
         this.port = port;
+        connectedNode = new NodeInfo(address, port);
     }
 
     public Client() {
@@ -126,12 +126,12 @@ public class Client implements IClient {
             int justRead = bis.read(messageBuffer);
 
             int inBuffer = justRead;
-            while (!MessageMarshaller.isMessageComplete(messageBuffer, inBuffer)) {
+            while (justRead > 0 && !MessageMarshaller.isMessageComplete(messageBuffer, inBuffer)) {
                 LOG.warn("input hasn't reached EndOfStream, keep reading...");
                 LOG.warn("inBuffer = " + inBuffer);
-                LOG.warn("messageBuffer.length - inBuffer = " + (messageBuffer.length - inBuffer));
                 justRead = bis.read(messageBuffer, inBuffer, messageBuffer.length - inBuffer);
-                inBuffer += justRead;
+                if (justRead > 0)
+                    inBuffer += justRead;
             }
             LOG.info("received " + inBuffer + " bytes from server");
 
@@ -163,27 +163,14 @@ public class Client implements IClient {
 
     /**
      * Reconnects to the correct server for the key on server miss
-     *
-     * @param key the key that is supposed to be accessed on the storage service
-     * @throws IOException
      */
-    private void reroute(String key) throws IOException {
-        print("Server isn't responsible for the key. Reconnecting to appropriate server.");
-        NodeInfo meta = metadata.findMatchingServer(HashUtils.getHash(key));
-        if (meta == null) {
-            print("No server found as responsible for the key.");
-            throw LogUtils.printLogError(LOG, new IOException(), "No server found responsible for key can't route request.");
-        }
+    private void reroute() throws IOException {
         disconnect();
-        this.address = meta.getHost();
-        this.port = meta.getPort();
+        this.address = connectedNode.getHost();
+        this.port = connectedNode.getPort();
+        LOG.info("Server isn't responsible for the key. RECONNECTING to server " + address + ":" + port);
         connect();
-        if (isConnected()) {
-            byte[] bytes = receive();
-            String message = new String(bytes, StandardCharsets.US_ASCII).trim();
-            LOG.info("Message from server: " + message);
-            print(message);
-        }
+        Validate.isTrue(isConnected(), "Error when rerouting to new node!");
     }
 
     /**
@@ -198,59 +185,68 @@ public class Client implements IClient {
     @Override
     public IMessage put(String key, String value) throws IOException {
         String keyHashed = HashUtils.getHash(key);
-        String val = (value == null || value.toLowerCase().equals("null")) ? "val=NULL": "";
+        String val = (value == null || value.toLowerCase().equals("null")) ? "val=NULL" : "";
         LOG.info("PUT key=" + keyHashed + val);
+
         IMessage serverResponse;
-        if (connectedServerHashRange != null && !connectedServerHashRange.inRange(keyHashed)) {
-            LOG.info("REROUTING to another server...");
-            reroute(key);
-        }
-        if (value != null && value.equals("null"))
-            value = null;
+        while (true) {
+            selectServer(keyHashed);
+            if (value != null && value.equals("null"))
+                value = null;
 
-        if (value != null) {
-            serverResponse = storeOnServer(key, value);
-        } else {
-            serverResponse = removeOnServer(key);
-        }
+            if (value != null) {
+                serverResponse = storeToServer(key, value);
+                if (serverResponse == null)
+                    return new Message(Status.PUT_ERROR);
 
-        if (serverResponse.getStatus() == Status.SERVER_NOT_RESPONSIBLE) {
-            serverResponse = handleServerMiss(key, value, serverResponse, PUT);
+            } else {
+                serverResponse = removeOnServer(key);
+                if (serverResponse == null)
+                    return new Message(Status.DELETE_ERROR);
+            }
+
+            if (serverResponse.getStatus() == Status.SERVER_NOT_RESPONSIBLE) {
+                updateMetadata(serverResponse.getMetadata());
+                continue;
+            }
+            return serverResponse;
         }
-        return serverResponse;
+    }
+
+    private void selectServer(String keyHashed) throws IOException {
+        KeyHashRange range = getConnectedRange();
+        if (range == null && metadata == null)  // the very first request
+            return;
+
+        if (range != null && range.inRange(keyHashed))
+            return;
+
+        LOG.info("Selecting an appropriate server to send request to");
+        NodeInfo nodeInfo = metadata.findMatchingServer(keyHashed);
+        if (nodeInfo == null) {
+            print("No server found being responsible for the key.");
+            throw LogUtils.printLogError(LOG, new IOException(), "No server found responsible for key can't route request.");
+        }
+        connectedNode = nodeInfo;
+        reroute();
+    }
+
+    private KeyHashRange getConnectedRange() {
+        return connectedNode.getRange();
     }
 
     /**
      * Handles retrying an operation if it targeted the wrong server
      *
-     * @param key            used in the storage operation
-     * @param value          used in the storage operation
-     * @param serverResponse the server response that indicated the server miss
-     * @param command        the command in which the server miss occurred
-     * @return the server response
+     * @param metadata the new metadata
      * @throws IOException
      */
-    private IMessage handleServerMiss(String key, String value, IMessage serverResponse, String command)
+    private void updateMetadata(Metadata metadata)
             throws IOException {
-        if (serverResponse.getMetadata() != null) {
-            this.metadata = serverResponse.getMetadata();
-            NodeInfo meta = metadata.findMatchingServer(HashUtils.getHash(key));
-            if (meta == null) {
-                print("No server found as responsible for the key.");
-                throw LogUtils.printLogError(LOG, new IOException(), "No server found responsible for key can't route request.");
-            }
-            this.connectedServerHashRange = meta.getRange();
-            switch (command) {
-                case PUT:
-                    return put(key, value);
-                case GET:
-                    return get(key);
-                default:
-                    throw LogUtils.printLogError(LOG, new IOException(), "Illegal request while handling server miss");
-            }
-        } else {
-            throw LogUtils.printLogError(LOG, new IOException(), "Server metadata empty");
-        }
+        if (metadata == null)
+            throw LogUtils.printLogError(LOG, new IOException(), "Metadata received from server is empty");
+
+        this.metadata = metadata;
     }
 
     public IMessage put(String key) throws IOException {
@@ -270,18 +266,22 @@ public class Client implements IClient {
 
     @Override
     public IMessage get(String key) throws IOException {
-        if (connectedServerHashRange != null && !connectedServerHashRange.inRange(HashUtils.getHash(key))) {
-            reroute(key);
+        String keyHashed = HashUtils.getHash(key);
+        while (true) {
+            selectServer(keyHashed);
+            IMessage serverResponse = sendWithoutValue(key, Status.GET);
+            if (serverResponse == null)
+                return new Message(Status.GET_ERROR);
+            if (serverResponse.getStatus() == Status.SERVER_NOT_RESPONSIBLE) {
+                updateMetadata(serverResponse.getMetadata());
+                continue;
+            }
+            return serverResponse;
         }
-        IMessage serverResponse = sendWithoutValue(key, Status.GET);
-        if (serverResponse.getStatus() == Status.SERVER_NOT_RESPONSIBLE) {
-            serverResponse = handleServerMiss(key, null, serverResponse, GET);
-        }
-        return serverResponse;
     }
 
     /**
-     * Handles delivery of Messages without a value
+     * Handles delivering of Messages without a value. For GET and DELETE operations
      *
      * @param key    key for the value that is accessed
      * @param status message specification
@@ -293,25 +293,28 @@ public class Client implements IClient {
         IMessage toSend = new Message(status, new K(keyBytes));
         send(MessageMarshaller.marshall(toSend));
         IMessage response = MessageMarshaller.unmarshall(receive());
-        LOG.debug("Received from server: " + response == null ? "null" : response.toString());
+        if (response == null)
+            LOG.info("Received from server: null");
+        else
+            LOG.info("Received from server: " + response.toString());
         return response;
     }
 
     /**
-     * Handles delivery of put messages for storage
+     * Handles delivery of PUT messages to storage. For CREATE and UPDATE
      *
      * @param key   key in the key-value pair represented as MD5-hash
      * @param value value for the key-value pair
      * @return the server response
      * @throws IOException
      */
-    private IMessage storeOnServer(String key, String value) throws IOException {
+    private IMessage storeToServer(String key, String value) throws IOException {
         byte[] keyBytes = HashUtils.getHashBytes(key);
         byte[] valueBytes = value.getBytes(StandardCharsets.US_ASCII);
         IMessage toSend = new Message(Status.PUT, new K(keyBytes), new V(valueBytes));
         send(MessageMarshaller.marshall(toSend));
         IMessage response = MessageMarshaller.unmarshall(receive());
-        if(response == null)
+        if (response == null)
             LOG.info("Received from server: null");
         else
             LOG.info("Received from server: " + response.toString());

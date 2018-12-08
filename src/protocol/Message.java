@@ -1,6 +1,7 @@
 package protocol;
 
 import ecs.Metadata;
+import util.StringUtils;
 
 public class Message implements IMessage {
 	Status status;
@@ -82,6 +83,7 @@ public class Message implements IMessage {
 
 	@Override
 	public String toString() {
-		return status.name() + "<" + getKey() + '>';
+		String keyString = key == null ? "metadata" : getKey();
+		return status.name() + "<" + keyString + '>';
 	}
 }

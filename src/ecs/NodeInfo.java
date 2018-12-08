@@ -23,6 +23,11 @@ public class NodeInfo implements Serializable {
         this.range = range;
     }
 
+    public NodeInfo(String host, int port) {
+        this.host = host;
+        this.port = port;
+    }
+
     public String getName() {
         return name;
     }

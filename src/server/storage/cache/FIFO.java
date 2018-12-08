@@ -18,8 +18,7 @@ public class FIFO implements ICacheDisplacementTracker {
 
     @Override
     public synchronized K evict() {
-        Iterator<K> iter = registry.iterator();
-        K k = iter.next();
+        K k = registry.iterator().next();
         registry.remove(k);
         return k;
     }
