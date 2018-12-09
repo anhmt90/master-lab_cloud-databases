@@ -1,6 +1,7 @@
 package ecs;
 
 import management.ConfigMessage;
+import management.ConfigMessageMarshaller;
 import management.ConfigStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -10,19 +11,20 @@ import util.LogUtils;
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketException;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+
+import static protocol.IMessage.MAX_MESSAGE_LENGTH;
 
 /**
  * Handles connection from ECS to one key-value storage server
  */
 public class KVServer implements Comparable<KVServer> {
     private static final String ECS_LOG = "ECS";
+    private static final int SOCKET_TIMEOUT = 6000;
     private static Logger LOG = LogManager.getLogger(ECS_LOG);
-
-    public String getHashKey() {
-        return hashKey;
-    }
 
     private String hashKey;
 
@@ -132,9 +134,11 @@ public class KVServer implements Comparable<KVServer> {
      */
     public void send(ConfigMessage message) throws IOException {
         try {
-            oos = new ObjectOutputStream(socket.getOutputStream());
-            oos.writeObject(message);
-            oos.flush();
+            BufferedOutputStream bos = new BufferedOutputStream(socket.getOutputStream());
+            byte[] bytes = ConfigMessageMarshaller.marshall(message);
+            bos.write(bytes);
+            bos.flush();
+
             LOG.info("SEND \t<"
                     + socket.getInetAddress().getHostAddress() + ":"
                     + socket.getPort() + ">: '"
@@ -153,24 +157,22 @@ public class KVServer implements Comparable<KVServer> {
      * @throws IOException
      */
     private ConfigMessage receive() throws IOException {
-        ConfigMessage message = null;
-        try {
-            ois = new ObjectInputStream(socket.getInputStream());
-            message = (ConfigMessage) ois.readObject();
-            if (message == null)
-                throw new InvalidObjectException("message is null");
+        byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
+        while (true) {
+            try {
+                BufferedInputStream bis = new BufferedInputStream(socket.getInputStream());
+                int justRead = bis.read(messageBuffer);
+                ConfigMessage message = ConfigMessageMarshaller.unmarshall(Arrays.copyOfRange(messageBuffer, 0, justRead));
 
-        } catch (ClassNotFoundException | InvalidObjectException e) {
-            LogUtils.printLogError(LOG, e);
-            return null;
+                LOG.info("RECEIVE \t<"
+                        + socket.getInetAddress().getHostAddress() + ":"
+                        + socket.getPort() + ">: '"
+                        + message.toString().trim() + "'");
+                return message;
+            } catch (EOFException e) {
+                LOG.error("CATCH EOFException", e);
+            }
         }
-
-        LOG.info("RECEIVE \t<"
-                + socket.getInetAddress().getHostAddress() + ":"
-                + socket.getPort() + ">: '"
-                + message.toString().trim() + "'");
-
-        return message;
     }
 
     boolean init(Metadata metadata, int cacheSize, String strategy) {
@@ -198,7 +200,7 @@ public class KVServer implements Comparable<KVServer> {
         return sendAndExpect(msg, ConfigStatus.LOCK_WRITE_SUCCESS);
     }
 
-    boolean unLockWrite() {
+    boolean unlockWrite() {
         ConfigMessage msg = new ConfigMessage(ConfigStatus.UNLOCK_WRITE);
         return sendAndExpect(msg, ConfigStatus.UNLOCK_WRITE_SUCCESS);
     }
@@ -206,7 +208,15 @@ public class KVServer implements Comparable<KVServer> {
     boolean moveData(KeyHashRange range, KVServer target) {
         NodeInfo meta = new NodeInfo(target.getNodeName(), target.getHost(), target.getAdminPort(), range);
         ConfigMessage msg = new ConfigMessage(ConfigStatus.MOVE_DATA, meta);
-        return sendAndExpect(msg, ConfigStatus.MOVE_DATA_SUCCESS);
+        boolean success = false;
+        try {
+            socket.setSoTimeout(0);
+            success = sendAndExpect(msg, ConfigStatus.MOVE_DATA_SUCCESS);
+            socket.setSoTimeout(SOCKET_TIMEOUT);
+        } catch (SocketException e) {
+            LOG.error(e);
+        }
+        return success;
     }
 
     boolean update(Metadata metadata) {
@@ -228,7 +238,7 @@ public class KVServer implements Comparable<KVServer> {
             ConfigMessage response = receive();
             return response.getStatus().equals(expected);
         } catch (IOException e) {
-            LOG.error("Error occurs in sendAndExpect()! " + e);
+            LOG.error("Error! ", e);
             return false;
         }
     }
@@ -240,7 +250,7 @@ public class KVServer implements Comparable<KVServer> {
             for (int i = 0; i < RETRY_NUM; i++) {
                 try {
                     socket = new Socket();
-                    socket.setSoTimeout(10000);
+                    socket.setSoTimeout(SOCKET_TIMEOUT);
                     TimeUnit.MILLISECONDS.sleep(RETRY_WAIT_TIME);
                     socket.connect(address, 5000);
                     break;
@@ -261,6 +271,10 @@ public class KVServer implements Comparable<KVServer> {
 
     public String getNodeName() {
         return nodeName;
+    }
+
+    public String getHashKey() {
+        return hashKey;
     }
 
     public void closeSocket() throws IOException {

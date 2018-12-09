@@ -34,7 +34,7 @@ public class BatchDataTransferProcessor {
     /**
      * the path to the folder where all index files residing in
      */
-    private static final String DATA_TRANSFER_INDEX_FOLDER = System.getProperty("user.dir") + SEP + "dti" + SEP;
+    private static final String DATA_TRANSFER_INDEX_FOLDER = FileUtils.WORKING_DIR + SEP + "dti" + SEP;
 
     /**
      * The socket being used to move data when adding/removing servers
@@ -59,17 +59,6 @@ public class BatchDataTransferProcessor {
     }
 
     /**
-     * initializes socket to the target server for transfering data
-     *
-     * @throws IOException
-     */
-    private void initSocket() throws IOException {
-        connect();
-        bos = new BufferedOutputStream(moveDataSocket.getOutputStream());
-        bis = new BufferedInputStream(moveDataSocket.getInputStream());
-    }
-
-    /**
      * starts transferring data to {@see target} server
      *
      * @param range the hashed key range of data that need to be transferred
@@ -78,13 +67,20 @@ public class BatchDataTransferProcessor {
     public boolean handleTransferData(KeyHashRange range) {
         String[] indexFiles = new String[0];
         try {
-            indexFiles = indexRelevantDataFiles(range);
+            if (!FileUtils.dirExists(Paths.get(DATA_TRANSFER_INDEX_FOLDER))) {
+                LOG.info("Creating folder for index files: " + DATA_TRANSFER_INDEX_FOLDER);
+                Files.createDirectories(Paths.get(DATA_TRANSFER_INDEX_FOLDER));
+            }
+
+            indexFiles = indexRelevantData(range);
+            LOG.info("Finish indexing, start transferring");
             return transfer(indexFiles);
         } catch (IOException ioe) {
             LOG.error(ioe);
             return false;
         } finally {
             try {
+                LOG.info("Finish transferring, start cleaning up");
                 cleanUp(indexFiles);
             } catch (IOException ioe) {
                 LOG.error(ioe);
@@ -123,11 +119,12 @@ public class BatchDataTransferProcessor {
      * @param range the range of data files which should be transferred
      * @return a list of paths to index files, based on which the relevant key-value files can be found for transferring
      */
-    public String[] indexRelevantDataFiles(KeyHashRange range) {
+    public String[] indexRelevantData(KeyHashRange range) {
+        LOG.info("Indexing relevant data of range " + range);
         if (range.isWrappedAround()) {
             KeyHashRange leftRange = new KeyHashRange(range.getStart(), new String(new char[8]).replace("\0", "ffff"));
             KeyHashRange rightRange = new KeyHashRange(new String(new char[8]).replace("\0", "0000"), range.getEnd());
-            return Stream.concat(Arrays.stream(indexRelevantDataFiles(leftRange)), Arrays.stream(indexRelevantDataFiles(rightRange)))
+            return Stream.concat(Arrays.stream(indexRelevantData(leftRange)), Arrays.stream(indexRelevantData(rightRange)))
                     .toArray(String[]::new);
         }
         String[] start = StringUtils.splitEvery(range.getStart(), 2);
@@ -158,7 +155,7 @@ public class BatchDataTransferProcessor {
             return indexFiles.toArray(new String[indexFiles.size()]);
 
         } catch (IOException e) {
-            e.printStackTrace();
+            LOG.error(e);
         }
         return null;
     }
@@ -177,6 +174,7 @@ public class BatchDataTransferProcessor {
                            String[] firstDiffDirs,
                            int lowerBound,
                            List<String> indexFiles) throws IOException {
+        LOG.info("walk start");
         String currDir = StringUtils.EMPTY_STRING;
         int i = commonPrefix.length() / 2 + 1;
         String[] directChildren = Arrays.copyOfRange(firstDiffDirs, 0, firstDiffDirs.length);
@@ -210,6 +208,7 @@ public class BatchDataTransferProcessor {
                          String[] firstDiffDirs,
                          int upperBound,
                          List<String> indexFiles) throws IOException {
+        LOG.info("walk end");
         String currDir = StringUtils.EMPTY_STRING;
         int i = commonPrefix.length() / 2 + 1;
         String[] directChildren = Arrays.copyOfRange(firstDiffDirs, 0, firstDiffDirs.length);
@@ -317,11 +316,11 @@ public class BatchDataTransferProcessor {
      */
     public boolean transfer(String[] indexFiles) throws IOException {
         if (moveDataSocket == null || moveDataSocket.isClosed() || !moveDataSocket.isConnected())
-            initSocket();
+            connect();
         for (String indexFile : indexFiles) {
             List<String> filesToMove = Files.readAllLines(Paths.get(indexFile));
             for (String file : filesToMove) {
-                if (!put(file))
+                if (!send(file))
                     return false;
             }
         }
@@ -334,12 +333,15 @@ public class BatchDataTransferProcessor {
      * @param file the key-value file
      * @return boolean value indicating whether the PUT-request ended successfully or not
      */
-    private boolean put(String file) throws IOException {
+    private boolean send(String file) throws IOException {
         K key = new K(HashUtils.getHashBytesOf(Paths.get(file).getFileName().toString()));
         V val = new V(Files.readAllBytes(Paths.get(file)));
-        byte[] toSend = MessageMarshaller.marshall(new Message(IMessage.Status.PUT, key, val));
+        Message message = new Message(IMessage.Status.PUT, key, val);
+        message.setBatchData();
+        byte[] toSend = MessageMarshaller.marshall(message);
 
         try {
+            bos = new BufferedOutputStream(moveDataSocket.getOutputStream());
             bos.write(toSend);
             bos.flush();
             LOG.info("sending " + toSend.length + " bytes to server");
@@ -359,7 +361,7 @@ public class BatchDataTransferProcessor {
      * @return the received byte array
      */
     private byte[] receive() {
-        byte[] data = new byte[1 + 3 + 16 + 1024 * 120];
+        byte[] data = new byte[IMessage.MAX_MESSAGE_LENGTH];
         try {
             moveDataSocket.setSoTimeout(5000);
             bis = new BufferedInputStream(moveDataSocket.getInputStream());

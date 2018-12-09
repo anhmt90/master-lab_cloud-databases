@@ -12,7 +12,6 @@ public class ConfigMessage implements Serializable {
     private String strategy;
     private Metadata metadata;
     private NodeInfo targetServer;
-    private KeyHashRange keyRange;
 
     public ConfigMessage(ConfigStatus status) {
         this.status = status;
@@ -34,11 +33,6 @@ public class ConfigMessage implements Serializable {
         this.targetServer = target;
     }
 
-    public ConfigMessage(ConfigStatus status, KeyHashRange keyRange, NodeInfo target) {
-        this.status = status;
-        this.keyRange = keyRange;
-        this.targetServer = target;
-    }
 
     public ConfigMessage(ConfigStatus status, Metadata md) {
         this.status = status;
@@ -59,10 +53,6 @@ public class ConfigMessage implements Serializable {
 
     public NodeInfo getTargetServer() {
         return targetServer;
-    }
-
-    public KeyHashRange getKeyRange() {
-        return keyRange;
     }
 
     @Override

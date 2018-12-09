@@ -1,7 +1,6 @@
 package protocol;
 
 import ecs.Metadata;
-import util.StringUtils;
 
 public class Message implements IMessage {
 	Status status;
@@ -11,7 +10,7 @@ public class Message implements IMessage {
 	/**
 	 * flag indicating if this message is of move data process when adding/removing servers
 	 */
-	boolean movingData;
+	boolean isBatchData = false;
 
 	public Message(Status status) {
 		this.status = status;
@@ -72,13 +71,13 @@ public class Message implements IMessage {
 	}
 
 	@Override
-	public boolean isMovingData() {
-		return movingData;
+	public boolean isBatchData() {
+		return isBatchData;
 	}
 
 	@Override
-	public void setMovingData(boolean movingData) {
-		this.movingData = movingData;
+	public void setBatchData() {
+		this.isBatchData = true;
 	}
 
 	@Override

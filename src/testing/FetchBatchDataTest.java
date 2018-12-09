@@ -112,7 +112,7 @@ public class FetchBatchDataTest extends TestCase {
     }
 
     private void setIndexRelevantDataFilesMethod(BatchDataTransferProcessor batchProcessor) throws NoSuchMethodException {
-        indexRelevantDataFiles = batchProcessor.getClass().getDeclaredMethod("indexRelevantDataFiles", KeyHashRange.class);
+        indexRelevantDataFiles = batchProcessor.getClass().getDeclaredMethod("indexRelevantData", KeyHashRange.class);
         indexRelevantDataFiles.setAccessible(true);
     }
 

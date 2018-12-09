@@ -30,7 +30,7 @@ public class Metadata implements Serializable {
     }
 
     /**
-     * Finds a matching server for a hex key
+     * Finds a matching server for a hashed key
      *
      * @param keyHashed hashed key in hex format
      * @return String containing server address and port

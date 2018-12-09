@@ -43,6 +43,7 @@ public class Server extends Thread implements IExternalConfigurationService {
     private CacheManager cm;
 
     NodeState state;
+    NodeState previousState;
     boolean running;
 
     private ServerSocket kvSocket;
@@ -149,8 +150,7 @@ public class Server extends Thread implements IExternalConfigurationService {
 
     @Override
     public boolean lockWrite() {
-        if (!isStarted())
-            return false;
+        previousState = state;
         state = NodeState.WRITE_LOCKED;
         return true;
     }
@@ -159,7 +159,8 @@ public class Server extends Thread implements IExternalConfigurationService {
     public boolean unlockWrite() {
         if (!isWriteLocked())
             return false;
-        state = NodeState.STARTED;
+        state = previousState;
+        previousState = null;
         return true;
     }
 
@@ -178,10 +179,16 @@ public class Server extends Thread implements IExternalConfigurationService {
 
 
     public boolean moveData(KeyHashRange range, NodeInfo target) {
-        if (!range.isSubRangeOf(this.hashRange))
+        LOG.info("handle Move data with range " + range + " and with target " + target);
+        if (!range.isSubRangeOf(this.hashRange)){
+            LOG.error("Range " + range + " is not a subrange of Server's range, which is " + hashRange);
             return false;
-        if (!isWriteLocked())
+        }
+        if (!isWriteLocked()) {
+            LOG.error("Not in state " + NodeState.WRITE_LOCKED + ". Current state is " + state);
             return false;
+        }
+        LOG.info("Moving data to " + target.getName());
         return new BatchDataTransferProcessor(target, cm.getPersistenceManager().getDbPath()).handleTransferData(range);
 
     }

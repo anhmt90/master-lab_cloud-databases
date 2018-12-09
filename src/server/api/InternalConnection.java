@@ -1,15 +1,17 @@
 package server.api;
 
 import management.ConfigMessage;
+import management.ConfigMessageMarshaller;
 import management.ConfigStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import server.app.Server;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.*;
 import java.net.Socket;
+import java.util.Arrays;
+
+import static protocol.IMessage.MAX_MESSAGE_LENGTH;
 
 public class InternalConnection implements Runnable {
 
@@ -71,7 +73,7 @@ public class InternalConnection implements Runnable {
      * @return
      */
     private ConfigStatus getAckStatus(ConfigStatus reqStatus, boolean success) {
-        if(!success)
+        if (!success)
             return ConfigStatus.ERROR;
         switch (reqStatus) {
             case INIT:
@@ -119,7 +121,7 @@ public class InternalConnection implements Runnable {
             case UPDATE_METADATA:
                 return server.update(configMessage.getMetadata());
             case MOVE_DATA:
-                return server.moveData(configMessage.getKeyRange(), configMessage.getTargetServer());
+                return server.moveData(configMessage.getTargetServer().getRange(), configMessage.getTargetServer());
             case SHUTDOWN:
                 return server.shutdown();
             default:
@@ -135,15 +137,15 @@ public class InternalConnection implements Runnable {
      * @throws IOException
      */
     public void send(ConfigMessage message) throws IOException {
-        LOG.info("sending message to " + peer.getInetAddress() + ":" + peer.getPort());
-        oos = new ObjectOutputStream(peer.getOutputStream());
-        oos.writeObject(message);
-        oos.flush();
+        BufferedOutputStream bos = new BufferedOutputStream(peer.getOutputStream());
+        byte[] bytes = ConfigMessageMarshaller.marshall(message);
+        bos.write(bytes);
+        bos.flush();
+
         LOG.info("SEND \t<"
                 + peer.getInetAddress().getHostAddress() + ":"
                 + peer.getPort() + ">: '"
                 + message.toString() + "'");
-
     }
 
     /**
@@ -153,21 +155,22 @@ public class InternalConnection implements Runnable {
      * @throws IOException
      */
     private ConfigMessage poll() throws IOException {
-        LOG.info("polling message from " + peer.getInetAddress() + ":" + peer.getPort());
-        ois = new ObjectInputStream(peer.getInputStream());
-        ConfigMessage message = null;
-        try {
-            message = (ConfigMessage) ois.readObject();
-        } catch (ClassNotFoundException e) {
-            LOG.error(e);
+        byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
+        while (true) {
+            try {
+                BufferedInputStream bis = new BufferedInputStream(peer.getInputStream());
+                int justRead = bis.read(messageBuffer);
+                ConfigMessage message = ConfigMessageMarshaller.unmarshall(Arrays.copyOfRange(messageBuffer, 0, justRead));
+
+                LOG.info("RECEIVE \t<"
+                        + peer.getInetAddress().getHostAddress() + ":"
+                        + peer.getPort() + ">: '"
+                        + message.toString().trim() + "'");
+                return message;
+            } catch (EOFException e) {
+                LOG.error("CATCH EOFException", e);
+            }
         }
-
-        LOG.info("RECEIVE \t<"
-                + peer.getInetAddress().getHostAddress() + ":"
-                + peer.getPort() + ">: '"
-                + message.toString().trim() + "'");
-
-        return message;
     }
 
     public void setOpen(boolean open) {

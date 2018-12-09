@@ -9,8 +9,8 @@ import java.io.Serializable;
  * Structure handling Key ranges for the consistent hashing storage ring
  */
 public class KeyHashRange implements Serializable {
-    String start;
-    String end;
+    private String start;
+    private String end;
 
     public KeyHashRange(String start, String end) {
         this.start = start;

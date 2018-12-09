@@ -120,7 +120,7 @@ public class ClientConnection implements Runnable {
             case GET:
                 return handleGET(message);
             case PUT:
-                if (server.isWriteLocked() && !message.isMovingData()) {
+                if (server.isWriteLocked() && !message.isBatchData()) {
                     LOG.info("Server is write-locked");
                     return new Message(Status.SERVER_WRITE_LOCK);
                 }

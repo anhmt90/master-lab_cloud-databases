@@ -1,6 +1,9 @@
 package ecs;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import util.HashUtils;
+import util.Validate;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
@@ -8,87 +11,66 @@ import java.util.stream.Collectors;
 
 /**
  * Maps server connections in a tree structure
- *
  */
 public class NodesChord {
+    private static Logger LOG = LogManager.getLogger(ExternalConfigurationService.ECS_LOG);
+
     private TreeMap<String, KVServer> nodesMap = new TreeMap<>();
     private Metadata md = new Metadata();
-    private boolean mdChanged;
 
-    public Optional<KVServer> getSuccessor(String hashKey) {
-        Map.Entry<String, KVServer> successor = this.nodesMap.ceilingEntry(hashKey);
-        if (successor == null) {
-            successor = this.nodesMap.firstEntry();
-        }
-        if (successor != null && successor.getKey().equals(hashKey)) {
-            successor = null;
-        }
-        return successor == null ? Optional.empty() : Optional.ofNullable(successor.getValue());
-    }
-
-    public Optional<KVServer> getPredecessor(String hashKey) {
-        Map.Entry<String, KVServer> predecessor = this.nodesMap.lowerEntry(hashKey);
-        if (predecessor == null) {
-            predecessor = this.nodesMap.lastEntry();
-        }
-        if (predecessor != null && predecessor.getKey().equals(hashKey)) {
-            predecessor = null;
-        }
-        return predecessor == null ? Optional.empty() : Optional.ofNullable(predecessor.getValue());
+    public KVServer getSuccessor(String hashedKey) {
+        int i = Arrays.binarySearch(nodesMap.keySet().toArray(), hashedKey);
+        Validate.isTrue(i >= 0, hashedKey + " is not in the tree map " + nodesMap.keySet());
+        if(i == nodesMap.size() - 1)
+            return nodes().get(0);
+        return nodes().get(i + 1);
     }
 
 
-    public Optional<KVServer> add(KVServer node) {
-        Optional<KVServer> successor = this.getSuccessor(node.getHashKey());
-
-        successor.ifPresent(kvS -> {
-            if (kvS.getHashKey().equals(node.getHashKey())) {
-                throw new IllegalArgumentException("Node is already in the chord");
-            }
-        });
+    public boolean add(KVServer node) {
+        if (nodesMap.containsKey(node.getHashKey()))
+            return false;
         nodesMap.put(node.getHashKey(), node);
-        this.mdChanged = true;
-        return successor;
+        return true;
     }
 
-    public Optional<KVServer> remove(KVServer node) {
-        Optional<KVServer> successor = getSuccessor(node.getHashKey());
+    public boolean remove(KVServer node) {
+        if (!nodesMap.containsKey(node.getHashKey()))
+            return false;
         nodesMap.remove(node.getHashKey());
-        this.mdChanged = true;
-        return successor;
+        return true;
     }
 
-    public Metadata getMetadata() {
-        if (this.mdChanged) {
-            this.md = new Metadata();
+    public void calcMetadata() {
+        md = new Metadata();
+        String[] keys = new String[nodesMap.size()];
+        keys = new ArrayList<>(nodesMap.keySet()).toArray(keys);
 
-            String[] keys = new String[nodesMap.size()];
-            keys = new ArrayList<>(nodesMap.keySet()).toArray(keys);
+        KVServer[] kvServers = new KVServer[nodesMap.size()];
+        kvServers = new ArrayList<>(nodesMap.values()).toArray(kvServers);
 
-            KVServer[] kvServers = new KVServer[nodesMap.size()];
-            kvServers = new ArrayList<>(nodesMap.values()).toArray(kvServers);
-
-            for (int i = 0; i < nodesMap.size(); i++){
-                String end = keys[i];
-                int j  = i - 1 < 0 ? nodesMap.size() - 1 : i - 1;
-                String start = HashUtils.increaseHashBy1(keys[j]);
-                KVServer node = kvServers[i];
-                md.add(node.getNodeName(), node.getHost(), node.getServicePort(), start, end);
-            }
-            this.mdChanged = false;
+        for (int i = 0; i < nodesMap.size(); i++) {
+            String end = keys[i];
+            int j = i - 1 < 0 ? nodesMap.size() - 1 : i - 1;
+            String start = HashUtils.increaseHashBy1(keys[j]);
+            KVServer node = kvServers[i];
+            md.add(node.getNodeName(), node.getHost(), node.getServicePort(), start, end);
         }
-        return md;
+        LOG.info("METADATA ===> " + md);
     }
 
     public Optional<KVServer> randomNode() {
         int n = ThreadLocalRandom.current().nextInt(this.nodesMap.size());
         for (KVServer kvS : this.nodes()) {
-            if (n == 0) {
+            if (n == 0)
                 return Optional.ofNullable(kvS);
-            }
             n--;
         }
         return Optional.empty();
+    }
+
+    public Metadata getMetadata() {
+        return md;
     }
 
     public List<KVServer> nodes() {

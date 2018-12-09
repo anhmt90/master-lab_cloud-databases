@@ -36,10 +36,11 @@ public class ExternalConfigurationService implements IECS {
     /**
      * Sends the updated local metadata to all servers participating in the storage service
      */
-    private void publishMetadata() {
+    private void broadcastMetadata() {
         Metadata md = chord.getMetadata();
-        for (KVServer kvS : this.chord.nodes()) {
-            kvS.update(md);
+        for (KVServer kvServer : this.chord.nodes()) {
+            boolean success = kvServer.update(md);
+            Validate.isTrue(success, "Server " + kvServer.getNodeName() + " couldn't update metadata");
         }
     }
 
@@ -58,13 +59,14 @@ public class ExternalConfigurationService implements IECS {
             this.chord.add(kvS);
         }
         Validate.isTrue(chord.nodes().size() == numberOfNodes, "Not enough nodes are added");
+        chord.calcMetadata();
 
         LOG.debug("Launching selected servers");
         for (KVServer kvServer : chord.nodes()) {
             kvServer.launch(launched -> {
                 if (launched) {
                     LOG.debug(String.format("Server %s:%d launched with admin port %d", kvServer.getHost(), kvServer.getServicePort(), kvServer.getAdminPort()));
-                    kvServer.init(this.chord.getMetadata(), cacheSize, displacementStrategy);
+                    kvServer.init(chord.getMetadata(), cacheSize, displacementStrategy);
                 } else {
                     LOG.error("Couldn't initialize the service, shutting down");
                     this.shutDown();
@@ -119,7 +121,7 @@ public class ExternalConfigurationService implements IECS {
             numServerShutdown++;
         }
         if (numServerShutdown == chord.size() && chord.size() > 0) {
-            if(closeSockets()) {
+            if (closeSockets()) {
                 serverPool.addAll(chord.nodes());
                 chord.getNodesMap().clear();
                 serving = false;
@@ -142,30 +144,49 @@ public class ExternalConfigurationService implements IECS {
 
     @Override
     public void addNode(int cacheSize, String displacementStrategy) {
-        int nodeToRun = ThreadLocalRandom.current().nextInt(this.serverPool.size());
-        KVServer kvS = this.serverPool.get(nodeToRun);
+        int n = ThreadLocalRandom.current().nextInt(this.serverPool.size());
+        KVServer newNode = this.serverPool.get(n);
 
-        this.serverPool.remove(kvS);
-        this.chord.add(kvS);
+        serverPool.remove(newNode);
+        chord.add(newNode);
+        chord.calcMetadata();
 
-        kvS.launch(launched -> {
+        newNode.launch(launched -> {
             if (launched) {
-                kvS.init(this.chord.getMetadata(), cacheSize, displacementStrategy);
-                kvS.startServer();
-                Optional<KVServer> predecessorOpt = this.chord.getPredecessor(kvS.getHashKey());
-                if (!predecessorOpt.isPresent()) {
+                boolean done = newNode.init(chord.getMetadata(), cacheSize, displacementStrategy);
+                Validate.isTrue(done, "Init failed!");
+
+                done = newNode.startServer();
+                Validate.isTrue(done, "Start failed!");
+
+                if (chord.size() == 1) {
                     LOG.info("It's the only node in the service, nothing to move");
-                } else {
-                    KVServer predecessor = predecessorOpt.get();
-                    // it's a circle. If there is a predecessor then there is a successor
-                    KVServer successor = this.chord.getSuccessor(kvS.getHashKey()).get();
-                    successor.lockWrite();
-                    KeyHashRange khr = new KeyHashRange(predecessor.getHashKey(), kvS.getHashKey());
-                    successor.moveData(khr, kvS);
-                    // TODO: poll the following lines on moveData finished
-                    publishMetadata();
-                    successor.unLockWrite();
+                    return;
                 }
+
+                done = newNode.lockWrite();
+                Validate.isTrue(done, "lock write on new node failed!");
+
+
+                KVServer successor = chord.getSuccessor(newNode.getHashKey());
+                Validate.isTrue(!newNode.equals(successor), "new node and its successor are the same node");
+
+                done = successor.lockWrite();
+                Validate.isTrue(done, "lock write on successor failed!");
+
+                KeyHashRange keyRangeToMove = chord.getMetadata().findMatchingServer(newNode.getHashKey()).getRange();
+                done = successor.moveData(keyRangeToMove, newNode);
+                Validate.isTrue(done, "move data failed!");
+                // TODO handles case when done = false e.g. retry and add another server instead
+
+                broadcastMetadata();
+
+                done = newNode.unlockWrite();
+                Validate.isTrue(done, "unlock write on new node failed!");
+
+
+                done = successor.unlockWrite();
+                Validate.isTrue(done, "unlock write on successor failed!");
             }
         });
 
@@ -173,27 +194,36 @@ public class ExternalConfigurationService implements IECS {
 
     @Override
     public void removeNode() {
-        Optional<KVServer> kvSOpt = this.chord.randomNode();
-        if (!kvSOpt.isPresent()) {
-            LOG.info("There is no node in the service to remove");
+        boolean done;
+        int n = ThreadLocalRandom.current().nextInt(chord.size());
+        KVServer nodeToRemove = chord.nodes().get(n);
+        KVServer successor = chord.getSuccessor(nodeToRemove.getHashKey());
+        KeyHashRange rangeToTransfer = chord.getMetadata().findMatchingServer(nodeToRemove.getHashKey()).getRange();
+
+        chord.remove(nodeToRemove);
+        serverPool.add(nodeToRemove);
+        chord.calcMetadata();
+
+        if (chord.size() > 0) {
+            KeyHashRange successorNewRange = chord.getMetadata().findMatchingServer(nodeToRemove.getHashKey()).getRange();
+            Validate.isTrue(rangeToTransfer.getStart().equals(successorNewRange.getStart())
+                    && successor.getHashKey().equals(successorNewRange.getEnd()), "New metadata is wrong");
+
+            done = nodeToRemove.lockWrite();
+            Validate.isTrue(done, "lock write on nodeToRemove failed!");
+
+            done = successor.update(chord.getMetadata());
+            Validate.isTrue(done, "update metadata on successor failed!");
+
+            done = nodeToRemove.moveData(rangeToTransfer, successor);
+            Validate.isTrue(done, "update metadata on successor failed!");
         } else {
-            KVServer kvS = kvSOpt.get();
-            Optional<KVServer> successorOpt = this.chord.getSuccessor(kvS.getHashKey());
-            if (!successorOpt.isPresent()) {
-                LOG.info("It's the last node in the service. Nowhere to move the data");
-            } else {
-                KVServer successor = successorOpt.get();
-                KVServer predecessor = this.chord.getPredecessor(kvS.getHashKey()).get();
-                kvS.lockWrite();
-                successor.update(this.chord.getMetadata());
-                KeyHashRange range = new KeyHashRange(predecessor.getHashKey(), kvS.getHashKey());
-                kvS.moveData(range, successor);
-                // TODO: poll the following lines on moveData finished
-                publishMetadata();
-                kvS.shutDown();
-            }
+            LOG.info("It's the only nodeToRemove in the service, nothing to move");
         }
 
+        broadcastMetadata();
+        done = nodeToRemove.shutDown();
+        Validate.isTrue(done, "shutdown nodeToRemove failed!");
     }
 
 
