@@ -118,6 +118,10 @@ public class ClientConnection implements Runnable {
 
         switch (message.getStatus()) {
             case GET:
+            	if (!server.getMetadata().isReplicaOrCoordinatorKeyrange(key.getString(), server.getHashRange())) {
+                    LOG.info("Server not responsible! Server hash range is " + server.getHashRange() + ", key is " + key.getString());
+                    return new Message(Status.SERVER_NOT_RESPONSIBLE, server.getMetadata());
+                }
                 return handleGET(message);
             case PUT:
                 if (server.isWriteLocked() && !message.isBatchData()) {
