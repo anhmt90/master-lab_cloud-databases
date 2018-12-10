@@ -32,8 +32,8 @@ public class KVServer implements Comparable<KVServer> {
     private int servicePort;
     private InetSocketAddress address;
     private Socket socket;
-    private ObjectInputStream ois;
-    private ObjectOutputStream oos;
+    private BufferedInputStream bis;
+    private BufferedOutputStream bos;
 
     private String[] sshCMD;
 
@@ -53,11 +53,18 @@ public class KVServer implements Comparable<KVServer> {
         this.servicePort = servicePort;
         this.address = address;
 
+//        String[] cmds = {"ssh", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
+//                "root@" + getHost(),
+//                " mkdir -p ~/logs; nohup java -jar ~/ms3-server.jar " + nodeName + " " + this.servicePort + " " + getAdminPort()
+//                        + " > ~/logs/" + nodeName + ".log"
+//                        + " &"
+
         String[] cmds = {"ssh", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
-                "tuan-anh@" + getHost(),
-                "nohup java -jar /mnt/14F2F79EF2F781F2/Workspace/uni-project/cloud-databases/gr7-ms3/ms3-server.jar " + nodeName + " " + this.servicePort + " " + getAdminPort()
-                        + " > /mnt/14F2F79EF2F781F2/Workspace/uni-project/cloud-databases/gr7-ms3/logs/" + nodeName + ".log"
+                "root@" + getHost(),
+                " mkdir -p $clouddb/logs; nohup java -jar $clouddb/ms3-server.jar " + nodeName + " " + this.servicePort + " " + getAdminPort()
+                        + " > $clouddb/logs/" + nodeName + ".log"
                         + " &"
+                // /mnt/14F2F79EF2F781F2/Workspace/uni-project/cloud-databases/gr7-ms3/
         };
         this.sshCMD = cmds;
         this.hashKey = HashUtils.getHash(String.format("%s:%d", this.getHost(), this.servicePort));
@@ -134,7 +141,7 @@ public class KVServer implements Comparable<KVServer> {
      */
     public void send(ConfigMessage message) throws IOException {
         try {
-            BufferedOutputStream bos = new BufferedOutputStream(socket.getOutputStream());
+            bos = new BufferedOutputStream(socket.getOutputStream());
             byte[] bytes = ConfigMessageMarshaller.marshall(message);
             bos.write(bytes);
             bos.flush();
@@ -160,7 +167,7 @@ public class KVServer implements Comparable<KVServer> {
         byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
         while (true) {
             try {
-                BufferedInputStream bis = new BufferedInputStream(socket.getInputStream());
+                bis = new BufferedInputStream(socket.getInputStream());
                 int justRead = bis.read(messageBuffer);
                 ConfigMessage message = ConfigMessageMarshaller.unmarshall(Arrays.copyOfRange(messageBuffer, 0, justRead));
 
@@ -280,15 +287,15 @@ public class KVServer implements Comparable<KVServer> {
     public void closeSocket() throws IOException {
         try {
             socket.close();
-            oos.close();
-            ois.close();
+            bos.close();
+            bis.close();
         } catch (IOException e) {
             LOG.error("Couldn't close socket or streams");
             throw e;
         }
         socket = null;
-        oos = null;
-        ois = null;
+        bos = null;
+        bis = null;
     }
 
     @Override

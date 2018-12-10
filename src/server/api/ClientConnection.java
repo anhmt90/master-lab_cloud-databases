@@ -118,7 +118,7 @@ public class ClientConnection implements Runnable {
 
         switch (message.getStatus()) {
             case GET:
-            	if (!server.getMetadata().isReplicaOrCoordinatorKeyrange(key.getString(), server.getHashRange())) {
+                if (!server.getMetadata().isReplicaOrCoordinatorKeyrange(key.getString(), server.getHashRange())) {
                     LOG.info("Server not responsible! Server hash range is " + server.getHashRange() + ", key is " + key.getString());
                     return new Message(Status.SERVER_NOT_RESPONSIBLE, server.getMetadata());
                 }
@@ -200,13 +200,19 @@ public class ClientConnection implements Runnable {
     private IMessage receive() throws IOException {
         byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
         input = new BufferedInputStream(clientSocket.getInputStream());
-        int justRead = input.read(messageBuffer);
+        int justRead;
+        int inBuffer = 0;
+        while ((justRead = input.read(messageBuffer)) > 0) {
+            LOG.info("just read " + justRead + " bytes");
+            inBuffer += justRead;
 
-        int inBuffer = justRead;
-        while (!MessageMarshaller.isMessageComplete(messageBuffer, inBuffer)) {
+        }
+
+        while (justRead > 0 && !MessageMarshaller.isMessageComplete(messageBuffer, inBuffer)) {
             LOG.warn("input hasn't reached EndOfStream, keep reading...");
             justRead = input.read(messageBuffer, inBuffer, messageBuffer.length - inBuffer);
-            inBuffer += justRead;
+            if(justRead > 0)
+                inBuffer += justRead;
         }
 
         LOG.info("Read " + inBuffer + " bytes from input stream");

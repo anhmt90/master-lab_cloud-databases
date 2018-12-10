@@ -22,8 +22,8 @@ public class InternalConnection implements Runnable {
     private Socket peer;
 
     private Server server;
-    private ObjectInputStream ois;
-    private ObjectOutputStream oos;
+    private BufferedInputStream bis;
+    private BufferedOutputStream bos;
 
     public InternalConnection(InternalConnectionManager manager, Socket peer, Server server) {
         this.manager = manager;
@@ -55,8 +55,8 @@ public class InternalConnection implements Runnable {
         } finally {
             try {
                 if (peer != null) {
-                    ois.close();
-                    oos.close();
+                    bis.close();
+                    bos.close();
                     peer.close();
                 }
             } catch (IOException ioe) {
@@ -137,7 +137,7 @@ public class InternalConnection implements Runnable {
      * @throws IOException
      */
     public void send(ConfigMessage message) throws IOException {
-        BufferedOutputStream bos = new BufferedOutputStream(peer.getOutputStream());
+        bos = new BufferedOutputStream(peer.getOutputStream());
         byte[] bytes = ConfigMessageMarshaller.marshall(message);
         bos.write(bytes);
         bos.flush();
@@ -158,7 +158,7 @@ public class InternalConnection implements Runnable {
         byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
         while (true) {
             try {
-                BufferedInputStream bis = new BufferedInputStream(peer.getInputStream());
+                bis = new BufferedInputStream(peer.getInputStream());
                 int justRead = bis.read(messageBuffer);
                 ConfigMessage message = ConfigMessageMarshaller.unmarshall(Arrays.copyOfRange(messageBuffer, 0, justRead));
 

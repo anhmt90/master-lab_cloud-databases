@@ -18,7 +18,8 @@ public class FileUtils {
 //        String path = FileUtils.class.getClassLoader().getResource("util").getPath();
         try {
             String path = new File(FileUtils.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getPath();
-            return path.substring(0, path.lastIndexOf('/'));
+            char separator = (System.getProperty("os.name").toLowerCase().indexOf("win") >= 0) ? '\\' : '/';
+            return path.substring(0, path.lastIndexOf(separator));
         } catch (URISyntaxException e) {
             throw new IllegalArgumentException(e);
         }

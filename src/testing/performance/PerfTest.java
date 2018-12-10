@@ -20,9 +20,9 @@ import static util.FileUtils.SEP;
 import static util.FileUtils.USER_DIR;
 
 public class PerfTest {
-    private static final String ECS_CONFIG_PATH = USER_DIR + SEP + "config" + SEP + "server-info";
+    private static final String ECS_CONFIG_PATH = USER_DIR + SEP + "config" + SEP + "lab-server-info";
 
-    private static final int OPS_PER_CLIENT = 1000;
+    private static final int OPS_PER_CLIENT = 100;
 
     private EnronDataset enronDataset;
     private ExternalConfigurationService ecs;
@@ -33,7 +33,7 @@ public class PerfTest {
         ecs = new ExternalConfigurationService(ECS_CONFIG_PATH);
         reportBuilder = new ReportBuilder();
         enronDataset = new EnronDataset();
-        enronDataset.loadData(5000);
+        enronDataset.loadData(50);
     }
 
 
@@ -78,8 +78,12 @@ public class PerfTest {
             perfResults = Arrays.stream(clientRunners).map(ClientRunner::getPerf).collect(Collectors.toList());
             reportBuilder.insert("op_type: " + opType.name());
             reportBuilder.insert("run_time (s): " + Arrays.toString(perfResults.stream().map(Performance::getRuntime).toArray(Double[]::new)));
-            reportBuilder.insert("latencies (s/ops): " + Arrays.toString(perfResults.stream().map(Performance::getLatency).toArray(Double[]::new)));
-            reportBuilder.insert("throughputs (ops/s): " + Arrays.toString(perfResults.stream().map(Performance::getThroughput).toArray(Double[]::new)));
+            Double[] latencies = perfResults.stream().map(Performance::getLatency).toArray(Double[]::new);
+            reportBuilder.insert("latencies (s/ops): " + Arrays.toString(latencies));
+            Double[] throughputs = perfResults.stream().map(Performance::getThroughput).toArray(Double[]::new);
+            reportBuilder.insert("throughputs (ops/s): " + Arrays.toString(throughputs));
+            reportBuilder.insert("average_latency: " + Arrays.stream(latencies).mapToDouble(l -> l).average());
+            reportBuilder.insert("average_throughput: " + Arrays.stream(throughputs).mapToDouble(tp -> tp).average());
             reportBuilder.blankLine();
         }
         ecs.shutDown();
@@ -100,14 +104,12 @@ public class PerfTest {
         final String STRATEGY = "LFU";
 
 //        final int[] numClients = new int[]{1, 5, 10, 20};
-//        final int[] numServers = new int[]{1, 5, 20};
+//        final int[] numServers = new int[]{1, 5, 10};
         final int[] numClients = new int[]{1};
         final int[] numServers = new int[]{1};
 
         try {
             init();
-
-
             for (int numClient : numClients) {
                 for (int numServer : numServers) {
                     reportBuilder.insert("number_loaded_mails: " + enronDataset.getDataLoaded().size());

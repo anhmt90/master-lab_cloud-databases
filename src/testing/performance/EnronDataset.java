@@ -41,8 +41,8 @@ public class EnronDataset {
     private static Logger LOG = LogManager.getLogger(AllTests.TEST_LOG);
 
     private static final int MAX_VAL_LENGTH = 122880;
-    private static final String ENRON_DATASET = USER_DIR + "/../enron_mail_20150507/maildir";
-//    private static final String ENRON_DATASET = USER_DIR + "/../maildir";
+//    private static final String ENRON_DATASET = USER_DIR + "/../enron_mail_20150507/maildir";
+    private static final String ENRON_DATASET = USER_DIR + "/../maildir";
 
     private final Path datasetPath;
     private ArrayList<KV> dataLoaded;
