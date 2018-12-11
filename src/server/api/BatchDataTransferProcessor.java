@@ -294,7 +294,7 @@ public class BatchDataTransferProcessor {
                     @Override
                     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                         if (!FileUtils.isDir(file)) {
-                            Files.write(indexFile, file.toString().getBytes(), StandardOpenOption.APPEND);
+                            Files.write(indexFile, (file.toString() + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
                         }
                         return FileVisitResult.CONTINUE;
                     }
@@ -315,8 +315,7 @@ public class BatchDataTransferProcessor {
      * @return boolean value indicating whether all PUT-requests ended successfully or not
      */
     public boolean transfer(String[] indexFiles) throws IOException {
-        if (moveDataSocket == null || moveDataSocket.isClosed() || !moveDataSocket.isConnected())
-            connect();
+        connect();
         for (String indexFile : indexFiles) {
             List<String> filesToMove = Files.readAllLines(Paths.get(indexFile));
             for (String file : filesToMove) {
@@ -384,6 +383,7 @@ public class BatchDataTransferProcessor {
         try {
             moveDataSocket = new Socket();
             moveDataSocket.connect(new InetSocketAddress(target.getHost(), target.getPort()), 5000);
+            LOG.info("CONNECTED to target server <" + target.getHost() + ":" + target.getPort() + "> for transfering batch data");
         } catch (UnknownHostException uhe) {
             LOG.error("Unknown host \n" + uhe);
             throw uhe;

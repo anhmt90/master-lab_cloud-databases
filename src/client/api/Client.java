@@ -91,6 +91,10 @@ public class Client implements IClient {
     @Override
     public void disconnect() {
         try {
+            if (!socket.isConnected() && !socket.isClosed()) {
+                socket.shutdownOutput();
+                socket.shutdownInput();
+            }
             if (bos != null)
                 bos.close();
             if (bis != null)
@@ -98,7 +102,9 @@ public class Client implements IClient {
             if (socket != null) {
                 socket.close();
             }
-            socket = new Socket();
+            bos = null;
+            bis = null;
+            socket = null;
         } catch (IOException e) {
             LogUtils.printLogError(LOG, e, "Connection is already closed.");
         }
@@ -187,7 +193,8 @@ public class Client implements IClient {
         String val = (value == null || value.toLowerCase().equals("null")) ? "val=NULL" : "";
         LOG.info("PUT key=" + keyHashed + val);
 
-        IMessage serverResponse;
+        IMessage serverResponse = null;
+//        socket.isConnected() && !socket.isClosed()
         while (true) {
             selectServer(keyHashed);
             if (value != null && value.equals("null"))

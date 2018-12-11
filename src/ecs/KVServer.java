@@ -206,7 +206,7 @@ public class KVServer implements Comparable<KVServer> {
     }
 
     boolean moveData(KeyHashRange range, KVServer target) {
-        NodeInfo meta = new NodeInfo(target.getNodeName(), target.getHost(), target.getAdminPort(), range);
+        NodeInfo meta = new NodeInfo(target.getNodeName(), target.getHost(), target.getServicePort(), range);
         ConfigMessage msg = new ConfigMessage(ConfigStatus.MOVE_DATA, meta);
         boolean success = false;
         try {
