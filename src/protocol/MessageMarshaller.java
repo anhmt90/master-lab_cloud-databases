@@ -29,8 +29,11 @@ public class MessageMarshaller {
         if (message == null) {
             return null;
         }
-        if (message.getStatus().equals(Status.SERVER_NOT_RESPONSIBLE)) {
+        Status status = message.getStatus();
+        if (status.equals(Status.SERVER_NOT_RESPONSIBLE)) {
             return marshallMetadata(message);
+        } else if (status.equals(Status.SERVER_STOPPED) || status.equals(Status.SERVER_WRITE_LOCK)) {
+            return new byte[]{status.getCode()};
         }
         byte[] keyBytes = message.getK() != null ? message.getK().get() : new byte[]{};
         byte[] valueBytes = message.getV() != null ? message.getV().get() : new byte[]{};
@@ -40,7 +43,7 @@ public class MessageMarshaller {
         final short VAL_LENGTH_NUM_BYTES = 3;
         ByteBuffer valueLengthBuffer = ByteBuffer.allocate(BUFFER_CAPACITY).putInt(valueBytes.length);
 
-        output[0] = message.getStatus().getCode();
+        output[0] = status.getCode();
         output[1] = (byte) (message.isBatchData() ? 1 : 0);
 
         System.arraycopy(valueLengthBuffer.array(), 1, output, 1 + 1, VAL_LENGTH_NUM_BYTES);
@@ -179,9 +182,11 @@ public class MessageMarshaller {
         if (status.equals(Status.SERVER_NOT_RESPONSIBLE)) {
             int metadataLength = msgBytes[1];
             return 1 + 1 + metadataLength * NODE_INFO_SIZE == bytesRead;
+        } else if (status.equals(Status.SERVER_STOPPED) || status.equals(Status.SERVER_WRITE_LOCK)) {
+            return 1 == bytesRead;
         }
-        int valLength = getValueLength(msgBytes[1], msgBytes[2], msgBytes[3]);
-        return 1 + 3 + 16 + valLength == bytesRead;
+        int valLength = getValueLength(msgBytes[2], msgBytes[3], msgBytes[4]);
+        return 1 + 1 + 3 + 16 + valLength == bytesRead;
     }
 }
 

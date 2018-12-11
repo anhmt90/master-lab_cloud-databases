@@ -8,20 +8,21 @@ import java.io.*;
 import java.net.BindException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.HashSet;
 
-public class InternalConnectionManager implements Runnable{
+public class InternalConnectionManager implements Runnable {
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
 
     private ServerSocket adminSocket;
 
     private Server server;
     private int port;
-    private ObjectInputStream ois;
-    private ObjectOutputStream oos;
+    private HashSet<InternalConnection> connectionTable;
 
     public InternalConnectionManager(Server server) {
         this.server = server;
         port = server.getAdminPort();
+        connectionTable = new HashSet<>();
         init();
     }
 
@@ -51,6 +52,7 @@ public class InternalConnectionManager implements Runnable{
                 LOG.info("Server is waiting for incoming connection from another server on port " + adminSocket.getLocalPort() + " for internal management");
                 Socket peer = adminSocket.accept();
                 InternalConnection internalConnection = new InternalConnection(this, peer, server);
+                connectionTable.add(internalConnection);
                 new Thread(internalConnection).start();
             }
         } catch (IOException ioe) {
@@ -58,11 +60,11 @@ public class InternalConnectionManager implements Runnable{
         } finally {
             try {
                 if (adminSocket != null) {
-                    ois.close();
-                    oos.close();
-                    if(!adminSocket.isClosed())
+                    if (!adminSocket.isClosed())
                         adminSocket.close();
                 }
+                for (InternalConnection ic : connectionTable)
+                    ic.close();
             } catch (IOException ioe) {
                 LOG.error("Error! Unable to tear down connection!", ioe);
             }
@@ -71,5 +73,9 @@ public class InternalConnectionManager implements Runnable{
 
     public ServerSocket getAdminSocket() {
         return adminSocket;
+    }
+
+    public HashSet<InternalConnection> getConnectionTable() {
+        return connectionTable;
     }
 }

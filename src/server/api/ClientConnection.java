@@ -30,8 +30,8 @@ public class ClientConnection implements Runnable {
 
     private final Server server;
     private Socket clientSocket;
-    private BufferedInputStream input;
-    private BufferedOutputStream output;
+    private BufferedInputStream bis;
+    private BufferedOutputStream bos;
 
     private CacheManager cm;
 
@@ -55,12 +55,18 @@ public class ClientConnection implements Runnable {
         IMessage requestMessage = null;
         IMessage responseMessage;
         try {
-            while (isOpen) {
+            while (isOpen && server.isRunning()) {
                 try {
                     requestMessage = receive();
+                    if (requestMessage == null)
+                        continue;
                     responseMessage = handleRequest(requestMessage);
                     send(responseMessage);
 
+                } catch (IOException ioe) {
+                    LOG.error("Error! Connection lost!", ioe);
+                    LOG.warn("Setting isOpen to false");
+                    isOpen = false;
                 } catch (IllegalArgumentException iae) {
                     LOG.error("IllegalArgumentException", iae);
                     LOG.error(requestMessage.toString());
@@ -70,10 +76,6 @@ public class ClientConnection implements Runnable {
                         LOG.error("Error! Connection lost!", ioe);
                     }
                     LOG.warn(iae);
-                } catch (IOException ioe) {
-                    LOG.error("Error! Connection lost!", ioe);
-                    LOG.warn("Setting isOpen to false");
-                    isOpen = false;
                 } catch (Exception e) {
                     LOG.error("Exception", e);
                     e.printStackTrace();
@@ -83,14 +85,19 @@ public class ClientConnection implements Runnable {
         } finally {
             try {
                 LOG.warn("CLOSING SOCKET...");
-                if (clientSocket != null) {
-                    input.close();
-                    output.close();
-                    clientSocket.close();
-                }
+                closed();
             } catch (IOException ioe) {
                 LOG.error("Error! Unable to tear down connection!", ioe);
             }
+        }
+    }
+
+    public void closed() throws IOException {
+        LOG.warn("Closing clientSocket=" + clientSocket);
+        if (clientSocket != null) {
+            bis.close();
+            bos.close();
+            clientSocket.close();
         }
     }
 
@@ -181,9 +188,9 @@ public class ClientConnection implements Runnable {
      */
     public void send(IMessage message) throws IOException {
         byte[] toSend = MessageMarshaller.marshall(message);
-        output = new BufferedOutputStream(clientSocket.getOutputStream());
-        output.write(toSend);
-        output.flush();
+        bos = new BufferedOutputStream(clientSocket.getOutputStream());
+        bos.write(toSend);
+        bos.flush();
         LOG.info("SEND " + toSend.length + " bytes \t<"
                 + clientSocket.getInetAddress().getHostAddress() + ":"
                 + clientSocket.getPort() + "> ===> '"
@@ -199,24 +206,22 @@ public class ClientConnection implements Runnable {
      */
     private IMessage receive() throws IOException {
         byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
-        input = new BufferedInputStream(clientSocket.getInputStream());
-        int justRead;
-        int inBuffer = 0;
-        while ((justRead = input.read(messageBuffer)) > 0) {
-            LOG.info("just read " + justRead + " bytes");
-            inBuffer += justRead;
+        bis = new BufferedInputStream(clientSocket.getInputStream());
+        int justRead = bis.read(messageBuffer);
 
-        }
-
+        int inBuffer = justRead;
         while (justRead > 0 && !MessageMarshaller.isMessageComplete(messageBuffer, inBuffer)) {
-            LOG.warn("input hasn't reached EndOfStream, keep reading...");
-            justRead = input.read(messageBuffer, inBuffer, messageBuffer.length - inBuffer);
-            if(justRead > 0)
+            LOG.info("bis hasn't reached EndOfStream, keep reading...");
+            justRead = bis.read(messageBuffer, inBuffer, messageBuffer.length - inBuffer);
+            if (justRead > 0)
                 inBuffer += justRead;
         }
+        LOG.info("received " + inBuffer + " bytes from server");
 
-        LOG.info("Read " + inBuffer + " bytes from input stream");
-
+        if (inBuffer == -1) {
+            LOG.warn("RECEIVE -1 bytes (EOS), returning null.");
+            return null;
+        }
         IMessage message = MessageMarshaller.unmarshall(messageBuffer);
 
         LOG.info("RECEIVE \t<"

@@ -53,18 +53,11 @@ public class KVServer implements Comparable<KVServer> {
         this.servicePort = servicePort;
         this.address = address;
 
-//        String[] cmds = {"ssh", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
-//                "root@" + getHost(),
-//                " mkdir -p ~/logs; nohup java -jar ~/ms3-server.jar " + nodeName + " " + this.servicePort + " " + getAdminPort()
-//                        + " > ~/logs/" + nodeName + ".log"
-//                        + " &"
-
         String[] cmds = {"ssh", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
-                "root@" + getHost(),
-                " mkdir -p $clouddb/logs; nohup java -jar $clouddb/ms3-server.jar " + nodeName + " " + this.servicePort + " " + getAdminPort()
-                        + " > $clouddb/logs/" + nodeName + ".log"
+                "tuan-anh@" + getHost(),
+                "nohup java -jar /mnt/data/Workspace/uni-project/cloud-databases/gr7-ms3/ms3-server.jar " + nodeName + " " + this.servicePort + " " + getAdminPort()
+                        + " > /mnt/data/Workspace/uni-project/cloud-databases/gr7-ms3/logs/" + nodeName + ".log"
                         + " &"
-                // /mnt/14F2F79EF2F781F2/Workspace/uni-project/cloud-databases/gr7-ms3/
         };
         this.sshCMD = cmds;
         this.hashKey = HashUtils.getHash(String.format("%s:%d", this.getHost(), this.servicePort));
@@ -262,8 +255,7 @@ public class KVServer implements Comparable<KVServer> {
                     socket.connect(address, 5000);
                     break;
                 } catch (IOException | InterruptedException e) {
-                    LOG.error(e);
-                    LOG.info(String.format("Couldn't connect trying again (%d/%d)...", i + 1, RETRY_NUM));
+                    LOG.error(String.format("Couldn't connect trying again (%d/%d)...", i + 1, RETRY_NUM) + e);
                     if (i == RETRY_NUM - 1)
                         return;
                 }

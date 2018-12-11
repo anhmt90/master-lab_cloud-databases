@@ -54,14 +54,23 @@ public class InternalConnection implements Runnable {
             isOpen = false;
         } finally {
             try {
-                if (peer != null) {
-                    bis.close();
-                    bos.close();
-                    peer.close();
-                }
+                close();
             } catch (IOException ioe) {
                 LOG.error("Error! Unable to tear down connection!", ioe);
             }
+        }
+    }
+
+    void close() throws IOException {
+        boolean success = manager.getConnectionTable().remove(this);
+        if (peer != null) {
+            LOG.warn("remove success=" + success + " closing connection to " + peer.toString());
+            bis.close();
+            bos.close();
+            peer.close();
+            bis = null;
+            bos = null;
+            peer = null;
         }
     }
 

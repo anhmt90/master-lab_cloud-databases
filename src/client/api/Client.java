@@ -121,7 +121,7 @@ public class Client implements IClient {
     public byte[] receive() {
         byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
         try {
-            socket.setSoTimeout(50000);
+            socket.setSoTimeout(60000);
             bis = new BufferedInputStream(socket.getInputStream());
             int justRead = bis.read(messageBuffer);
 

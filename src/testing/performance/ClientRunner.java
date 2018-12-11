@@ -50,6 +50,7 @@ class ClientRunner implements Runnable {
                 break;
         }
         sw.tock();
+        client.disconnect();
         perf = new Performance()
                 .withNumOps(ops)
                 .withRuntime(sw.getRuntimeInSeconds());
