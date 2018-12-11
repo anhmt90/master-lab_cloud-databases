@@ -22,7 +22,7 @@ import static util.FileUtils.USER_DIR;
 public class PerfTest {
     private static final String ECS_CONFIG_PATH = USER_DIR + SEP + "config" + SEP + "server-info";
 
-    private static final int OPS_PER_CLIENT = 1000;
+    private static final int OPS_PER_CLIENT = 100;
 
     private EnronDataset enronDataset;
     private ExternalConfigurationService ecs;
@@ -33,7 +33,7 @@ public class PerfTest {
         ecs = new ExternalConfigurationService(ECS_CONFIG_PATH);
         reportBuilder = new ReportBuilder();
         enronDataset = new EnronDataset();
-        enronDataset.loadData(5000);
+        enronDataset.loadData(500);
     }
 
 
@@ -83,6 +83,7 @@ public class PerfTest {
             reportBuilder.blankLine();
         }
         ecs.shutDown();
+        Thread.sleep(20000);
     }
 
 //    private double averageThrougput(ClientRunner[] clientRunners) {
@@ -95,14 +96,14 @@ public class PerfTest {
 
 
     @Test
-    public void test_multiple_clients_servers() throws Exception {
+    public void test_multiple_clients_servers() {
         final int CACHE_SIZE = 1000;
-        final String STRATEGY = "LFU";
+        final String STRATEGY = "FIFO";
 
-//        final int[] numClients = new int[]{1, 5, 10, 20};
-//        final int[] numServers = new int[]{1, 5, 20};
-        final int[] numClients = new int[]{1};
-        final int[] numServers = new int[]{1};
+        final int[] numClients = new int[]{5};
+        final int[] numServers = new int[]{5};
+//        final int[] numClients = new int[]{1};
+//        final int[] numServers = new int[]{1};
 
         try {
             init();
