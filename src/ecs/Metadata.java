@@ -95,6 +95,36 @@ public class Metadata implements Serializable {
     	}
     	return false;
     }
+    
+    /**
+     * Returns the next node in the ring for a given server hashRange
+     * 
+     * @param serverRange the hashRange of the server
+     * @return metadata of matching server
+     */
+    public NodeInfo getSuccessor(KeyHashRange serverRange) {
+    	for(int i = 0; i < meta.size(); i++) {
+    		if(meta.get(i).getRange().isSubRangeOf(serverRange)) {
+    			return meta.get((i + 1) % meta.size());
+    		}
+    	}
+    	return null;
+    }
+    
+    /**
+     * Returns the previous node in the ring for a given server hashRange
+     * 
+     * @param serverRange the hashRange of the server
+     * @return metadata of matching server
+     */
+    public NodeInfo getPredecessor(KeyHashRange serverRange) {
+    	for(int i = 0; i < meta.size(); i++) {
+    		if(meta.get(i).getRange().isSubRangeOf(serverRange)) {
+    			return meta.get((i - 1) % meta.size());
+    		}
+    	}
+    	return null;
+    }
 
     /**
      * get metadata size

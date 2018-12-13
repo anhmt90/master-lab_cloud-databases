@@ -109,21 +109,21 @@ public class KVServer implements Comparable<KVServer> {
         }
     }
 
-    private boolean heartbeat() throws IOException {
-        boolean success = false;
-        for (int i = 0; i < 3; i++) {
-            success = sendAndExpect(new ConfigMessage(ConfigStatus.HEART_BEAT), ConfigStatus.ALIVE);
-            if (success)
-                return success;
-            try {
-                TimeUnit.MILLISECONDS.sleep(RETRY_WAIT_TIME);
-            } catch (InterruptedException e) {
-                LogUtils.printLogError(LOG, e);
-            }
-        }
-        return false;
-
-    }
+//    private boolean heartbeat() throws IOException {
+//        boolean success = false;
+//        for (int i = 0; i < 3; i++) {
+//            success = sendAndExpect(new ConfigMessage(ConfigStatus.HEART_BEAT), ConfigStatus.ALIVE);
+//            if (success)
+//                return success;
+//            try {
+//                TimeUnit.MILLISECONDS.sleep(RETRY_WAIT_TIME);
+//            } catch (InterruptedException e) {
+//                LogUtils.printLogError(LOG, e);
+//            }
+//        }
+//        return false;
+//
+//    }
 
 
     /**

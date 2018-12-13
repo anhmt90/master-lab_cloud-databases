@@ -80,6 +80,10 @@ public class NodesChord {
     public int size() {
         return nodesMap.size();
     }
+    
+    public KVServer findByHashKey(String hashKey) {
+    	return nodesMap.get(hashKey);
+    }
 
     /**
      * Checks if Treemap is empty

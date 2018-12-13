@@ -21,8 +21,5 @@ public enum ConfigStatus implements Serializable {
         MOVE_DATA_SUCCESS,
         UPDATE_METADATA_SUCCESS,
 
-        HEART_BEAT,
-        ALIVE,
-
         ERROR
 }

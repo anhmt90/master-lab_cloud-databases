@@ -10,6 +10,9 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
 import server.api.BatchDataTransferProcessor;
 import server.api.ClientConnection;
+import server.api.ECSReportConnection;
+import server.api.HeartbeatReceiver;
+import server.api.HeartbeatSender;
 import server.api.InternalConnectionManager;
 import server.storage.cache.CacheManager;
 import server.storage.cache.CacheDisplacementStrategy;
@@ -53,6 +56,16 @@ public class Server extends Thread implements IExternalConfigurationService {
     private String serverName;
 
     private final InternalConnectionManager internalConnectionManager;
+    
+    /**
+     * Parameters for failure detection and handling
+     */
+    private final int heartbeatInterval = 500;
+    private HeartbeatReceiver heartbeatReceiver;
+    private HeartbeatSender heartbeatSender;
+    private final int heartbeatReceivePortDistance = -500;
+    
+    private ECSReportConnection ecsReporter;
 
     /**
      * Start KV Server at given servicePort
@@ -68,6 +81,13 @@ public class Server extends Thread implements IExternalConfigurationService {
         state = NodeState.STOPPED;
 
         internalConnectionManager = new InternalConnectionManager(this);
+        
+        try {
+        	ecsReporter = new ECSReportConnection(this);
+        } catch (IOException ex) {
+        	LOG.error("Couldn't establish connection to the ECS for failure reporting.");
+        }
+        
         LOG.info("Server constructed with servicePort " + this.servicePort + " and  with logging Level " + logLevel);
 
     }
@@ -103,6 +123,12 @@ public class Server extends Thread implements IExternalConfigurationService {
             LOG.error(nsee);
             return false;
         }
+        
+        this.heartbeatReceiver = new HeartbeatReceiver(servicePort + heartbeatReceivePortDistance, this);
+        new Thread(heartbeatReceiver).start();
+        NodeInfo successor = metadata.getSuccessor(hashRange);
+        this.heartbeatSender = new HeartbeatSender(successor.getHost(), successor.getPort() + heartbeatReceivePortDistance, this);
+        new Thread(heartbeatSender).start();
 
         LOG.info("Server initialized with cache size " + cacheSize
                 + " and displacement strategy " + strategy);
@@ -174,6 +200,13 @@ public class Server extends Thread implements IExternalConfigurationService {
         }
         this.metadata = metadata;
         LOG.info("Current Metadata = " + this.metadata);
+        
+        this.heartbeatReceiver = new HeartbeatReceiver(servicePort + heartbeatReceivePortDistance, this);
+        new Thread(heartbeatReceiver).start();
+        NodeInfo successor = metadata.getSuccessor(hashRange);
+        this.heartbeatSender = new HeartbeatSender(successor.getHost(), successor.getPort() + heartbeatReceivePortDistance, this);
+        new Thread(heartbeatSender).start();
+        
         return true;
     }
 
@@ -239,6 +272,21 @@ public class Server extends Thread implements IExternalConfigurationService {
             }
             return false;
         }
+    }
+    
+    public void reportFailure() {
+    	if(ecsReporter != null) {
+    		boolean success = ecsReporter.sendFailureReport(metadata.getPredecessor(hashRange));
+    		if(success) {
+    			LOG.info("Failed node successfully removed");
+    		}
+    		else {
+    			LOG.info("Failed node could not be removed");
+    		}
+    	}
+    	else {
+    		LOG.info("Predecessor failure detected but unable to notify ECS about it.");
+    	}
     }
 
     /**
@@ -448,5 +496,9 @@ public class Server extends Thread implements IExternalConfigurationService {
 
     public int getAdminPort() {
         return adminPort;
+    }
+    
+    public int getHeartbeatInterval() {
+    	return heartbeatInterval;
     }
 }

@@ -41,8 +41,7 @@ public class InternalConnection implements Runnable {
         try {
             while (isOpen && server.isRunning()) {
                 ConfigMessage configMessage = poll();
-                boolean success = (!configMessage.getStatus().equals(ConfigStatus.HEART_BEAT))
-                        ? handleRequest(configMessage) : true;
+                boolean success = handleRequest(configMessage);
 
                 ConfigMessage ack = new ConfigMessage(getAckStatus(configMessage.getStatus(), success));
                 LOG.info("sending ACK " + ack.getStatus());
@@ -101,8 +100,6 @@ public class InternalConnection implements Runnable {
                 return ConfigStatus.STOP_SUCCESS;
             case SHUTDOWN:
                 return ConfigStatus.SHUTDOWN_SUCCESS;
-            case HEART_BEAT:
-                return ConfigStatus.ALIVE;
             default:
                 throw new IllegalStateException("Unknown status of request!");
         }
