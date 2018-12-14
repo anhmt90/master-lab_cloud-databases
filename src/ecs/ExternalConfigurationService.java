@@ -52,11 +52,20 @@ public class ExternalConfigurationService implements IECS {
         }
 
         LOG.debug("Picking servers to initialize");
-        for (int i = 0; i < numberOfNodes; i++) {
+        int prevSelectedServicePort = -1;
+        while (chord.size() < numberOfNodes) {
             int n = ThreadLocalRandom.current().nextInt(serverPool.size());
             KVServer kvS = this.serverPool.get(n);
+
+            if (chord.size() == 0) {
+                prevSelectedServicePort = kvS.getServicePort();
+            } else if (kvS.getServicePort() % 2 == prevSelectedServicePort % 2)
+                continue;
+
             this.chord.add(kvS);
             this.serverPool.remove(n);
+            prevSelectedServicePort = kvS.getServicePort();
+
         }
         Validate.isTrue(chord.nodes().size() == numberOfNodes, "Not enough nodes are added. numberOfNodes=" + numberOfNodes + " while serverPool=" + serverPool.size() + "and chord=" + chord.size());
         chord.calcMetadata();

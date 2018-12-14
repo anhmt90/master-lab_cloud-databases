@@ -134,7 +134,7 @@ public class BatchDataTransferProcessor {
         String startDir = start[commonPrefix.length() / 2];
         String endDir = end[commonPrefix.length() / 2];
 
-        String commonParent = commonPrefix.length() == 0 ?
+        String commonParent = commonPrefix.length() / 2 == 0 ?
                 StringUtils.EMPTY_STRING :
                 StringUtils.joinSeparated(Arrays.copyOfRange(start, 0, commonPrefix.length() / 2 - 1), SEP);
 
@@ -294,7 +294,7 @@ public class BatchDataTransferProcessor {
                     @Override
                     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                         if (!FileUtils.isDir(file)) {
-                            Files.write(indexFile, file.toString().getBytes(), StandardOpenOption.APPEND);
+                            Files.write(indexFile, (file.toString() + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
                         }
                         return FileVisitResult.CONTINUE;
                     }
@@ -315,8 +315,7 @@ public class BatchDataTransferProcessor {
      * @return boolean value indicating whether all PUT-requests ended successfully or not
      */
     public boolean transfer(String[] indexFiles) throws IOException {
-        if (moveDataSocket == null || moveDataSocket.isClosed() || !moveDataSocket.isConnected())
-            connect();
+        connect();
         for (String indexFile : indexFiles) {
             List<String> filesToMove = Files.readAllLines(Paths.get(indexFile));
             for (String file : filesToMove) {
@@ -351,7 +350,11 @@ public class BatchDataTransferProcessor {
             return false;
         }
         IMessage response = MessageMarshaller.unmarshall(receive());
-        LOG.info("Received from server: " + response);
+        if (response == null) {
+            LOG.info("Received from server: null");
+            return false;
+        } else
+            LOG.info("Received from server: " + response.toString());
         return true;
     }
 
@@ -361,12 +364,21 @@ public class BatchDataTransferProcessor {
      * @return the received byte array
      */
     private byte[] receive() {
-        byte[] data = new byte[IMessage.MAX_MESSAGE_LENGTH];
+        byte[] messageBuffer = new byte[IMessage.MAX_MESSAGE_LENGTH];
         try {
             moveDataSocket.setSoTimeout(5000);
             bis = new BufferedInputStream(moveDataSocket.getInputStream());
-            int bytesCopied = bis.read(data);
-            LOG.info("received data from server" + bytesCopied + " bytes");
+            int justRead = bis.read(messageBuffer);
+
+            int inBuffer = justRead;
+            while (justRead > 0 && !MessageMarshaller.isMessageComplete(messageBuffer, inBuffer)) {
+                LOG.info("input hasn't reached EndOfStream, keep reading...");
+                justRead = bis.read(messageBuffer, inBuffer, messageBuffer.length - inBuffer);
+                if (justRead > 0)
+                    inBuffer += justRead;
+            }
+            LOG.info("received " + inBuffer + " bytes from server");
+
         } catch (SocketTimeoutException ste) {
             LOG.error("'receive' timeout. Client will disconnect from server.\n" + ste);
             disconnect();
@@ -374,7 +386,7 @@ public class BatchDataTransferProcessor {
             LOG.error("Could't connect to the server. Disconnecting... \n" + e);
             disconnect();
         }
-        return data;
+        return messageBuffer;
     }
 
     /**
@@ -384,6 +396,7 @@ public class BatchDataTransferProcessor {
         try {
             moveDataSocket = new Socket();
             moveDataSocket.connect(new InetSocketAddress(target.getHost(), target.getPort()), 5000);
+            LOG.info("CONNECTED to target server <" + target.getHost() + ":" + target.getPort() + "> for transfering batch data");
         } catch (UnknownHostException uhe) {
             LOG.error("Unknown host \n" + uhe);
             throw uhe;

@@ -14,8 +14,9 @@ import java.util.Arrays;
 import static protocol.IMessage.MAX_MESSAGE_LENGTH;
 
 public class InternalConnection implements Runnable {
-
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
+    private static final int MAX_ALLOWED_EOF = 3;
+
     private final InternalConnectionManager manager;
     private boolean isOpen;
 
@@ -38,9 +39,21 @@ public class InternalConnection implements Runnable {
      */
     @Override
     public void run() {
+        int eofCounter = 0;
         try {
             while (isOpen && server.isRunning()) {
                 ConfigMessage configMessage = poll();
+
+                if (configMessage == null) {
+                    eofCounter++;
+                    if (eofCounter >= MAX_ALLOWED_EOF) {
+                        LOG.warn("Got " + eofCounter + " successive EOF signals! Assume the other end has terminated but not closed the socket properly. " +
+                                "Tear down connection now");
+                        isOpen = false;
+                    }
+                    continue;
+                }
+
                 boolean success = (!configMessage.getStatus().equals(ConfigStatus.HEART_BEAT))
                         ? handleRequest(configMessage) : true;
 
@@ -52,6 +65,8 @@ public class InternalConnection implements Runnable {
         } catch (IOException ioe) {
             LOG.error("Error! Connection lost", ioe);
             isOpen = false;
+        } catch (Exception e) {
+            LOG.error("Runtime exception!", e);
         } finally {
             try {
                 close();

@@ -24,6 +24,7 @@ import java.net.Socket;
  */
 public class ClientConnection implements Runnable {
 
+    private static final int MAX_ALLOWED_EOF = 3;
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
 
     private boolean isOpen;
@@ -54,15 +55,23 @@ public class ClientConnection implements Runnable {
     public void run() {
         IMessage requestMessage = null;
         IMessage responseMessage;
+        int eofCounter = 0;
         try {
             while (isOpen && server.isRunning()) {
                 try {
                     requestMessage = receive();
-                    if (requestMessage == null)
+                    if (requestMessage == null) {
+                        eofCounter++;
+                        if (eofCounter >= MAX_ALLOWED_EOF) {
+                            LOG.warn("Got " + eofCounter + " successive EOF signals! Assume the other end has terminated but not closed the socket properly. " +
+                                    "Tearing down connection");
+                            isOpen = false;
+                        }
                         continue;
+                    }
                     responseMessage = handleRequest(requestMessage);
                     send(responseMessage);
-
+                    eofCounter = 0;
                 } catch (IOException ioe) {
                     LOG.error("Error! Connection lost!", ioe);
                     LOG.warn("Setting isOpen to false");
@@ -85,19 +94,26 @@ public class ClientConnection implements Runnable {
         } finally {
             try {
                 LOG.warn("CLOSING SOCKET...");
-                closed();
+                disconnect();
             } catch (IOException ioe) {
                 LOG.error("Error! Unable to tear down connection!", ioe);
             }
         }
     }
 
-    public void closed() throws IOException {
+    public void disconnect() throws IOException {
         LOG.warn("Closing clientSocket=" + clientSocket);
         if (clientSocket != null) {
-            bis.close();
+            clientSocket.shutdownInput();
+            clientSocket.shutdownOutput();
+
             bos.close();
+            bis.close();
             clientSocket.close();
+
+            bis = null;
+            bos = null;
+            clientSocket = null;
         }
     }
 
@@ -216,12 +232,12 @@ public class ClientConnection implements Runnable {
             if (justRead > 0)
                 inBuffer += justRead;
         }
-        LOG.info("received " + inBuffer + " bytes from server");
 
         if (inBuffer == -1) {
             LOG.warn("RECEIVE -1 bytes (EOS), returning null.");
             return null;
         }
+        LOG.info("received " + inBuffer + " bytes from server");
         IMessage message = MessageMarshaller.unmarshall(messageBuffer);
 
         LOG.info("RECEIVE \t<"

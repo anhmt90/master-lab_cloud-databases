@@ -53,10 +53,12 @@ public class KVServer implements Comparable<KVServer> {
         this.servicePort = servicePort;
         this.address = address;
 
+        String username = servicePort % 2 == 0 ? "anhmt90" : "lab";
+
         String[] cmds = {"ssh", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
-                "tuan-anh@" + getHost(),
-                "nohup java -jar /mnt/data/Workspace/uni-project/cloud-databases/gr7-ms3/ms3-server.jar " + nodeName + " " + this.servicePort + " " + getAdminPort()
-                        + " > /mnt/data/Workspace/uni-project/cloud-databases/gr7-ms3/logs/" + nodeName + ".log"
+                username + "@" + getHost(),
+                "nohup java -jar ms3-server.jar " + nodeName + " " + this.servicePort + " " + getAdminPort()
+                        + " > logs/" + nodeName + ".log"
                         + " &"
         };
         this.sshCMD = cmds;
@@ -206,7 +208,7 @@ public class KVServer implements Comparable<KVServer> {
     }
 
     boolean moveData(KeyHashRange range, KVServer target) {
-        NodeInfo meta = new NodeInfo(target.getNodeName(), target.getHost(), target.getAdminPort(), range);
+        NodeInfo meta = new NodeInfo(target.getNodeName(), target.getHost(), target.getServicePort(), range);
         ConfigMessage msg = new ConfigMessage(ConfigStatus.MOVE_DATA, meta);
         boolean success = false;
         try {
