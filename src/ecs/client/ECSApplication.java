@@ -210,6 +210,7 @@ public class ECSApplication {
      * @param input The scanner for input stream from System.in
      */
     private static void handleQuit(Scanner input) {
+    	handleShutdown();
         print("Exiting application");
         LOG.info("quit");
         ecs.shutDown();
