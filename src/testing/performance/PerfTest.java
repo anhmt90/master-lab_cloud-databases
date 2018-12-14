@@ -21,9 +21,9 @@ import static util.FileUtils.SEP;
 import static util.FileUtils.USER_DIR;
 
 public class PerfTest {
-    private static final String ECS_CONFIG_PATH = USER_DIR + SEP + "config" + SEP + "server-info";
+    private static final String ECS_CONFIG_PATH = USER_DIR + SEP + "config" + SEP + "default-server-info";
 
-    private static final int OPS_PER_CLIENT = 100;
+    private static final int OPS_PER_CLIENT = 1000;
 
     private EnronDataset enronDataset;
     private ExternalConfigurationService ecs;
@@ -34,7 +34,7 @@ public class PerfTest {
         ecs = new ExternalConfigurationService(ECS_CONFIG_PATH);
         reportBuilder = new ReportBuilder();
         enronDataset = new EnronDataset();
-        enronDataset.loadData(500);
+        enronDataset.loadData(20000);
     }
 
 
@@ -47,15 +47,14 @@ public class PerfTest {
         Status[] opTypes = new Status[]{Status.PUT, Status.GET};
         reportBuilder.blankLine();
         reportBuilder.lineSeparator();
-//        reportBuilder.insert("number_of_servers: " + numServers);
-//        reportBuilder.insert("number_of_clients: " + numClients);
-        reportBuilder.insert("strategy: " + strategy);
-        reportBuilder.insert("cache_size: " + cacheSize);
+        reportBuilder.insert("number_of_servers: " + numServers);
+        reportBuilder.insert("number_of_clients: " + numClients);
+//        reportBuilder.insert("strategy: " + strategy);
+//        reportBuilder.insert("cache_size: " + cacheSize);
         reportBuilder.lineSeparator();
 
         for (Status opType : opTypes) {
             create_and_run_clients(numClients, opsPerClient, opType);
-
 
             reportBuilder.insert("op_type: " + opType.name());
             reportBuilder.insert("run_time (s): " + Arrays.toString(perfResults.stream().map(Performance::getRuntime).toArray(Double[]::new)));
@@ -71,7 +70,7 @@ public class PerfTest {
             reportBuilder.blankLine();
         }
         ecs.shutDown();
-        Thread.sleep(5000);
+        Thread.sleep(30000);
     }
 
     private void create_and_run_clients(int numClients, int opsPerClient, Status opType) throws InterruptedException {
@@ -96,7 +95,7 @@ public class PerfTest {
         for (Thread t : threads)
             t.join();
 
-        Thread.sleep(2000);
+        Thread.sleep(10000);
         perfResults = Arrays.stream(clientRunners).map(ClientRunner::getPerf).collect(Collectors.toList());
     }
 
@@ -105,24 +104,22 @@ public class PerfTest {
         final int CACHE_SIZE = 1000;
         final String STRATEGY = "FIFO";
 
-        final int[] numClients = new int[]{5};
-        final int[] numServers = new int[]{5};
-//        final int[] numClients = new int[]{1};
-//        final int[] numServers = new int[]{1};
+        final int numClient = 12;
+        final int[] numServers = new int[]{8};
+//        final int[] numClients = new int[]{10};
+//        final int[] numServers = new int[]{2, 5};
 
         try {
             init();
+            reportBuilder.insert("number_loaded_mails: " + enronDataset.getDataLoaded().size());
+            reportBuilder.insert("cache_size: " + CACHE_SIZE);
+            reportBuilder.insert("strategy: " + STRATEGY);
+            reportBuilder.insert("ops_per_client: " + OPS_PER_CLIENT);
 
 
-            for (int numClient : numClients) {
-                for (int numServer : numServers) {
-                    reportBuilder.insert("number_loaded_mails: " + enronDataset.getDataLoaded().size());
-                    reportBuilder.insert("cache_size: " + CACHE_SIZE);
-                    reportBuilder.insert("strategy: " + STRATEGY);
-                    reportBuilder.insert("ops_per_client: " + OPS_PER_CLIENT);
+            for (int numServer : numServers) {
 
-                    runTest(numClient, OPS_PER_CLIENT, numServer, CACHE_SIZE, STRATEGY);
-                }
+                runTest(numClient, OPS_PER_CLIENT, numServer, CACHE_SIZE, STRATEGY);
             }
             reportBuilder.blankLine();
 
@@ -130,7 +127,7 @@ public class PerfTest {
             if (!FileUtils.dirExists(perfDir))
                 Files.createDirectories(perfDir);
 
-            reportBuilder.save(Paths.get(perfDir.toString() + SEP + "multiple_clients_servers_" + CACHE_SIZE + "_" + STRATEGY + ".txt"));
+            reportBuilder.save(Paths.get(perfDir.toString() + SEP + "multiple_clients_servers_" + CACHE_SIZE + "_" + STRATEGY + "_" + numClient + "clients.txt"));
         } catch (IOException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {
@@ -151,10 +148,10 @@ public class PerfTest {
             reportBuilder.insert("num_servers: " + numServers);
             reportBuilder.insert("ops_per_client: " + OPS_PER_CLIENT);
 
-            Integer[] cacheSizes = new Integer[]{1, 100, 500, 1000, 2000, 5000};
-            String[] strategies = {"FIFO", "LFU", "LRU"};
-//                Integer[] cacheSizes = new Integer[]{1000};
-//                String[] strategies = {"FIFO"};
+//            Integer[] cacheSizes = new Integer[]{1, 100, 500, 1000, 2000, 5000};
+//            String[] strategies = {"FIFO", "LFU", "LRU"};
+            Integer[] cacheSizes = new Integer[]{1000};
+            String[] strategies = {"FIFO"};
 
             for (String strategy : strategies) {
                 for (int cacheSize : cacheSizes) {
@@ -177,28 +174,30 @@ public class PerfTest {
         final int CACHE_SIZE = 1000;
         final String STRATEGY = "FIFO";
 
-        final int numClients = 2;
-        final int numServers = 2;
-        final int numServersToScale = 2;
+        final int numClients = 10;
+        final int numServers = 5;
+        final int numServersToScale = 5;
 
         init();
         ecs.initService(numServers, CACHE_SIZE, STRATEGY);
         ecs.startService();
 
         create_and_run_clients(numClients, OPS_PER_CLIENT, Status.PUT);
+        perfResults.clear();
 
         reportBuilder.insert("number_loaded_mails: " + enronDataset.getDataLoaded().size());
         reportBuilder.insert("clients: " + numClients);
         reportBuilder.insert("num_PUTs_per_client: " + OPS_PER_CLIENT);
         reportBuilder.insert("initial_num_servers: " + numServers);
-        reportBuilder.insert("num_servers_to_scale" + numServersToScale);
+        reportBuilder.insert("num_servers_to_scale: " + numServersToScale);
         reportBuilder.lineSeparator();
 
         final String UP = "UP";
         final String DOWN = "DOWN";
-        for (String scale : new String[]{UP, DOWN}) {
+        for (final String scale : new String[]{UP, DOWN}) {
             reportBuilder.insert("scaling_" + scale);
             for (int i = 0; i < numServersToScale; i++) {
+                System.out.println("=============================> " + scale + " " + i);
                 Stopwatch sw = new Stopwatch();
                 sw.tick();
                 switch (scale) {
@@ -211,16 +210,19 @@ public class PerfTest {
                 }
                 sw.tock();
                 perfResults.add(new Performance().withRuntime(sw.getRuntimeInSeconds()));
+                Thread.sleep(3000);
             }
 
             Double[] runtimes = perfResults.stream().map(Performance::getRuntime).toArray(Double[]::new);
-            reportBuilder.insert("run_time (s): " + runtimes);
+            reportBuilder.insert("run_time (s): " + Arrays.toString(runtimes));
             reportBuilder.insert("average_scale_" + scale + "_time: " + Arrays.stream(runtimes).mapToDouble(rt -> rt).average().getAsDouble());
             reportBuilder.blankLine();
-            saveReport("scale_" + scale + "_" + numServers + "_with_initial+" + numServersToScale);
+            perfResults.clear();
         }
+        saveReport("scale_" + numServersToScale + "_with_initial_" + numServers + "servers");
 
-
+        ecs.shutDown();
+        Thread.sleep(10000);
     }
 
     private void saveReport(String reportName) throws IOException {

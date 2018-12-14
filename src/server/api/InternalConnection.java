@@ -65,6 +65,8 @@ public class InternalConnection implements Runnable {
         } catch (IOException ioe) {
             LOG.error("Error! Connection lost", ioe);
             isOpen = false;
+        } catch (Exception e) {
+            LOG.error("Runtime exception!", e);
         } finally {
             try {
                 close();

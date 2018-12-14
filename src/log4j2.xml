@@ -22,21 +22,18 @@
             <!--<AppenderRef ref="Console"/>-->
             <!--<AppenderRef ref="CloudDB" />-->
         </Root>
-        <Logger name="kvClient" level="debug" additivity="false">
+        <Logger name="kvClient" level="error" additivity="false">
             <AppenderRef ref="Console" />
-            <appender-ref ref="kvClient" />
         </Logger>
-        <Logger name="kvServer" level="debug" additivity="false">
+        <Logger name="kvServer" level="error" additivity="false">
             <AppenderRef ref="Console" />
-            <appender-ref ref="kvServer" />
         </Logger>
-        <Logger name="ECS" level="debug" additivity="false">
+        <Logger name="ECS" level="warn" additivity="false">
             <AppenderRef ref="Console" />
             <appender-ref ref="ECS" />
         </Logger>
         <Logger name="tests" level="all" additivity="false">
             <AppenderRef ref="Console" />
-            <appender-ref ref="tests" />
         </Logger>
     </Loggers>
 </Configuration>
