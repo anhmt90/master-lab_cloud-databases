@@ -53,12 +53,12 @@ public class KVServer implements Comparable<KVServer> {
         this.servicePort = servicePort;
         this.address = address;
 
-        String username = servicePort % 2 == 0 ? "anhmt90" : "lab";
+//        String username = servicePort % 2 == 0 ? "anhmt90" : "lab";
 
         String[] cmds = {"ssh", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
-                username + "@" + getHost(),
-                "nohup java -jar ms3-server.jar " + nodeName + " " + this.servicePort + " " + getAdminPort()
-                        + " > logs/" + nodeName + ".log"
+                "tuan-anh@" + getHost(),
+                "nohup java -jar /mnt/data/Workspace/uni-project/cloud-databases/gr7-ms3/ms3-server.jar " + nodeName + " " + this.servicePort + " " + getAdminPort()
+                        + " > /mnt/data/Workspace/uni-project/cloud-databases/gr7-ms3/logs/" + nodeName + ".log"
                         + " &"
         };
         this.sshCMD = cmds;
@@ -111,21 +111,21 @@ public class KVServer implements Comparable<KVServer> {
         }
     }
 
-    private boolean heartbeat() throws IOException {
-        boolean success = false;
-        for (int i = 0; i < 3; i++) {
-            success = sendAndExpect(new ConfigMessage(ConfigStatus.HEART_BEAT), ConfigStatus.ALIVE);
-            if (success)
-                return success;
-            try {
-                TimeUnit.MILLISECONDS.sleep(RETRY_WAIT_TIME);
-            } catch (InterruptedException e) {
-                LogUtils.printLogError(LOG, e);
-            }
-        }
-        return false;
-
-    }
+//    private boolean heartbeat() throws IOException {
+//        boolean success = false;
+//        for (int i = 0; i < 3; i++) {
+//            success = sendAndExpect(new ConfigMessage(ConfigStatus.HEART_BEAT), ConfigStatus.ALIVE);
+//            if (success)
+//                return success;
+//            try {
+//                TimeUnit.MILLISECONDS.sleep(RETRY_WAIT_TIME);
+//            } catch (InterruptedException e) {
+//                LogUtils.printLogError(LOG, e);
+//            }
+//        }
+//        return false;
+//
+//    }
 
 
     /**

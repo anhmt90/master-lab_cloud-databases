@@ -10,6 +10,9 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
 import server.api.BatchDataTransferProcessor;
 import server.api.ClientConnection;
+import server.api.ECSReportConnection;
+import server.api.HeartbeatReceiver;
+import server.api.HeartbeatSender;
 import server.api.InternalConnectionManager;
 import server.storage.cache.CacheManager;
 import server.storage.cache.CacheDisplacementStrategy;
@@ -53,6 +56,16 @@ public class Server extends Thread implements IExternalConfigurationService {
     private String serverName;
 
     private final InternalConnectionManager internalConnectionManager;
+    
+    /**
+     * Parameters for failure detection and handling
+     */
+    private final int heartbeatInterval = 2000;
+    private HeartbeatReceiver heartbeatReceiver;
+    private HeartbeatSender heartbeatSender;
+    private static final int HEARTBEAT_RECEIVE_PORT_DISTANCE = -500;
+    
+    private ECSReportConnection ecsReporter;
 
     /**
      * Start KV Server at given servicePort
@@ -68,6 +81,9 @@ public class Server extends Thread implements IExternalConfigurationService {
         state = NodeState.STOPPED;
 
         internalConnectionManager = new InternalConnectionManager(this);
+        
+
+        
         LOG.info("Server constructed with servicePort " + this.servicePort + " and  with logging Level " + logLevel);
 
     }
@@ -104,9 +120,22 @@ public class Server extends Thread implements IExternalConfigurationService {
             return false;
         }
 
+        initHeartbeatProtocol(metadata);
+
         LOG.info("Server initialized with cache size " + cacheSize
                 + " and displacement strategy " + strategy);
         return true;
+    }
+
+    private void initHeartbeatProtocol(Metadata metadata) {
+        LOG.info("Starting heartbeat receiver...");
+        this.heartbeatReceiver = new HeartbeatReceiver(servicePort + HEARTBEAT_RECEIVE_PORT_DISTANCE, this);
+        new Thread(heartbeatReceiver).start();
+
+        LOG.info("Starting heartbeat sender...");
+        NodeInfo successor = metadata.getSuccessor(hashRange);
+        this.heartbeatSender = new HeartbeatSender(successor.getHost(), successor.getPort() + HEARTBEAT_RECEIVE_PORT_DISTANCE, this);
+        new Thread(heartbeatSender).start();
     }
 
     /**
@@ -140,6 +169,8 @@ public class Server extends Thread implements IExternalConfigurationService {
             try {
                 internalConnectionManager.getAdminSocket().close();
                 kvSocket.close();
+                heartbeatReceiver.close();
+                heartbeatSender.close();
                 running = false;
             } catch (IOException e) {
                 LOG.error("Unable to close internal management socket or KV-socket! \n" + e);
@@ -174,6 +205,10 @@ public class Server extends Thread implements IExternalConfigurationService {
         }
         this.metadata = metadata;
         LOG.info("Current Metadata = " + this.metadata);
+        heartbeatReceiver.close();
+        heartbeatSender.close();
+        initHeartbeatProtocol(metadata);
+
         return true;
     }
 
@@ -239,6 +274,28 @@ public class Server extends Thread implements IExternalConfigurationService {
             }
             return false;
         }
+    }
+    
+    public void reportFailure() {
+        try {
+            ecsReporter = new ECSReportConnection(this);
+        } catch (IOException ex) {
+            LOG.error("Couldn't establish connection to the ECS for failure reporting.");
+
+        }
+
+    	if(ecsReporter != null) {
+    		boolean success = ecsReporter.sendFailureReport(metadata.getPredecessor(hashRange));
+    		if(success) {
+    			LOG.info("Failed node successfully removed");
+    		}
+    		else {
+    			LOG.info("Failed node could not be removed");
+    		}
+    	}
+    	else {
+    		LOG.info("Predecessor failure detected but unable to notify ECS about it.");
+    	}
     }
 
     /**
@@ -448,5 +505,9 @@ public class Server extends Thread implements IExternalConfigurationService {
 
     public int getAdminPort() {
         return adminPort;
+    }
+    
+    public int getHeartbeatInterval() {
+    	return heartbeatInterval;
     }
 }

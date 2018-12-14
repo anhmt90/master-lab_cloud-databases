@@ -14,7 +14,7 @@ import static util.FileUtils.SEP;
 public class ECSApplication {
 
     static Logger LOG = LogManager.getLogger("ECS");
-    private static final String CONFIG_FILE = System.getProperty("user.dir") + SEP + "config" + SEP + "default-server-info";
+    private static final String CONFIG_FILE = System.getProperty("user.dir") + SEP + "config" + SEP + "server-info";
 
     private static final String INIT = "init";
     private static final String START = "start";
@@ -134,7 +134,7 @@ public class ECSApplication {
         if (!isValidCacheSize(cmdArgs[1]) || !isValidDisplacementStrategy(cmdArgs[2])) {
             return;
         }
-        if (ecs.isRunning()) {
+        if (ecs.isRingUp()) {
             print("Storage service is already running.");
             return;
         }
@@ -150,7 +150,7 @@ public class ECSApplication {
 			print("No active nodes that could be shutdown.");
 			return;
 		}
-		if(ecs.isRunning()) {
+		if(ecs.isRingUp()) {
 			ecs.shutDown();
 			print("Storage service shutting down");
 			LOG.info("Shutdown");
@@ -209,10 +209,11 @@ public class ECSApplication {
      *
      * @param input The scanner for input stream from System.in
      */
-    private static void handleQuit(Scanner input) {
+    private static void handleQuit(Scanner input) throws IOException {
         print("Exiting application");
         LOG.info("quit");
         ecs.shutDown();
+        ecs.getReportManager().getReportSocket().close();
         input.close();
     }
 

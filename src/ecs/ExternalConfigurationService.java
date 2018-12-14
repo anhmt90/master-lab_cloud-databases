@@ -10,8 +10,8 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 
 import static util.StringUtils.WHITE_SPACE;
 
@@ -21,7 +21,6 @@ import static util.StringUtils.WHITE_SPACE;
 public class ExternalConfigurationService implements IECS {
     public static final String ECS_LOG = "ECS";
     private static Logger LOG = LogManager.getLogger(ECS_LOG);
-    private static final int REPORT_PORT = 54321;
 
 
     /**
@@ -30,9 +29,18 @@ public class ExternalConfigurationService implements IECS {
     private NodesChord chord = new NodesChord();
     private List<KVServer> serverPool = new ArrayList<>();
 
-    private boolean running = false;
+    private boolean isRingUp = false;
     private boolean serving = false;
-
+    
+   /**
+    * Standard parameters for server failure restructuring
+    */
+    private static final String STANDARD_REPLACEMENT_STRATEGY = "FIFO";
+    private static final int STANDARD_CACHE_SIZE = 100;
+    public static final int REPORT_PORT = 54321;
+    public static final String ECS_ADDRESS = "127.0.0.1";
+    private FailureReportingManager reportManager;
+    
     /**
      * Sends the updated local metadata to all servers participating in the storage service
      */
@@ -83,7 +91,7 @@ public class ExternalConfigurationService implements IECS {
                 }
             });
         }
-        running = true;
+        isRingUp = true;
     }
 
 
@@ -134,7 +142,7 @@ public class ExternalConfigurationService implements IECS {
                 serverPool.addAll(chord.nodes());
                 chord.getNodesMap().clear();
                 serving = false;
-                running = false;
+                isRingUp = false;
             }
         }
     }
@@ -234,6 +242,41 @@ public class ExternalConfigurationService implements IECS {
         done = nodeToRemove.shutDown();
         Validate.isTrue(done, "shutdown nodeToRemove failed!");
     }
+    
+    
+    
+    
+    /**
+     * Handles failure of a node in the storage service by removing it first from the ring and then later
+     * trying to re-add it or another node with standard parameters from the server pool
+     * 
+     * @param failedServerRange KeyHashRange of the failed server reported by one of the Replicas
+     */
+    public boolean handleFailure(KeyHashRange failedServerRange) {
+    	KVServer failedNode = chord.findByHashKey(failedServerRange.getEnd());
+    	if(failedNode == null) {
+    		LOG.error("Failed node not found in chord. HashKey of failed node:" + failedServerRange.getEnd());
+    		return false;
+    	}
+    	else {
+    		try {
+    			failedNode.closeSocket();
+    		} catch (IOException ex) {
+    			LOG.error("Failed to close failed socket");
+    		}
+			chord.remove(failedNode);
+			chord.calcMetadata();
+			broadcastMetadata();
+			try {
+				TimeUnit.SECONDS.sleep(5);
+			} catch (InterruptedException e) {
+				LOG.error("Timeout between Metadata update and readding of new node interrupted.");
+			}
+			//TODO: Try to restart failed server and add it instead
+			addNode(STANDARD_CACHE_SIZE, STANDARD_REPLACEMENT_STRATEGY);
+			return true;
+    	}
+    }
 
 
     public ExternalConfigurationService(String configFile) throws IOException {
@@ -251,15 +294,18 @@ public class ExternalConfigurationService implements IECS {
 
 
         }
+        
+        reportManager = new FailureReportingManager(this);
+        new Thread(reportManager).start();
     }
 
     /**
-     * Checks if the storage service is currently running.
+     * Checks if the storage service is currently isRingUp.
      *
-     * @return true if service is running
+     * @return true if service is isRingUp
      */
-    public boolean isRunning() {
-        return running;
+    public boolean isRingUp() {
+        return isRingUp;
     }
 
     /**
@@ -268,7 +314,7 @@ public class ExternalConfigurationService implements IECS {
      * @return true if service is being offered to the client
      */
     public boolean isServing() {
-        return running && serving;
+        return isRingUp && serving;
     }
 
     /**
@@ -282,5 +328,13 @@ public class ExternalConfigurationService implements IECS {
 
     public NodesChord getChord() {
         return this.chord;
+    }
+    
+    public int getReportPort() {
+    	return REPORT_PORT;
+    }
+
+    public FailureReportingManager getReportManager() {
+        return reportManager;
     }
 }

@@ -16,7 +16,6 @@ import static protocol.IMessage.MAX_MESSAGE_LENGTH;
 public class InternalConnection implements Runnable {
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
     private static final int MAX_ALLOWED_EOF = 3;
-
     private final InternalConnectionManager manager;
     private boolean isOpen;
 
@@ -54,8 +53,7 @@ public class InternalConnection implements Runnable {
                     continue;
                 }
 
-                boolean success = (!configMessage.getStatus().equals(ConfigStatus.HEART_BEAT))
-                        ? handleRequest(configMessage) : true;
+                boolean success = handleRequest(configMessage);
 
                 ConfigMessage ack = new ConfigMessage(getAckStatus(configMessage.getStatus(), success));
                 LOG.info("sending ACK " + ack.getStatus());
@@ -116,8 +114,6 @@ public class InternalConnection implements Runnable {
                 return ConfigStatus.STOP_SUCCESS;
             case SHUTDOWN:
                 return ConfigStatus.SHUTDOWN_SUCCESS;
-            case HEART_BEAT:
-                return ConfigStatus.ALIVE;
             default:
                 throw new IllegalStateException("Unknown status of request!");
         }
