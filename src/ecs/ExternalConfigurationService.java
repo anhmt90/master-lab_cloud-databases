@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
@@ -48,7 +50,7 @@ public class ExternalConfigurationService implements IECS {
         Metadata md = chord.getMetadata();
         for (KVServer kvServer : this.chord.nodes()) {
             boolean success = kvServer.update(md);
-            Validate.isTrue(success, "Server " + kvServer.getNodeName() + " couldn't update metadata");
+            Validate.isTrue(success, "Server " + kvServer.getServerId() + " couldn't update metadata");
         }
     }
 
@@ -191,7 +193,7 @@ public class ExternalConfigurationService implements IECS {
                 done = successor.lockWrite();
                 Validate.isTrue(done, "lock write on successor failed!");
 
-                KeyHashRange keyRangeToMove = chord.getMetadata().findMatchingServer(newNode.getHashKey()).getRange();
+                KeyHashRange keyRangeToMove = chord.getMetadata().getCoordinator(newNode.getHashKey()).getRange();
                 done = successor.moveData(keyRangeToMove, newNode);
                 Validate.isTrue(done, "move data failed!");
                 // TODO handles case when done = false e.g. retry and add another server instead
@@ -215,14 +217,14 @@ public class ExternalConfigurationService implements IECS {
         int n = ThreadLocalRandom.current().nextInt(chord.size());
         KVServer nodeToRemove = chord.nodes().get(n);
         KVServer successor = chord.getSuccessor(nodeToRemove.getHashKey());
-        KeyHashRange rangeToTransfer = chord.getMetadata().findMatchingServer(nodeToRemove.getHashKey()).getRange();
+        KeyHashRange rangeToTransfer = chord.getMetadata().getCoordinator(nodeToRemove.getHashKey()).getRange();
 
         chord.remove(nodeToRemove);
         serverPool.add(nodeToRemove);
         chord.calcMetadata();
 
         if (chord.size() > 0) {
-            KeyHashRange successorNewRange = chord.getMetadata().findMatchingServer(nodeToRemove.getHashKey()).getRange();
+            KeyHashRange successorNewRange = chord.getMetadata().getCoordinator(nodeToRemove.getHashKey()).getRange();
             Validate.isTrue(rangeToTransfer.getStart().equals(successorNewRange.getStart())
                     && successor.getHashKey().equals(successorNewRange.getEnd()), "New metadata is wrong");
 
@@ -281,18 +283,21 @@ public class ExternalConfigurationService implements IECS {
 
     public ExternalConfigurationService(String configFile) throws IOException {
         List<String> lines = Files.readAllLines(Paths.get(configFile));
+        Set<String> serverIds = new HashSet(lines.size());
 
         Collections.shuffle(lines);
         for (String line : lines) {
             String[] serverParams = line.split(WHITE_SPACE);
-            String serverName = serverParams[0];
+            String serverId = serverParams[0];
             String serverHost = serverParams[1];
             String serverPort = serverParams[2];
             String mgmtPort = serverParams[3];
-            KVServer kvS = new KVServer(serverName, serverHost, serverPort, mgmtPort);
+            KVServer kvS = new KVServer(serverId, serverHost, serverPort, mgmtPort);
             serverPool.add(kvS);
+            if(serverIds.contains(serverId))
+                throw new IllegalArgumentException("Duplicated node ID! serverId " + serverId + " already assigned");
 
-
+            serverIds.add(serverId);
         }
         
         reportManager = new FailureReportingManager(this);

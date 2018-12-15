@@ -144,7 +144,7 @@ public class MessageMarshaller {
         output[1] = (byte) metadata.getLength();
 
         for (int j = 0; j < metadata.getLength(); j++) {
-            NodeInfo meta = metadata.get().get(j);
+            NodeInfo meta = metadata.get(j);
             byte[] hostBytes = new byte[4];
             try {
                 InetAddress host = InetAddress.getByName(meta.getHost());

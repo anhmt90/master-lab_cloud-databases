@@ -12,7 +12,6 @@ import util.FileUtils;
 import util.HashUtils;
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -22,7 +21,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class PersistenceTest extends TestCase {
     PersistenceManager persistenceManager = new PersistenceManager(AllTests.DB_DIR);
-    private final K key = new K(HashUtils.getHashBytes("SomeKey=09"));
+    private final K key = new K(HashUtils.digest("SomeKey=09"));
     private V value = new V(getMaxLengthString().getBytes());
 
 

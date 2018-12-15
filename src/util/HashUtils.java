@@ -8,9 +8,19 @@ public class HashUtils {
     public static final String MAX_HASH = new String(new char[8]).replace("\0", "ffff");
     public static final String MIN_HASH = new String(new char[8]).replace("\0", "0000");
 
-    public static String getHash(String key) {
-        byte[] digest = getHashBytes(key);
+    public static String hash(String key) {
+        byte[] digest = digest(key);
         return getHashStringOf(digest);
+    }
+
+    public static byte[] digest(String key) {
+        byte[] hash = null;
+        try {
+            hash = MessageDigest.getInstance("MD5").digest(key.getBytes(StandardCharsets.US_ASCII));
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+        return hash;
     }
 
     public static byte[] getHashBytesOf(String hashString) {
@@ -21,19 +31,10 @@ public class HashUtils {
         return output;
     }
 
-    public static byte[] getHashBytes(String key) {
-        byte[] hash = null;
-        try {
-            hash = MessageDigest.getInstance("MD5").digest(key.getBytes(StandardCharsets.US_ASCII));
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
-        return hash;
-    }
 
-    public static String getHashStringOf(byte[] digest) {
+    public static String getHashStringOf(byte[] hashBytes) {
         StringBuffer sb = new StringBuffer();
-        for (byte b : digest) {
+        for (byte b : hashBytes) {
             sb.append(Integer.toHexString((b & 0xFF) | 0x100).substring(1, 3));
         }
 

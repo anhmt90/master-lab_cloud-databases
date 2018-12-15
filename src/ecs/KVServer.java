@@ -6,7 +6,6 @@ import management.ConfigStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import util.HashUtils;
-import util.LogUtils;
 
 import java.io.*;
 import java.net.InetSocketAddress;
@@ -28,7 +27,7 @@ public class KVServer implements Comparable<KVServer> {
 
     private String hashKey;
 
-    private String nodeName;
+    private String serverId;
     private int servicePort;
     private InetSocketAddress address;
     private Socket socket;
@@ -40,16 +39,16 @@ public class KVServer implements Comparable<KVServer> {
     private final static int RETRY_NUM = 5;
     private final static int RETRY_WAIT_TIME = 1000; // milliseconds
 
-    public KVServer(String serverName, String hostAddress, String servicePort, String adminPort) {
-        this(serverName, hostAddress, Integer.parseInt(servicePort), Integer.parseInt(adminPort));
+    public KVServer(String serverId, String hostAddress, String servicePort, String adminPort) {
+        this(serverId, hostAddress, Integer.parseInt(servicePort), Integer.parseInt(adminPort));
     }
 
-    public KVServer(String serverName, String hostAddress, int servicePort, int adminPort) {
-        this(serverName, servicePort, new InetSocketAddress(hostAddress, adminPort));
+    public KVServer(String serverId, String hostAddress, int servicePort, int adminPort) {
+        this(serverId, servicePort, new InetSocketAddress(hostAddress, adminPort));
     }
 
-    public KVServer(String serverName, int servicePort, InetSocketAddress address) {
-        this.nodeName = serverName;
+    public KVServer(String serverId, int servicePort, InetSocketAddress address) {
+        this.serverId = serverId;
         this.servicePort = servicePort;
         this.address = address;
 
@@ -57,12 +56,12 @@ public class KVServer implements Comparable<KVServer> {
 
         String[] cmds = {"ssh", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
                 "tuan-anh@" + getHost(),
-                "nohup java -jar /mnt/data/Workspace/uni-project/cloud-databases/gr7-ms3/ms3-server.jar " + nodeName + " " + this.servicePort + " " + getAdminPort()
-                        + " > /mnt/data/Workspace/uni-project/cloud-databases/gr7-ms3/logs/" + nodeName + ".log"
+                "nohup java -jar /mnt/data/Workspace/uni-project/cloud-databases/gr7-ms3/ms3-server.jar " + this.serverId + " " + this.servicePort + " " + getAdminPort()
+                        + " > /mnt/data/Workspace/uni-project/cloud-databases/gr7-ms3/logs/" + this.serverId + ".log"
                         + " &"
         };
         this.sshCMD = cmds;
-        this.hashKey = HashUtils.getHash(String.format("%s:%d", this.getHost(), this.servicePort));
+        this.hashKey = HashUtils.hash(String.format("%s:%d", this.getHost(), this.servicePort));
     }
 
     public String getHost() {
@@ -208,7 +207,7 @@ public class KVServer implements Comparable<KVServer> {
     }
 
     boolean moveData(KeyHashRange range, KVServer target) {
-        NodeInfo meta = new NodeInfo(target.getNodeName(), target.getHost(), target.getServicePort(), range);
+        NodeInfo meta = new NodeInfo(target.getServerId(), target.getHost(), target.getServicePort(), range);
         ConfigMessage msg = new ConfigMessage(ConfigStatus.MOVE_DATA, meta);
         boolean success = false;
         try {
@@ -266,12 +265,12 @@ public class KVServer implements Comparable<KVServer> {
         }
     }
 
-    public void setNodeName(String nodeName) {
-        this.nodeName = nodeName;
+    public void setServerId(String serverId) {
+        this.serverId = serverId;
     }
 
-    public String getNodeName() {
-        return nodeName;
+    public String getServerId() {
+        return serverId;
     }
 
     public String getHashKey() {

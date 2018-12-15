@@ -28,9 +28,9 @@ public class MarshallingTest extends TestCase {
 		int port1 = 46781;
 		int port2 = 35678;
 		int port3 = 54321;
-		String hashKey1 = HashUtils.getHash(String.format("%s:%d", host1, port1));
-		String hashKey2 = HashUtils.getHash(String.format("%s:%d", host2, port2));
-		String hashKey3 = HashUtils.getHash(String.format("%s:%d", host3, port3));
+		String hashKey1 = HashUtils.hash(String.format("%s:%d", host1, port1));
+		String hashKey2 = HashUtils.hash(String.format("%s:%d", host2, port2));
+		String hashKey3 = HashUtils.hash(String.format("%s:%d", host3, port3));
 		metadata.add(name1, host1, port1, hashKey1, hashKey2);
 		metadata.add(name2, host2, port2, hashKey2, hashKey3);
 		metadata.add(name3, host3, port3, hashKey3, hashKey1);
@@ -39,16 +39,16 @@ public class MarshallingTest extends TestCase {
         IMessage unmarshalledMessage = MessageMarshaller.unmarshall(marshalledMessage);
         assertEquals(Status.SERVER_NOT_RESPONSIBLE, unmarshalledMessage.getStatus());
         for(int i = 0; i < metadata.getLength(); i++) {
-        	assertEquals(message.getMetadata().get().get(i).getHost(), unmarshalledMessage.getMetadata().get().get(i).getHost());
-        	assertEquals(message.getMetadata().get().get(i).getPort(), unmarshalledMessage.getMetadata().get().get(i).getPort());
-        	assertEquals(message.getMetadata().get().get(i).getRange().getStart(), unmarshalledMessage.getMetadata().get().get(i).getRange().getStart());
-        	assertEquals(message.getMetadata().get().get(i).getRange().getEnd(), unmarshalledMessage.getMetadata().get().get(i).getRange().getEnd());
+        	assertEquals(message.getMetadata().get(i).getHost(), unmarshalledMessage.getMetadata().get(i).getHost());
+        	assertEquals(message.getMetadata().get(i).getPort(), unmarshalledMessage.getMetadata().get(i).getPort());
+        	assertEquals(message.getMetadata().get(i).getRange().getStart(), unmarshalledMessage.getMetadata().get(i).getRange().getStart());
+        	assertEquals(message.getMetadata().get(i).getRange().getEnd(), unmarshalledMessage.getMetadata().get(i).getRange().getEnd());
         }
     }
 
 	@Test
     public void testNormalMarshall() {
-		byte[] keyBytes = HashUtils.getHashBytes("thiskey");
+		byte[] keyBytes = HashUtils.digest("thiskey");
 		byte[] valueBytes = "thisvalue".getBytes(StandardCharsets.US_ASCII);
 		IMessage message = new Message(Status.GET, new K(keyBytes), new V(valueBytes));
 		byte[] marshalledMessage = MessageMarshaller.marshall(message);
@@ -68,7 +68,7 @@ public class MarshallingTest extends TestCase {
 
     @Test
     public void testKeyMarshall() {
-		byte[] keyBytes = HashUtils.getHashBytes("thiskey");
+		byte[] keyBytes = HashUtils.digest("thiskey");
 		IMessage message = new Message(Status.GET, new K(keyBytes));
 		byte[] marshalledMessage = MessageMarshaller.marshall(message);
 		IMessage unmarshalledMessage = MessageMarshaller.unmarshall(marshalledMessage);
