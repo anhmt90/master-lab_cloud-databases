@@ -13,6 +13,10 @@ import java.util.Arrays;
 
 import static protocol.IMessage.MAX_MESSAGE_LENGTH;
 
+/**
+ * A stateful connection from ECS to the server. This is created by {@link InternalConnectionManager}
+ * on the server to handle requests from the ECS
+ */
 public class InternalConnection implements Runnable {
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
     private static final int MAX_ALLOWED_EOF = 3;

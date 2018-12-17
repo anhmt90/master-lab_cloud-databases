@@ -3,7 +3,7 @@ package ecs;
 import java.io.Serializable;
 
 /**
- * Contains important info for a server like address, port and KeyHashRange
+ * Metadata of a particular server such as server id, address, port and write range
  *
  */
 public class NodeInfo implements Serializable {

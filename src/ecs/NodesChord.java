@@ -18,20 +18,42 @@ public class NodesChord {
     private TreeMap<String, KVServer> nodesMap = new TreeMap<>();
     private Metadata md = new Metadata();
 
+    /**
+     * gets the direct successor of a node having the {@param keyHashed}
+     * @param keyHashed
+     * @return the successor
+     */
     public KVServer getSuccessor(String keyHashed) {
         return getNthSuccessor(keyHashed, 1);
     }
 
+    /**
+     * gets the n-th successor of a node having the {@param keyHashed}
+     * @param keyHashed
+     * @param n the distance from the node having the {@param keyHashed} to the successor in question
+     * @return the n-th successor
+     */
     public KVServer getNthSuccessor(String keyHashed, int n) {
         int i = Arrays.binarySearch(nodesMap.keySet().toArray(), keyHashed);
         Validate.isTrue(i >= 0, keyHashed + " is not in the tree map " + nodesMap.keySet());
         return nodes().get((i + n) % nodes().size());
     }
 
+    /**
+     * gets the direct predecessor of a node having the {@param keyHashed}
+     * @param keyHashed
+     * @return the predecessor
+     */
     public KVServer getPredecessor(String keyHashed) {
         return getNthPredecessor(keyHashed, 1);
     }
 
+    /**
+     * gets the n-th predecessor of a node having the {@param keyHashed}
+     * @param keyHashed
+     * @param n the distance from the node having the {@param keyHashed} to the predecessor in question
+     * @return the n-th predecessor
+     */
     public KVServer getNthPredecessor(String keyHashed, int n) {
         int i = Arrays.binarySearch(nodesMap.keySet().toArray(), keyHashed);
         Validate.isTrue(i >= 0, keyHashed + " is not in the tree map " + nodesMap.keySet());

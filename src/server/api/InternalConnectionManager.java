@@ -10,6 +10,10 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashSet;
 
+/**
+ * Listens for connection initialization from ECS on an port different from the service port used to serve the clients.
+ * Whenever the ECS connects to a server, this class create a new {@link InternalConnection} to handle requests from ECS to the server.
+ */
 public class InternalConnectionManager implements Runnable {
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
 

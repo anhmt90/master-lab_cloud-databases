@@ -6,6 +6,9 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ThreadLocalRandom;
 
+/**
+ * Metadata of the wholly ring topology. It is a list containing {@link NodeInfo} of every server in the ring
+ */
 public class Metadata implements Serializable {
     List<NodeInfo> meta = new ArrayList<>();
 
