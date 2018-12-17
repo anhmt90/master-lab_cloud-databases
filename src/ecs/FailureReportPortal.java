@@ -35,7 +35,7 @@ public class FailureReportPortal implements Runnable {
         LOG.info("Initialize reportSocket for internal management...");
         try {
             reportSocket = new ServerSocket(port);
-            LOG.info("Server reportSocket created on port " + reportSocket.getLocalPort() + " for internal management");
+            LOG.info("reportSocket created on port " + reportSocket.getLocalPort() + " for reporting");
         } catch (IOException e) {
             LOG.error("Error! Cannot poll server reportSocket:");
             if (e instanceof BindException) {

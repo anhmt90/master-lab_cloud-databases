@@ -9,8 +9,11 @@ import org.junit.Test;
 
 import java.net.UnknownHostException;
 
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
-public class ConnectionTest extends TestCase {
+
+public class ConnectionTest {
 	private static Logger LOG = LogManager.getLogger(AllTests.TEST_LOG);
 	
     @Test

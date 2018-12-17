@@ -18,8 +18,11 @@ import org.junit.After;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
+import static junit.framework.TestCase.assertFalse;
+import static org.junit.Assert.assertTrue;
 
-public class ECSAppTest extends TestCase {
+
+public class ECSAppTest {
 	private static Logger LOG = LogManager.getLogger(AllTests.TEST_LOG);
 	
 	private ECSApplication testApp;

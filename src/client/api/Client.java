@@ -91,7 +91,7 @@ public class Client implements IClient {
     @Override
     public void disconnect() {
         try {
-            if (!socket.isConnected() && !socket.isClosed()) {
+            if (socket != null && !socket.isClosed() && socket.isConnected()) {
                 socket.shutdownOutput();
                 socket.shutdownInput();
             }

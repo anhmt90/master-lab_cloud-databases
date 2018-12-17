@@ -116,6 +116,8 @@ public class Server extends Thread implements IExternalConfigurationService {
     }
 
     private void startHeartbeat(Metadata metadata) {
+        if(metadata.getLength() == 1)
+            return;
         LOG.info("Starting heartbeat receiver...");
         this.heartbeatReceiver = new HeartbeatReceiver(servicePort + HEARTBEAT_RECEIVE_PORT_DISTANCE, this);
         new Thread(heartbeatReceiver).start();

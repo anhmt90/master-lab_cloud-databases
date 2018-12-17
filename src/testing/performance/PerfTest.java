@@ -20,9 +20,9 @@ import static util.FileUtils.SEP;
 import static util.FileUtils.USER_DIR;
 
 public class PerfTest {
-    private static final String ECS_CONFIG_PATH = USER_DIR + SEP + "config" + SEP + "default-server-info";
+    private static final String ECS_CONFIG_PATH = USER_DIR + SEP + "config" + SEP + "server-info";
 
-    private static final int OPS_PER_CLIENT = 1000;
+    private static final int OPS_PER_CLIENT = 100;
 
     private EnronDataset enronDataset;
     private ExternalConfigurationService ecs;
@@ -33,7 +33,7 @@ public class PerfTest {
         ecs = new ExternalConfigurationService(ECS_CONFIG_PATH);
         reportBuilder = new ReportBuilder();
         enronDataset = new EnronDataset();
-        enronDataset.loadData(20000);
+        enronDataset.loadData(200);
     }
 
 
@@ -69,7 +69,7 @@ public class PerfTest {
             reportBuilder.blankLine();
         }
         ecs.shutdown();
-        Thread.sleep(30000);
+        Thread.sleep(5000);
     }
 
     private void create_and_run_clients(int numClients, int opsPerClient, Status opType) throws InterruptedException {
@@ -94,7 +94,7 @@ public class PerfTest {
         for (Thread t : threads)
             t.join();
 
-        Thread.sleep(10000);
+        Thread.sleep(5000);
         perfResults = Arrays.stream(clientRunners).map(ClientRunner::getPerf).collect(Collectors.toList());
     }
 
@@ -103,8 +103,8 @@ public class PerfTest {
         final int CACHE_SIZE = 1000;
         final String STRATEGY = "FIFO";
 
-        final int numClient = 12;
-        final int[] numServers = new int[]{8};
+        final int numClient = 5;
+        final int[] numServers = new int[]{3};
 //        final int[] numClients = new int[]{10};
 //        final int[] numServers = new int[]{2, 5};
 
@@ -169,13 +169,13 @@ public class PerfTest {
     }
 
     @Test
-    public void test_scale_up_ring() throws InterruptedException, IOException {
+    public void test_scaling_ring() throws InterruptedException, IOException {
         final int CACHE_SIZE = 1000;
         final String STRATEGY = "FIFO";
 
-        final int numClients = 10;
-        final int numServers = 5;
-        final int numServersToScale = 5;
+        final int numClients = 3;
+        final int numServers = 3;
+        final int numServersToScale = 2;
 
         init();
         ecs.initService(numServers, CACHE_SIZE, STRATEGY);
@@ -221,7 +221,7 @@ public class PerfTest {
         saveReport("scale_" + numServersToScale + "_with_initial_" + numServers + "servers");
 
         ecs.shutdown();
-        Thread.sleep(10000);
+        Thread.sleep(2000);
     }
 
     private void saveReport(String reportName) throws IOException {

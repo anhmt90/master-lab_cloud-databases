@@ -14,28 +14,29 @@ import protocol.IMessage.Status;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
-public class InteractionTest extends TestCase {
-	private static Logger LOG = LogManager.getLogger(AllTests.TEST_LOG);
+
+public class InteractionTest {
+    private static Logger LOG = LogManager.getLogger(AllTests.TEST_LOG);
 
     private Client kvClient;
 
     @Before
     public void setUp() {
-        kvClient = new Client("localhost", 50000);
+        kvClient = new Client("127.0.0.1", 50000);
         try {
             kvClient.connect();
-            byte[] bytes = kvClient.receive();
-            String welcomeMessage = new String(bytes, StandardCharsets.US_ASCII).trim();
-            System.out.println(welcomeMessage);
         } catch (Exception e) {
-        	LOG.error(e);
+            LOG.error(e);
         }
     }
 
     @After
     public void tearDown() {
-        kvClient.disconnect();
+        if (kvClient != null)
+            kvClient.disconnect();
     }
 
 
@@ -49,7 +50,7 @@ public class InteractionTest extends TestCase {
         try {
             response = kvClient.put(key, value);
         } catch (Exception e) {
-        	LOG.error(e);
+            LOG.error(e);
             ex = e;
             throw e;
         }
@@ -67,7 +68,7 @@ public class InteractionTest extends TestCase {
         try {
             kvClient.put(key, value);
         } catch (Exception e) {
-        	LOG.error(e);
+            LOG.error(e);
             ex = e;
         }
 
@@ -88,7 +89,7 @@ public class InteractionTest extends TestCase {
             response = kvClient.put(key, updatedValue);
 
         } catch (Exception e) {
-        	LOG.error(e);
+            LOG.error(e);
             ex = e;
         }
 
@@ -109,7 +110,7 @@ public class InteractionTest extends TestCase {
             response = kvClient.put(key, "null");
 
         } catch (Exception e) {
-        	LOG.error(e);
+            LOG.error(e);
             ex = e;
         }
 
@@ -127,7 +128,7 @@ public class InteractionTest extends TestCase {
             kvClient.put(key, value);
             response = kvClient.get(key);
         } catch (Exception e) {
-        	LOG.error(e);
+            LOG.error(e);
             ex = e;
         }
 
@@ -143,7 +144,7 @@ public class InteractionTest extends TestCase {
         try {
             response = kvClient.get(key);
         } catch (Exception e) {
-        	LOG.error(e);
+            LOG.error(e);
             ex = e;
         }
 

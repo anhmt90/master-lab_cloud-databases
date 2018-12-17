@@ -59,7 +59,7 @@ public class KVServer implements Comparable<KVServer> {
 
         String[] cmds = {"ssh", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
                 "tuan-anh@" + getHost(),
-                "nohup java -jar /mnt/data/Workspace/uni-project/cloud-databases/gr7-ms3/ms3-server.jar " + this.serverId + " " + this.servicePort + " " + getAdminPort()
+                "nohup java -jar /mnt/data/Workspace/uni-project/cloud-databases/gr7-ms3/ms4-server.jar " + this.serverId + " " + this.servicePort + " " + getAdminPort()
                         + " > /mnt/data/Workspace/uni-project/cloud-databases/gr7-ms3/logs/" + this.serverId + ".log"
                         + " &"
         };

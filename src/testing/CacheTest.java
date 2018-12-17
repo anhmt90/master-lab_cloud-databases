@@ -15,10 +15,13 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
+import static junit.framework.TestCase.assertTrue;
+import static org.junit.Assert.assertEquals;
+
 /**
  * Test cases for cache and its displacement strategies
  */
-public class CacheTest extends TestCase {
+public class CacheTest {
 	private static Logger LOG = LogManager.getLogger(AllTests.TEST_LOG);
 
   private class TestClient extends Thread {

@@ -7,7 +7,9 @@ import util.HashUtils;
 
 import java.util.Arrays;
 
-public class KeyRangeTest extends TestCase {
+import static org.junit.Assert.assertTrue;
+
+public class KeyRangeTest {
 
     @Test
     public void testKeyRangeCharacteristics() {

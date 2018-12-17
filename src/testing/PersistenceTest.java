@@ -19,7 +19,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
-public class PersistenceTest extends TestCase {
+public class PersistenceTest {
     PersistenceManager persistenceManager = new PersistenceManager(AllTests.DB_DIR);
     private final K key = new K(HashUtils.digest("SomeKey=09"));
     private V value = new V(getMaxLengthString().getBytes());

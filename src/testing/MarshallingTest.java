@@ -13,7 +13,10 @@ import org.junit.Test;
 import ecs.Metadata;
 import util.HashUtils;
 
-public class MarshallingTest extends TestCase {
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+public class MarshallingTest {
 	private static Logger LOG = LogManager.getLogger(AllTests.TEST_LOG);
 
 	@Test

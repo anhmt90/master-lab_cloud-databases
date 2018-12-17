@@ -12,17 +12,17 @@
     <property name="doc.dir" value="doc"/>
 
     <!-- Configuration for client application -->
-    <property name="clientjar.file" value="ms3-client.jar"/>
+    <property name="clientjar.file" value="ms4-client.jar"/>
     <property name="clientmanifest.file" value="CLIENT_MANIFEST.MF"/>
     <property name="clientmain.class" value="client.app.CommandLineApp"/>
 
     <!-- Configuration for server application -->
-    <property name="serverjar.file" value="ms3-server.jar"/>
+    <property name="serverjar.file" value="ms4-server.jar"/>
     <property name="servermanifest.file" value="SERVER_MANIFEST.MF"/>
     <property name="servermain.class" value="server.app.Server"/>
 
     <!-- Configuration for ECS application -->
-    <property name="ecsjar.file" value="ms3-ecs.jar"/>
+    <property name="ecsjar.file" value="ms4-ecs.jar"/>
     <property name="ecsmanifest.file" value="ECS_MANIFEST.MF"/>
     <property name="ecsmain.class" value="ecs.client.app.ECSApplication"/>
 
@@ -67,7 +67,7 @@
     <target name="cleanall" depends="clean"/>
 
     <!-- build complete project -->
-    <target name="build" depends="init">
+    <target name="build" depends="init, doc">
         <echo message="${ant.project.name}: ${ant.file}"/>
         <javac debug="true" debuglevel="${debuglevel}" destdir="bin"
                source="${source}" target="${target}"

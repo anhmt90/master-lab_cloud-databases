@@ -126,8 +126,8 @@ public class ECSApplication {
         int serverNumber = 0;
         try {
             serverNumber = Integer.parseInt(cmdArgs[0]);
-            if (serverNumber > 10 || serverNumber < 4) {
-                String msg = "Not a valid number of servers. Service needs at least 4 servers to guarantee replication safety.";
+            if (serverNumber > 256 || serverNumber < 3) {
+                String msg = "Not a valid number of servers. Service needs at least 3 servers to guarantee replication safety.";
                 print(msg);
                 LOG.info(msg);
                 return;
@@ -202,10 +202,10 @@ public class ECSApplication {
      */
     private static void handleRemoveNode() {
         if (ecs.getChord().size() < 4) {
-            print("Because of replication safety no more nodes can be removed.");
+            print("Due to replication safety no more nodes can be removed. The ring must have at least 3 nodes. " +
+                    "Current number of nodes is " + ecs.getChord().size());
             return;
         }
-        ecs.removeNode();
         try {
             ecs.removeNode();
             print("Remove a random node successfully! The ring topology currently has " + ecs.getChord().size() + " nodes");
@@ -307,7 +307,7 @@ public class ECSApplication {
      * @param output The output string to print to System.out
      */
     private static void print(String output) {
-        System.out.print(output);
+        System.out.println(output);
     }
 
     /**

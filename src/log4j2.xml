@@ -25,10 +25,10 @@
             <!--<AppenderRef ref="Console"/>-->
             <!--<AppenderRef ref="CloudDB" />-->
         </Root>
-        <Logger name="kvClient" level="debug" additivity="false">
+        <Logger name="kvClient" level="warn" additivity="false">
             <AppenderRef ref="Console" />
         </Logger>
-        <Logger name="kvServer" level="debug" additivity="false">
+        <Logger name="kvServer" level="warn" additivity="false">
             <AppenderRef ref="Console" />
             <appender-ref ref="kvServer" />
         </Logger>
@@ -37,7 +37,7 @@
             <appender-ref ref="ECS" />
         </Logger>
         <Logger name="failure_detection" level="info" additivity="false">
-            <AppenderRef ref="Console" />
+            <!--<AppenderRef ref="Console" />-->
             <appender-ref ref="failure_reporter" />
         </Logger>
         <Logger name="tests" level="all" additivity="false">

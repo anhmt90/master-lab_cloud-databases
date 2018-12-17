@@ -22,7 +22,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import static util.FileUtils.SEP;
 
-public class FetchBatchDataTest extends TestCase {
+public class FetchBatchDataTest {
 
     static final String NODE_1 = "node1";
     static final String NODE_2 = "node2";
