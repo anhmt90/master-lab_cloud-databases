@@ -120,6 +120,12 @@ public class Metadata implements Serializable {
     	return null;
     }
 
+    /**
+     * Returns the index of a server matching a given nodeId
+     * 
+     * @param nodeId the nodeId that is looked up
+     * @return int index
+     */
     public int getIndexById(String nodeId) {
         for (int i = 0; i < meta.size(); i++) {
             NodeInfo nodeInfo = meta.get(i);
@@ -130,6 +136,12 @@ public class Metadata implements Serializable {
         throw new NoSuchElementException("Metadata does not contain info for this node");
     }
 
+    /**
+     * Returns the index of the server responsible for a given hashkey
+     * 
+     * @param keyHashed the hashkey that is looked up
+     * @return int index
+     */
     public int getIndexByKeyResponsibility(String keyHashed) {
         for (int i = 0; i < meta.size(); i++) {
             NodeInfo nodeInfo = meta.get(i);

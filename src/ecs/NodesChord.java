@@ -39,6 +39,12 @@ public class NodesChord {
     }
 
 
+    /**
+     * Adds a storage server node to the treemap
+     * 
+     * @param node node to be added
+     * @return true if node was successfully added
+     */
     public boolean add(KVServer node) {
         if (nodesMap.containsKey(node.getHashKey()))
             return false;
@@ -46,13 +52,23 @@ public class NodesChord {
         return true;
     }
 
+    /**
+     * REmoves a storage server node from the treemap
+     * 
+     * @param node node to be removed
+     * @return true if node was successfully removed
+     */
     public boolean remove(KVServer node) {
         if (!nodesMap.containsKey(node.getHashKey()))
             return false;
         nodesMap.remove(node.getHashKey());
         return true;
     }
+    
 
+    /**
+     * Calculates and updates the metadata depending on the treemap
+     */
     public void calcMetadata() {
         md = new Metadata();
         String[] keys = new String[nodesMap.size()];
@@ -71,6 +87,11 @@ public class NodesChord {
         LOG.info("METADATA ===> " + md);
     }
 
+    /**
+     * returns a random node from the treemap
+     * 
+     * @return KVServer
+     */
     public Optional<KVServer> randomNode() {
         int n = ThreadLocalRandom.current().nextInt(this.nodesMap.size());
         for (KVServer kvS : this.nodes()) {

@@ -13,6 +13,10 @@ import java.util.Arrays;
 import static ecs.FailureReportPortal.FAILURE_LOG;
 import static protocol.IMessage.MAX_MESSAGE_LENGTH;
 
+/**
+ * Responsible for receiving failure reports from servers in the storage service
+ *
+ */
 public class ReporterConnection implements Runnable {
     private static Logger LOG = LogManager.getLogger(FAILURE_LOG);
 
@@ -124,7 +128,7 @@ public class ReporterConnection implements Runnable {
     }
 
     /**
-     * Receives a failure report by a storage server
+     * Receives a failure report message by a storage server
      *
      * @return the received message
      * @throws IOException

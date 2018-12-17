@@ -93,6 +93,10 @@ public class ECSApplication {
         if (!isValidArgs(ADD, cmdComponents)) {
             return;
         }
+        if (ecs.getPool().isEmpty()) {
+        	print("No potential nodes remaining to add.");
+        	return;
+        }
         String[] cmdArgs = cmdComponents[1].split(" ");
         if (!isValidCacheSize(cmdArgs[0]) || !isValidDisplacementStrategy(cmdArgs[1])) {
             return;
@@ -122,8 +126,8 @@ public class ECSApplication {
         int serverNumber = 0;
         try {
             serverNumber = Integer.parseInt(cmdArgs[0]);
-            if (serverNumber > 10 && serverNumber < 1) {
-                String msg = "Not a valid number of servers.";
+            if (serverNumber > 10 || serverNumber < 4) {
+                String msg = "Not a valid number of servers. Service needs at least 4 servers to guarantee replication safety.";
                 print(msg);
                 LOG.info(msg);
                 return;
@@ -142,6 +146,7 @@ public class ECSApplication {
             return;
         }
         ecs.initService(serverNumber, Integer.parseInt(cmdArgs[1]), cmdArgs[2]);
+        print("Service initiated with " + serverNumber + " Servers.");
     }
 
 
@@ -189,20 +194,21 @@ public class ECSApplication {
             return;
         }
         ecs.stopService();
-
+        print("Storage service stopped");
     }
 
     /**
      * Handles the command {@see REMOVE}
      */
     private static void handleRemoveNode() {
-        if (ecs.isEmpty()) {
-            print("Service currently has no active nodes.");
+        if (ecs.getChord().size() < 4) {
+            print("Because of replication safety no more nodes can be removed.");
             return;
         }
+        ecs.removeNode();
         try {
             ecs.removeNode();
-            print("Add node successfully! The ring topology currently has " + ecs.getChord().size() + " nodes");
+            print("Remove a random node successfully! The ring topology currently has " + ecs.getChord().size() + " nodes");
         } catch (RuntimeException e) {
             LOG.error(e);
             print("Failed to remove node! Some error occurs: " + e.getMessage());
@@ -224,7 +230,7 @@ public class ECSApplication {
             return;
         }
         ecs.startService();
-
+        print("Storage service started.");
     }
 
     /**

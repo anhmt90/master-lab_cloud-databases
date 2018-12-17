@@ -320,6 +320,10 @@ public class ExternalConfigurationService implements IECS {
     public FailureReportPortal getReportManager() {
         return reportManager;
     }
+    
+    public List<KVServer> getPool() {
+    	return serverPool;
+    }
 
     public void setRingUp(boolean ringUp) {
         isRingUp = ringUp;

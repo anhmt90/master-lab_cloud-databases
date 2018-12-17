@@ -13,7 +13,10 @@ import management.ReportStatus;
 import management.ConfigMessageMarshaller;
 import server.app.Server;
 
-
+/**
+ * Receives heartbeat messages from other servers in the storage service and upon detecting missing heartbeats calls failure handling
+ * 
+ */
 public class HeartbeatReceiver implements Runnable {
 
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
@@ -28,6 +31,9 @@ public class HeartbeatReceiver implements Runnable {
         this.server = server;
     }
 
+    /**
+     * opens a UDP socket that listens on a designated port and upon missing 5 consecutive heartbeat calls failure detection on the associated server
+     */
     public void run() {
         try {
             int missedHeartbeats = 0;
@@ -67,7 +73,11 @@ public class HeartbeatReceiver implements Runnable {
 
     /*******************************************************************************************************/
     private FailureReporter reporter;
+    
 
+    /**
+     * reports a failure to the ECS
+     */
     public void reportFailure() {
         LOG.info("Detect failure! File a report to ECS...");
         try {
@@ -85,6 +95,9 @@ public class HeartbeatReceiver implements Runnable {
         }
     }
 
+    /**
+     * Closes the socket and ends the service
+     */
     public void close() {
         if(heartbeatSocket != null)
             heartbeatSocket.close();
