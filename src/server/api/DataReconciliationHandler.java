@@ -8,13 +8,36 @@ import org.apache.logging.log4j.Logger;
 import server.app.Server;
 import util.Validate;
 
+/**
+ * This class is responsible for data reconciliation when a node is added to or removed from the ring topology.
+ * This class is used only after a metadata update
+ */
 public class DataReconciliationHandler {
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
 
+    /**
+     * the server invoking the reconciliation
+     */
     private final Server server;
+
+    /**
+     * the previous metadata that the {@link server} holds
+     */
     private Metadata oldMetadata;
+
+    /**
+     * the previous write range that the {@link server} is responsible for
+     */
     private KeyHashRange oldWriteRange;
+
+    /**
+     * the previous read range that the {@link server} is responsible for
+     */
     private KeyHashRange oldReadRange;
+
+    /**
+     * the previous write range of the previous second replica of the {@link server}
+     */
     private KeyHashRange oldWriteRangeOfReplica2;
 
     public DataReconciliationHandler(Server server) {
@@ -41,6 +64,9 @@ public class DataReconciliationHandler {
         return true;
     }
 
+    /**
+     * reconciles data in case of removing a node from the ring
+     */
     private void handleScaleDown() {
         KeyHashRange currentWriteRangeOfRep2 = server.getReplicator2().getReplica().getWriteRange();
         if (oldWriteRangeOfReplica2.isSubRangeOf(currentWriteRangeOfRep2)) {
@@ -56,6 +82,9 @@ public class DataReconciliationHandler {
         }
     }
 
+    /**
+     * reconciles data in case of adding a new node to the ring
+     */
     private void handleScaleUp() {
         if (server.getWriteRange().isSubRangeOf(oldWriteRange)) {
             boolean done = server.lockWrite();

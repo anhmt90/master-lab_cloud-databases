@@ -17,10 +17,24 @@ public class FailureReportPortal implements Runnable {
     public static final String FAILURE_LOG = "failure_detection";
     private static Logger LOG = LogManager.getLogger(FAILURE_LOG);
 
+    /**
+     * socket to wait for failure report
+     */
     private ServerSocket reportSocket;
 
+    /**
+     * the instance of {@link ExternalConfigurationService}
+     */
     private ExternalConfigurationService ecs;
+
+    /**
+     * port number to listen for reports
+     */
     private int port;
+
+    /**
+     * table containing all current running {@link ReporterConnection}
+     */
     private HashSet<ReporterConnection> connectionTable;
 
     public FailureReportPortal(ExternalConfigurationService ecs) {

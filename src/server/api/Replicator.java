@@ -9,10 +9,24 @@ import server.app.Server;
 
 import java.io.IOException;
 
+/**
+ * This class is responsible for replicating the PUT-messages to a replica
+ */
 public class Replicator implements Runnable {
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
+    /**
+     * the PUT-message to be replicated
+     */
     private IMessage message;
+
+    /**
+     * client library to create connection to the replica
+     */
     private Client client;
+
+    /**
+     * metadata of the replica in question
+     */
     private NodeInfo replica;
 
     public Replicator(NodeInfo replica) {
@@ -21,10 +35,16 @@ public class Replicator implements Runnable {
         createClient();
     }
 
+    /**
+     * prepares client to establish connection
+     */
     private void createClient() {
         client = new Client(replica.getHost(), replica.getPort());
     }
 
+    /**
+     * disconnects and nullifies the client
+     */
     private void resetClient() {
         if (client != null && client.isConnected())
             client.disconnect();
