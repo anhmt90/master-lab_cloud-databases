@@ -25,6 +25,8 @@ public class InternalConnection implements Runnable {
     private BufferedInputStream bis;
     private BufferedOutputStream bos;
 
+    ConfigMessage configMessage;
+
     public InternalConnection(InternalConnectionManager manager, Socket peer, Server server) {
         this.manager = manager;
         this.server = server;
@@ -41,7 +43,7 @@ public class InternalConnection implements Runnable {
         int eofCounter = 0;
         try {
             while (isOpen && server.isRunning()) {
-                ConfigMessage configMessage = poll();
+                configMessage = poll();
 
                 if (configMessage == null) {
                     eofCounter++;
@@ -75,9 +77,13 @@ public class InternalConnection implements Runnable {
     }
 
     void close() throws IOException {
-        boolean success = manager.getConnectionTable().remove(this);
+        if (configMessage.getStatus().equals(ConfigStatus.SHUTDOWN))
+            return;
+        boolean success = false;
+        if (manager != null)
+            success = manager.getConnectionTable().remove(this);
+        LOG.info("removed from internalConnectionTable?" + success + ". Is Manager destructed? " + (manager == null) + ".\nClosing socket now.");
         if (peer != null) {
-            LOG.warn("remove success=" + success + ". Closing connection to " + peer.getInetAddress());
             bis.close();
             bos.close();
             peer.close();
@@ -141,7 +147,7 @@ public class InternalConnection implements Runnable {
             case UPDATE_METADATA:
                 return server.update(configMessage.getMetadata());
             case MOVE_DATA:
-                return server.moveData(configMessage.getTargetServer().getRange(), configMessage.getTargetServer());
+                return server.moveData(configMessage.getTargetServer().getWriteRange(), configMessage.getTargetServer());
             case SHUTDOWN:
                 return server.shutdown();
             default:
@@ -180,7 +186,7 @@ public class InternalConnection implements Runnable {
             try {
                 bis = new BufferedInputStream(peer.getInputStream());
                 int justRead = bis.read(messageBuffer);
-                if(justRead < 0)
+                if (justRead < 0)
                     return null;
 
                 ConfigMessage message = ConfigMessageMarshaller.unmarshall(Arrays.copyOfRange(messageBuffer, 0, justRead));
@@ -202,5 +208,9 @@ public class InternalConnection implements Runnable {
 
     public boolean isOpen() {
         return isOpen;
+    }
+
+    public ConfigMessage getConfigMessage() {
+        return configMessage;
     }
 }

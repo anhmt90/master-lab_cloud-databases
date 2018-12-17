@@ -255,7 +255,7 @@ public class Client implements IClient {
     }
 
     private KeyHashRange getConnectedRange() {
-        return connectedNode.getRange();
+        return connectedNode.getWriteRange();
     }
 
     private void setConnectedNode(NodeInfo connectedNode) {

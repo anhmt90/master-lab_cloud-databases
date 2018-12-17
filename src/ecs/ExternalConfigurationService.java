@@ -2,16 +2,13 @@ package ecs;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import util.HashUtils;
 import util.Validate;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Set;
-import java.util.HashSet;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static util.StringUtils.WHITE_SPACE;
@@ -45,9 +42,12 @@ public class ExternalConfigurationService implements IECS {
     /**
      * Sends the updated local metadata to all servers participating in the storage service
      */
-    private void broadcastMetadata() {
+    private void broadcastMetadata(KVServer... excld) {
+        Set<KVServer> excluded = new HashSet<>(Arrays.asList(excld));
         Metadata md = chord.getMetadata();
         for (KVServer kvServer : this.chord.nodes()) {
+            if (excluded.contains(kvServer))
+                continue;
             boolean success = kvServer.update(md);
             Validate.isTrue(success, "Server " + kvServer.getServerId() + " couldn't update metadata");
         }
@@ -195,34 +195,14 @@ public class ExternalConfigurationService implements IECS {
                 done = newNode.startServer();
                 Validate.isTrue(done, "Start failed!");
 
-                if (chord.size() == 1) {
-                    LOG.info("It's the only node in the service, nothing to move");
-                    return;
-                }
-
                 done = newNode.lockWrite();
                 Validate.isTrue(done, "lock write on new node failed!");
 
-
-                KVServer successor = chord.getSuccessor(newNode.getHashKey());
-                Validate.isTrue(!newNode.equals(successor), "new node and its successor are the same node");
-
-                done = successor.lockWrite();
-                Validate.isTrue(done, "lock write on successor failed!");
-
-                KeyHashRange keyRangeToMove = chord.getMetadata().getCoordinator(newNode.getHashKey()).getRange();
-                done = successor.moveData(keyRangeToMove, newNode);
-                Validate.isTrue(done, "move data failed!");
                 // TODO handles case when done = false e.g. retry and add another server instead
-
-                broadcastMetadata();
+                broadcastMetadata(newNode);
 
                 done = newNode.unlockWrite();
-                Validate.isTrue(done, "unlock write on new node failed!");
-
-
-                done = successor.unlockWrite();
-                Validate.isTrue(done, "unlock write on successor failed!");
+                Validate.isTrue(done, "lock write on new node failed!");
             }
         });
 
@@ -233,33 +213,20 @@ public class ExternalConfigurationService implements IECS {
         boolean done;
         int n = ThreadLocalRandom.current().nextInt(chord.size());
         KVServer nodeToRemove = chord.nodes().get(n);
-        KVServer successor = chord.getSuccessor(nodeToRemove.getHashKey());
-        KeyHashRange rangeToTransfer = chord.getMetadata().getCoordinator(nodeToRemove.getHashKey()).getRange();
+        KVServer predecessor2 = chord.getNthPredecessor(nodeToRemove.getHashKey(), 2);
 
         chord.remove(nodeToRemove);
         serverPool.add(nodeToRemove);
         chord.calcMetadata();
 
-        if (chord.size() > 0) {
-            KeyHashRange successorNewRange = chord.getMetadata().getCoordinator(nodeToRemove.getHashKey()).getRange();
-            Validate.isTrue(rangeToTransfer.getStart().equals(successorNewRange.getStart())
-                    && successor.getHashKey().equals(successorNewRange.getEnd()), "New metadata is wrong");
-
-            done = nodeToRemove.lockWrite();
-            Validate.isTrue(done, "lock write on nodeToRemove failed!");
-
-            done = successor.update(chord.getMetadata());
-            Validate.isTrue(done, "update metadata on successor failed!");
-
-            done = nodeToRemove.moveData(rangeToTransfer, successor);
-            Validate.isTrue(done, "update metadata on successor failed!");
-        } else {
-            LOG.info("It's the only node in the service, abort invoking data transfer");
-        }
-
-        broadcastMetadata();
         done = nodeToRemove.shutdown();
         Validate.isTrue(done, "shutdown nodeToRemove failed!");
+
+        broadcastMetadata();
+    }
+
+    private KeyHashRange getWriteRange(KVServer node) {
+        return chord.getMetadata().getCoordinator(node.getHashKey()).getWriteRange();
     }
 
 
@@ -286,7 +253,7 @@ public class ExternalConfigurationService implements IECS {
         broadcastMetadata();
 
         //TODO: Try to restart failed server and add it instead
-        addNode(DEFAULT_CACHE_SIZE, DEFAULT_REPLACEMENT_STRATEGY);
+        addNode(failedNode.getCacheSize(), failedNode.getDisplacementStrategy());
         return true;
     }
 
@@ -305,7 +272,7 @@ public class ExternalConfigurationService implements IECS {
             String mgmtPort = serverParams[3];
             KVServer kvS = new KVServer(serverId, serverHost, serverPort, mgmtPort);
             serverPool.add(kvS);
-            if(serverIds.contains(serverId))
+            if (serverIds.contains(serverId))
                 throw new IllegalArgumentException("Duplicated node ID! serverId " + serverId + " already assigned");
 
             serverIds.add(serverId);

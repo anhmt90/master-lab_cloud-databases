@@ -161,8 +161,8 @@ public class MessageMarshaller {
             byte[] portBytes = new byte[2];
             portBytes[0] = portBuffer.array()[2];
             portBytes[1] = portBuffer.array()[3];
-            byte[] startBytes = meta.getRange().getStartBytes();
-            byte[] endBytes = meta.getRange().getEndBytes();
+            byte[] startBytes = meta.getWriteRange().getStartBytes();
+            byte[] endBytes = meta.getWriteRange().getEndBytes();
             byte[] nodeMetadataBytes = new byte[hostBytes.length + portBytes.length + startBytes.length + endBytes.length];
             System.arraycopy(hostBytes, 0, nodeMetadataBytes, 0, hostBytes.length);
             System.arraycopy(portBytes, 0, nodeMetadataBytes, hostBytes.length, portBytes.length);

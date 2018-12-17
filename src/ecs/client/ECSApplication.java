@@ -97,7 +97,13 @@ public class ECSApplication {
         if (!isValidCacheSize(cmdArgs[0]) || !isValidDisplacementStrategy(cmdArgs[1])) {
             return;
         }
-        ecs.addNode(Integer.parseInt(cmdArgs[0]), cmdArgs[1]);
+        try {
+            ecs.addNode(Integer.parseInt(cmdArgs[0]), cmdArgs[1]);
+            print("Add node successfully! The ring topology currently has " + ecs.getChord().size() + " nodes");
+        } catch (RuntimeException e) {
+            LOG.error(e);
+            print("Failed to add node! Some error occurs: " + e.getMessage());
+        }
     }
 
 
@@ -156,15 +162,17 @@ public class ECSApplication {
                 return;
             }
             ecs.shutdown();
-            LOG.info("Shutdown");
+            print("Storage service shut down successfully! The ring topology currently has " + ecs.getChord().size() + " nodes");
+            LOG.info("Shutdown successfully!");
         } else {
-            print("Storage service is not currently running.");
+            print("Storage service is currently not running.");
         }
     }
 
     private static void handleShutdown(String serverId) {
         print("Try to shut down server " + serverId);
         ecs.shutdown(serverId);
+        print("Storage service shut down successfully! The ring topology currently has " + ecs.getChord().size() + " nodes");
     }
 
 
@@ -192,7 +200,14 @@ public class ECSApplication {
             print("Service currently has no active nodes.");
             return;
         }
-        ecs.removeNode();
+        try {
+            ecs.removeNode();
+            print("Add node successfully! The ring topology currently has " + ecs.getChord().size() + " nodes");
+        } catch (RuntimeException e) {
+            LOG.error(e);
+            print("Failed to remove node! Some error occurs: " + e.getMessage());
+        }
+
     }
 
 
@@ -218,7 +233,7 @@ public class ECSApplication {
      * @param input The scanner for input stream from System.in
      */
     private static void handleQuit(Scanner input) throws IOException {
-        print("Exiting application");
+        print("Exiting application. Bye!");
         LOG.info("quit");
         ecs.shutdown();
         ecs.getReportManager().getReportSocket().close();

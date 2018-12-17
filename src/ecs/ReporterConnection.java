@@ -92,7 +92,7 @@ public class ReporterConnection implements Runnable {
         switch (failureMessage.getStatus()) {
             case SERVER_FAILED:
                 confirmReportReceived();
-                ecs.handleFailure(failureMessage.getFailedServer().getRange());
+                ecs.handleFailure(failureMessage.getFailedServer().getWriteRange());
                 break;
             default:
                 throw new IllegalStateException("Unknown report status!");

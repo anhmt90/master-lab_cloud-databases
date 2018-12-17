@@ -1,6 +1,5 @@
 package server.app;
 
-import client.api.Client;
 import ecs.KeyHashRange;
 import ecs.Metadata;
 import ecs.NodeInfo;
@@ -20,7 +19,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.NoSuchElementException;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static util.FileUtils.WORKING_DIR;
 
@@ -184,10 +185,17 @@ public class Server extends Thread implements IExternalConfigurationService {
 
     @Override
     public boolean update(Metadata metadata) {
+        Metadata oldMetadata = this.metadata;
+        KeyHashRange oldWriteRange = writeRange;
+        KeyHashRange oldReadRange = readRange;
+        KeyHashRange oldWriteRangeOfReplica2 = null;
+        if (replicator2 != null)
+            oldWriteRangeOfReplica2 = replicator2.getReplica().getWriteRange();
+
         this.metadata = metadata;
         try {
-            setWriteRange();
-            setReadRange();
+            updateWriteRange();
+            updateReadRange();
         } catch (NoSuchElementException nsee) {
             LOG.error(nsee);
             return false;
@@ -201,24 +209,27 @@ public class Server extends Thread implements IExternalConfigurationService {
             heartbeatSender.close();
         }
         startHeartbeat(metadata);
-        return true;
+
+        DataReconciliationHandler reconciler = new DataReconciliationHandler(this)
+                .withOldMetadata(oldMetadata)
+                .withOldReadRange(oldReadRange)
+                .withOldWriteRange(oldWriteRange)
+                .withOldWriteRangeOfReplica2(oldWriteRangeOfReplica2);
+
+        return reconciler.reconcile();
     }
 
     private void setReplicas() {
         NodeInfo replica1 = metadata.getSuccessor(writeRange);
         replicator1 = new Replicator(replica1);
 
-        NodeInfo replica2 = metadata.getSuccessor(replica1.getRange());
+        NodeInfo replica2 = metadata.getSuccessor(replica1.getWriteRange());
         replicator2 = new Replicator(replica2);
     }
 
 
     public boolean moveData(KeyHashRange range, NodeInfo target) {
         LOG.info("handle Move data with range " + range + " and with target " + target);
-        if (!range.isSubRangeOf(this.writeRange)) {
-            LOG.error("Range " + range + " is not a subrange of Server's range, which is " + writeRange);
-            return false;
-        }
         if (!isWriteLocked()) {
             LOG.error("Not in state " + NodeState.WRITE_LOCKED + ". Current state is " + state);
             return false;
@@ -228,6 +239,9 @@ public class Server extends Thread implements IExternalConfigurationService {
 
     }
 
+
+
+    private ConcurrentHashMap<String, ClientConnection> clientConnectionTable;
 
     /**
      * Initializes and starts the server. Loops until the the server should be
@@ -248,7 +262,7 @@ public class Server extends Thread implements IExternalConfigurationService {
                     LOG.info("Client connection initialized");
 
                     LOG.info(
-                            "Connected to " + client.getInetAddress().getHostName() + " on servicePort " + client.getPort());
+                            "Connected to " + client.getInetAddress().getHostName() + " on servicePort " + kvSocket.getLocalPort());
                 } catch (IOException e) {
                     LOG.error("Error! " + "Unable to establish connection. \n", e);
                 }
@@ -299,20 +313,20 @@ public class Server extends Thread implements IExternalConfigurationService {
         return readRange;
     }
 
-    private void setWriteRange() throws NoSuchElementException {
+    private void updateWriteRange() throws NoSuchElementException {
         LOG.info(metadata);
         LOG.info("kvSocket.getLocalPort() = " + kvSocket.getLocalPort());
         LOG.info("serverId = " + serverId);
 
         int i = metadata.getIndexById(serverId);
-        writeRange = metadata.get(i).getRange();
+        writeRange = metadata.get(i).getWriteRange();
     }
 
 
-    public void setReadRange() {
+    public void updateReadRange() {
         int i = metadata.getIndexById(serverId);
         int index2ndPredecessor = (i - 2 + metadata.getLength()) % metadata.getLength();
-        KeyHashRange secondPredecessorRange = metadata.get(index2ndPredecessor).getRange();
+        KeyHashRange secondPredecessorRange = metadata.get(index2ndPredecessor).getWriteRange();
         readRange = new KeyHashRange(secondPredecessorRange.getStart(), writeRange.getEnd());
     }
 

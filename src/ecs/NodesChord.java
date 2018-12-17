@@ -18,12 +18,24 @@ public class NodesChord {
     private TreeMap<String, KVServer> nodesMap = new TreeMap<>();
     private Metadata md = new Metadata();
 
-    public KVServer getSuccessor(String hashedKey) {
-        int i = Arrays.binarySearch(nodesMap.keySet().toArray(), hashedKey);
-        Validate.isTrue(i >= 0, hashedKey + " is not in the tree map " + nodesMap.keySet());
-        if(i == nodesMap.size() - 1)
-            return nodes().get(0);
-        return nodes().get(i + 1);
+    public KVServer getSuccessor(String keyHashed) {
+        return getNthSuccessor(keyHashed, 1);
+    }
+
+    public KVServer getNthSuccessor(String keyHashed, int n) {
+        int i = Arrays.binarySearch(nodesMap.keySet().toArray(), keyHashed);
+        Validate.isTrue(i >= 0, keyHashed + " is not in the tree map " + nodesMap.keySet());
+        return nodes().get((i + n) % nodes().size());
+    }
+
+    public KVServer getPredecessor(String keyHashed) {
+        return getNthPredecessor(keyHashed, 1);
+    }
+
+    public KVServer getNthPredecessor(String keyHashed, int n) {
+        int i = Arrays.binarySearch(nodesMap.keySet().toArray(), keyHashed);
+        Validate.isTrue(i >= 0, keyHashed + " is not in the tree map " + nodesMap.keySet());
+        return nodes().get((nodes().size() + i - n) % nodes().size());
     }
 
 

@@ -41,8 +41,8 @@ public class MarshallingTest extends TestCase {
         for(int i = 0; i < metadata.getLength(); i++) {
         	assertEquals(message.getMetadata().get(i).getHost(), unmarshalledMessage.getMetadata().get(i).getHost());
         	assertEquals(message.getMetadata().get(i).getPort(), unmarshalledMessage.getMetadata().get(i).getPort());
-        	assertEquals(message.getMetadata().get(i).getRange().getStart(), unmarshalledMessage.getMetadata().get(i).getRange().getStart());
-        	assertEquals(message.getMetadata().get(i).getRange().getEnd(), unmarshalledMessage.getMetadata().get(i).getRange().getEnd());
+        	assertEquals(message.getMetadata().get(i).getWriteRange().getStart(), unmarshalledMessage.getMetadata().get(i).getWriteRange().getStart());
+        	assertEquals(message.getMetadata().get(i).getWriteRange().getEnd(), unmarshalledMessage.getMetadata().get(i).getWriteRange().getEnd());
         }
     }
 

@@ -36,7 +36,7 @@ public class Metadata implements Serializable {
      */
     public NodeInfo getCoordinator(String keyHashed) {
         for (NodeInfo nodeInfo : meta) {
-            if (nodeInfo.getRange().contains(keyHashed)) {
+            if (nodeInfo.getWriteRange().contains(keyHashed)) {
                 return nodeInfo;
             }
         }
@@ -63,7 +63,7 @@ public class Metadata implements Serializable {
      */
     public NodeInfo findByHashRange(KeyHashRange targetRange) {
         for (NodeInfo nodeInfo : meta) {
-            if (targetRange.isSubRangeOf(nodeInfo.getRange())) {
+            if (targetRange.isSubRangeOf(nodeInfo.getWriteRange())) {
                 return nodeInfo;
             }
         }
@@ -79,9 +79,9 @@ public class Metadata implements Serializable {
      */
     public boolean isReplicaOrCoordinatorKeyrange(String hexKey, KeyHashRange connectedRange) {
         for (int i = 0; i < meta.size(); i++) {
-            if (meta.get(i).getRange().contains(hexKey)) {
+            if (meta.get(i).getWriteRange().contains(hexKey)) {
                 for (int j = 0; j < 3; j++) {
-                    if (connectedRange.isSubRangeOf(meta.get((i + j) % meta.size()).getRange())) {
+                    if (connectedRange.isSubRangeOf(meta.get((i + j) % meta.size()).getWriteRange())) {
                         return true;
                     }
                 }
@@ -98,7 +98,7 @@ public class Metadata implements Serializable {
      */
     public NodeInfo getSuccessor(KeyHashRange serverRange) {
         for (int i = 0; i < meta.size(); i++) {
-            if (meta.get(i).getRange().isSubRangeOf(serverRange)) {
+            if (meta.get(i).getWriteRange().isSubRangeOf(serverRange)) {
                 return meta.get((i + 1) % meta.size());
             }
         }
@@ -113,7 +113,7 @@ public class Metadata implements Serializable {
      */
     public NodeInfo getPredecessor(KeyHashRange serverRange) {
     	for(int i = 0; i < meta.size(); i++) {
-    		if(meta.get(i).getRange().isSubRangeOf(serverRange)) {
+    		if(meta.get(i).getWriteRange().isSubRangeOf(serverRange)) {
     			return meta.get((meta.size() + i - 1) % meta.size());
     		}
     	}
@@ -133,7 +133,7 @@ public class Metadata implements Serializable {
     public int getIndexByKeyResponsibility(String keyHashed) {
         for (int i = 0; i < meta.size(); i++) {
             NodeInfo nodeInfo = meta.get(i);
-            if (nodeInfo.getRange().contains(keyHashed)) {
+            if (nodeInfo.getWriteRange().contains(keyHashed)) {
                 return i;
             }
         }

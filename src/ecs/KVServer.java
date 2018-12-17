@@ -27,6 +27,9 @@ public class KVServer implements Comparable<KVServer> {
 
     private String hashKey;
 
+    private int cacheSize;
+    private String displacementStrategy;
+
     private String serverId;
     private int servicePort;
     private InetSocketAddress address;
@@ -147,6 +150,8 @@ public class KVServer implements Comparable<KVServer> {
             try {
                 bis = new BufferedInputStream(socket.getInputStream());
                 int justRead = bis.read(messageBuffer);
+                if(justRead < 0)
+                    return null;
                 ConfigMessage message = ConfigMessageMarshaller.unmarshall(Arrays.copyOfRange(messageBuffer, 0, justRead));
 
                 LOG.info("RECEIVE \t<"
@@ -161,6 +166,8 @@ public class KVServer implements Comparable<KVServer> {
     }
 
     boolean init(Metadata metadata, int cacheSize, String strategy) {
+        this.cacheSize = cacheSize;
+        this.displacementStrategy = strategy;
         ConfigMessage msg = new ConfigMessage(ConfigStatus.INIT, cacheSize, strategy.toUpperCase(), metadata);
         return sendAndExpect(msg, ConfigStatus.INIT_SUCCESS);
     }
@@ -221,6 +228,8 @@ public class KVServer implements Comparable<KVServer> {
         try {
             send(toSend);
             ConfigMessage response = receive();
+            if(response == null)
+                return false;
             return response.getStatus().equals(expected);
         } catch (IOException e) {
             LOG.error("Error! ", e);
@@ -238,6 +247,14 @@ public class KVServer implements Comparable<KVServer> {
 
     public String getHashKey() {
         return hashKey;
+    }
+
+    public int getCacheSize() {
+        return cacheSize;
+    }
+
+    public String getDisplacementStrategy() {
+        return displacementStrategy;
     }
 
     private void initSocket() {
@@ -272,6 +289,7 @@ public class KVServer implements Comparable<KVServer> {
         bos = null;
         bis = null;
     }
+
 
     @Override
     public int compareTo(KVServer kvServer) {

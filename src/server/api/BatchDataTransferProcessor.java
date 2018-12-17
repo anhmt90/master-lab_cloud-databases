@@ -98,10 +98,11 @@ public class BatchDataTransferProcessor {
         if (indexFiles.length > 0) {
             for (String indexFile : indexFiles) {
                 Path indexFilePath = Paths.get(indexFile);
-                for (String dataFile : Files.readAllLines(indexFilePath)) {
-                    Files.deleteIfExists(Paths.get(dataFile));
-                }
-                Files.deleteIfExists(Paths.get(indexFile));
+                //TODO: remove data not in current readRange
+//                for (String dataFile : Files.readAllLines(indexFilePath)) {
+//                    Files.deleteIfExists(Paths.get(dataFile));
+//                }
+                Files.deleteIfExists(indexFilePath);
             }
         }
 
@@ -316,14 +317,19 @@ public class BatchDataTransferProcessor {
      */
     public boolean transfer(String[] indexFiles) throws IOException {
         connect();
-        for (String indexFile : indexFiles) {
-            List<String> filesToMove = Files.readAllLines(Paths.get(indexFile));
-            for (String file : filesToMove) {
-                if (!send(file))
-                    return false;
+        try {
+            for (String indexFile : indexFiles) {
+                List<String> filesToMove = Files.readAllLines(Paths.get(indexFile));
+                for (String file : filesToMove) {
+                    if (!send(file))
+                        return false;
+                }
             }
+            return true;
+
+        } finally {
+            disconnect();
         }
-        return true;
     }
 
     /**
