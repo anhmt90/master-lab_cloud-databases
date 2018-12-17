@@ -102,6 +102,7 @@ public class ECSApplication {
             return;
         }
         ecs.addNode(Integer.parseInt(cmdArgs[0]), cmdArgs[1]);
+        print("Added server to storage service with given parameters.");
     }
 
 
@@ -140,6 +141,7 @@ public class ECSApplication {
             return;
         }
         ecs.initService(serverNumber, Integer.parseInt(cmdArgs[1]), cmdArgs[2]);
+        print("Service initiated with " + serverNumber + " Servers.");
     }
 
 
@@ -185,7 +187,7 @@ public class ECSApplication {
             return;
         }
         ecs.stopService();
-
+        print("Storage service stopped");
     }
 
     /**
@@ -197,6 +199,7 @@ public class ECSApplication {
             return;
         }
         ecs.removeNode();
+        print("Random node removed from service.");
     }
 
 
@@ -213,7 +216,7 @@ public class ECSApplication {
             return;
         }
         ecs.startService();
-
+        print("Storage service started.");
     }
 
     /**
@@ -227,6 +230,7 @@ public class ECSApplication {
         ecs.shutdown();
         ecs.getReportManager().getReportSocket().close();
         input.close();
+        
     }
 
     /**
