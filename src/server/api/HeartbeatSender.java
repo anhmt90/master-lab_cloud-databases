@@ -32,7 +32,9 @@ public class HeartbeatSender implements Runnable {
         this.successorAddress = successorAddress;
     }
 
-   
+   /**
+    * Sends a regular heartbeat UDP packet to the address of the successor in the consistent hashing ring
+    */
     public void run() {
         try {
             address = InetAddress.getByName(successorAddress);

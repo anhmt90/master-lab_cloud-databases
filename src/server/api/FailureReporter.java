@@ -78,6 +78,12 @@ public class FailureReporter {
         }
     }
 
+    /**
+     * sends a Failure report to the connected ECS
+     * 
+     * @param message the report message that needs to be sent
+     * @throws IOException
+     */
 	public void send(FailureReportMessage message) throws IOException {
         try {
             bos = new BufferedOutputStream(socket.getOutputStream());

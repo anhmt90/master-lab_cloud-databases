@@ -21,6 +21,11 @@ public class DataReconciliationHandler {
         this.server = server;
     }
 
+    /**
+     * Handles adjusting a servers parameters after a metadata update
+     *  
+     * @return true if successfully reconciled
+     */
     public boolean reconcile() {
         if (oldMetadata != null)
             try {

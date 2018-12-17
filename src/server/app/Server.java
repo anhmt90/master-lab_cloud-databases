@@ -230,6 +230,13 @@ public class Server extends Thread implements IExternalConfigurationService {
     }
 
 
+    /**
+     * Moves data from this server within a specified range to a target server
+     * 
+     * @param range hashrange that should be transported
+     * @param target the server the data is moved to
+     * @return true if move successful
+     */
     public boolean moveData(KeyHashRange range, NodeInfo target) {
         LOG.info("handle Move data with range " + range + " and with target " + target);
         if (!isWriteLocked()) {

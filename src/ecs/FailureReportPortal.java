@@ -31,6 +31,9 @@ public class FailureReportPortal implements Runnable {
     }
 
 
+    /**
+     * initiates the server socket on the ecs to accept failure report connections
+     */
     private void init() {
         LOG.info("Initialize reportSocket for internal management...");
         try {

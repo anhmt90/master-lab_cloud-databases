@@ -70,6 +70,10 @@ public class ReporterConnection implements Runnable {
         }
     }
 
+    /**
+     * Closes sockets and streams to end the connection
+     * @throws IOException
+     */
     public void close() throws IOException {
         boolean success = manager.getConnectionTable().remove(this);
         if (bis != null)
@@ -89,7 +93,6 @@ public class ReporterConnection implements Runnable {
      * calls relevant functions based on the server request
      *
      * @param failureMessage the message containing serverSocket request
-     * @return
      */
     private void handleReport(FailureReportMessage failureMessage) throws IOException {
         LOG.info("Handling potential server outage report from " + serverSocket.getInetAddress().getHostAddress() + ":" + serverSocket.getPort());
