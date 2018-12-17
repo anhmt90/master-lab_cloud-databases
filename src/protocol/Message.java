@@ -10,7 +10,7 @@ public class Message implements IMessage {
 	/**
 	 * flag indicating if this message is of move data process when adding/removing servers
 	 */
-	boolean movingData;
+	boolean isBatchData = false;
 
 	public Message(Status status) {
 		this.status = status;
@@ -71,17 +71,18 @@ public class Message implements IMessage {
 	}
 
 	@Override
-	public boolean isMovingData() {
-		return movingData;
+	public boolean isBatchData() {
+		return isBatchData;
 	}
 
 	@Override
-	public void setMovingData(boolean movingData) {
-		this.movingData = movingData;
+	public void setBatchData() {
+		this.isBatchData = true;
 	}
 
 	@Override
 	public String toString() {
-		return status.name() + "<" + key + ", " + value + '>';
+		String keyString = key == null ? "metadata" : getKey();
+		return status.name() + "<" + keyString + '>';
 	}
 }

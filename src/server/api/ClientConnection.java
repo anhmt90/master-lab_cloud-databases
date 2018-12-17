@@ -6,13 +6,19 @@ import protocol.*;
 import protocol.IMessage.Status;
 import server.app.Server;
 import server.storage.PUTStatus;
-import server.storage.CacheManager;
-import util.HashUtils;
-import util.StringUtils;
+import server.storage.cache.CacheManager;
+import util.LogUtils;
+
 import static protocol.IMessage.MAX_MESSAGE_LENGTH;
 
 import java.io.*;
+import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 
 /**
@@ -23,15 +29,16 @@ import java.net.Socket;
  * is received it is going to be echoed back to the client.
  */
 public class ClientConnection implements Runnable {
-
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
 
+    private static final int MAX_ALLOWED_EOF = 3;
+    private static final Set<Status> SUCCESS_STATUS = new HashSet<>(Arrays.asList(new Status[]{Status.PUT_SUCCESS, Status.PUT_UPDATE, Status.DELETE_SUCCESS}));
     private boolean isOpen;
 
     private final Server server;
     private Socket clientSocket;
-    private BufferedInputStream input;
-    private BufferedOutputStream output;
+    private BufferedInputStream bis;
+    private BufferedOutputStream bos;
 
     private CacheManager cm;
 
@@ -52,38 +59,70 @@ public class ClientConnection implements Runnable {
      * Loops until the connection is closed or aborted by the client.
      */
     public void run() {
+        IMessage request = null;
+        IMessage response;
+        int eofCounter = 0;
         try {
-            output = new BufferedOutputStream(clientSocket.getOutputStream());
-            input = new BufferedInputStream(clientSocket.getInputStream());
-
-
-            while (isOpen) {
+            while (isOpen && server.isRunning()) {
                 try {
-                    IMessage requestMessage = receive();
-                    IMessage responseMessage = handleRequest(requestMessage);
-                    send(responseMessage);
+                    request = receive();
+                    if (request == null) {
+                        eofCounter++;
+                        if (eofCounter >= MAX_ALLOWED_EOF) {
+                            LOG.warn("Got " + eofCounter + " successive EOF signals! Assume the other end has terminated but not closed the socket properly. " +
+                                    "Tearing down connection");
+                            isOpen = false;
+                        }
+                        continue;
+                    }
+                    response = handleRequest(request);
+                    send(response);
+                    eofCounter = 0;
 
-                    /* connection either terminated by the client or lost due to
-                     * network problems*/
+                    if (SUCCESS_STATUS.contains(response.getStatus()))
+                        replicate(response);
                 } catch (IOException ioe) {
-                    LOG.error("Error! Connection lost!");
+                    LOG.error("Error! Connection lost!", ioe);
+                    LOG.warn("Setting isOpen to false");
+                    isOpen = false;
+                } catch (IllegalArgumentException iae) {
+                    LOG.error("IllegalArgumentException", iae);
+                    LOG.error(request.toString());
+                    try {
+                        send(new Message(Status.PUT_ERROR));
+                    } catch (IOException ioe) {
+                        LOG.error("Error! Connection lost!", ioe);
+                    }
+                    LOG.warn(iae);
+                } catch (Exception e) {
+                    LOG.error("Exception", e);
+                    e.printStackTrace();
                     isOpen = false;
                 }
             }
-
-        } catch (IOException ioe) {
-            LOG.error("Error! Connection could not be established!", ioe);
-
         } finally {
             try {
-                if (clientSocket != null) {
-                    input.close();
-                    output.close();
-                    clientSocket.close();
-                }
+                LOG.warn("CLOSING SOCKET...");
+                disconnect();
             } catch (IOException ioe) {
                 LOG.error("Error! Unable to tear down connection!", ioe);
             }
+        }
+    }
+
+    public void disconnect() throws IOException {
+        LOG.warn("Closing clientSocket=" + clientSocket);
+        if (clientSocket != null) {
+            clientSocket.shutdownInput();
+            clientSocket.shutdownOutput();
+
+            bos.close();
+            bis.close();
+            clientSocket.close();
+
+            bis = null;
+            bos = null;
+            clientSocket = null;
         }
     }
 
@@ -95,26 +134,44 @@ public class ClientConnection implements Runnable {
      * @return a response message to the client
      */
     private IMessage handleRequest(IMessage message) {
-        if (server.isStopped())
+        if (server.isStopped()) {
+            LOG.info("Server is stopped");
             return new Message(Status.SERVER_STOPPED);
+        }
 
         K key = message.getK();
         V val = message.getV();
 
-        if (!server.getHashRange().inRange(key.getString())) {
-            return new Message(Status.SERVER_NOT_RESPONSIBLE, server.getMetadata());
-        }
-
         switch (message.getStatus()) {
             case GET:
+                if (!server.getReadRange().contains(key.getString())) {
+                    LOG.info("Server not responsible! Server hash range is " + server.getWriteRange() + ", key is " + key.getString());
+                    return new Message(Status.SERVER_NOT_RESPONSIBLE, server.getMetadata());
+                }
                 return handleGET(message);
             case PUT:
-                if (server.isWriteLocked() && !message.isMovingData())
+                if (!server.getWriteRange().contains(key.getString())) {
+                    LOG.info("Server not responsible! Server hash range is " + server.getWriteRange() + ", key is " + key.getString());
+                    LOG.info("Sending following metadata to client: " + server.getMetadata());
+                    return new Message(Status.SERVER_NOT_RESPONSIBLE, server.getMetadata());
+                }
+                if (server.isWriteLocked() && !message.isBatchData()) {
+                    LOG.info("Server is write-locked");
                     return new Message(Status.SERVER_WRITE_LOCK);
+                }
                 return handlePUT(key, val);
+
             default:
-                throw new IllegalArgumentException("Unknown Request Type");
+                throw LogUtils.printLogError(LOG, new IllegalArgumentException("Unknown Request Type " + message.getStatus()));
         }
+    }
+
+    private void replicate(IMessage message) {
+        server.getReplicator1().setMessage(message);
+        new Thread(server.getReplicator1()).start();
+
+        server.getReplicator2().setMessage(message);
+        new Thread(server.getReplicator2()).start();
     }
 
     /**
@@ -124,7 +181,7 @@ public class ClientConnection implements Runnable {
      * @param val value of the key-value pair
      * @return server response
      */
-    private synchronized IMessage handlePUT(K key, V val) {
+    private IMessage handlePUT(K key, V val) {
         PUTStatus status = cm.put(key, val);
         switch (status) {
             case CREATE_SUCCESS:
@@ -139,7 +196,8 @@ public class ClientConnection implements Runnable {
             case DELETE_ERROR:
                 return new Message(Status.DELETE_ERROR, key);
             default:
-                throw new IllegalStateException("Unknown PUTStatus");
+                LOG.error(new IllegalStateException("Unknown PUTStatus " + status));
+                throw new IllegalStateException("Unknown PUTStatus " + status);
         }
     }
 
@@ -149,7 +207,7 @@ public class ClientConnection implements Runnable {
      * @param message the get-request message sent by a client
      * @return server response to client request
      */
-    private synchronized IMessage handleGET(IMessage message) {
+    private IMessage handleGET(IMessage message) {
         V val = cm.get(message.getK());
         return (val == null) ? new Message(Status.GET_ERROR, message.getK())
                 : new Message(Status.GET_SUCCESS, message.getK(), val);
@@ -162,23 +220,14 @@ public class ClientConnection implements Runnable {
      * @throws IOException
      */
     public void send(IMessage message) throws IOException {
-        writeOutput(message.toString(), MessageMarshaller.marshall(message));
-    }
-
-    /**
-     * Send a marshalled message out through the server socket
-     *
-     * @param object       Message in String format for logging
-     * @param messageBytes The marshalled message
-     * @throws IOException
-     */
-    private void writeOutput(String object, byte[] messageBytes) throws IOException {
-        output.write(messageBytes);
-        output.flush();
-        LOG.info("SEND \t<"
+        byte[] toSend = MessageMarshaller.marshall(message);
+        bos = new BufferedOutputStream(clientSocket.getOutputStream());
+        bos.write(toSend);
+        bos.flush();
+        LOG.info("SEND " + toSend.length + " bytes \t<"
                 + clientSocket.getInetAddress().getHostAddress() + ":"
-                + clientSocket.getPort() + ">: '"
-                + object + "'");
+                + clientSocket.getPort() + "> ===> '"
+                + message.toString() + "'");
     }
 
 
@@ -189,17 +238,29 @@ public class ClientConnection implements Runnable {
      * @throws IOException
      */
     private IMessage receive() throws IOException {
-        byte[] messageBytes = new byte[MAX_MESSAGE_LENGTH];
+        byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
+        bis = new BufferedInputStream(clientSocket.getInputStream());
+        int justRead = bis.read(messageBuffer);
 
-        int bytesCopied = input.read(messageBytes);
-        LOG.info("Read " + bytesCopied + " from input stream");
+        int inBuffer = justRead;
+        while (justRead > 0 && !MessageMarshaller.isMessageComplete(messageBuffer, inBuffer)) {
+            LOG.info("bis hasn't reached EndOfStream, keep reading...");
+            justRead = bis.read(messageBuffer, inBuffer, messageBuffer.length - inBuffer);
+            if (justRead > 0)
+                inBuffer += justRead;
+        }
 
-        IMessage message = MessageMarshaller.unmarshall(messageBytes);
+        if (inBuffer == -1) {
+            LOG.warn("RECEIVE -1 bytes (EOS), returning null.");
+            return null;
+        }
+        LOG.info("received " + inBuffer + " bytes from server");
+        IMessage message = MessageMarshaller.unmarshall(messageBuffer);
 
         LOG.info("RECEIVE \t<"
                 + clientSocket.getInetAddress().getHostAddress() + ":"
-                + clientSocket.getPort() + ">: '"
-                + message.toString().trim() + "'");
+                + clientSocket.getPort() + "> ===>'"
+                + message.toString() + "'");
         return message;
     }
 

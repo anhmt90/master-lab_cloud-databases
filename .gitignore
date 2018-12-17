@@ -16,3 +16,5 @@ data
 db/
 *.log
 config/server-info
+config/lab-server-info
+perf/*

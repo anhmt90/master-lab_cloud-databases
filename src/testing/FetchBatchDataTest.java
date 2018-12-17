@@ -112,7 +112,7 @@ public class FetchBatchDataTest extends TestCase {
     }
 
     private void setIndexRelevantDataFilesMethod(BatchDataTransferProcessor batchProcessor) throws NoSuchMethodException {
-        indexRelevantDataFiles = batchProcessor.getClass().getDeclaredMethod("indexRelevantDataFiles", KeyHashRange.class);
+        indexRelevantDataFiles = batchProcessor.getClass().getDeclaredMethod("indexRelevantData", KeyHashRange.class);
         indexRelevantDataFiles.setAccessible(true);
     }
 
@@ -133,39 +133,39 @@ public class FetchBatchDataTest extends TestCase {
         keySet1 = new String[]{
                 new String(new char[6]).replace("\0", "eeeee") + "ef", //should be moved
                 new String(new char[8]).replace("\0", "ffff"), //should be moved
-                "f" + HashUtils.getHash("key1").substring(1), //should be moved
-                "f" + HashUtils.getHash("key2").substring(1), //should be moved
-                "ffff" + HashUtils.getHash("key6").substring(4), //should be moved
-                "eeee" + HashUtils.getHash("key5").substring(4),
-                "2" + HashUtils.getHash("key7").substring(1),
-                "2" + HashUtils.getHash("key8").substring(1)
+                "f" + HashUtils.hash("key1").substring(1), //should be moved
+                "f" + HashUtils.hash("key2").substring(1), //should be moved
+                "ffff" + HashUtils.hash("key6").substring(4), //should be moved
+                "eeee" + HashUtils.hash("key5").substring(4),
+                "2" + HashUtils.hash("key7").substring(1),
+                "2" + HashUtils.hash("key8").substring(1)
         };
 
         for (String key : keySet1)
             pm1.write(key, key.getBytes());
 
         keySet2 = new String[]{
-                "4" + HashUtils.getHash("key9").substring(1),
-                "4" + HashUtils.getHash("key10").substring(1),
-                "5" + HashUtils.getHash("key11").substring(1),
-                "5" + HashUtils.getHash("key12").substring(1),
-                "6" + HashUtils.getHash("key13").substring(1),
-                "6" + HashUtils.getHash("key14").substring(1),
-                "7" + HashUtils.getHash("key15").substring(1),
-                "8" + HashUtils.getHash("key16").substring(1)
+                "4" + HashUtils.hash("key9").substring(1),
+                "4" + HashUtils.hash("key10").substring(1),
+                "5" + HashUtils.hash("key11").substring(1),
+                "5" + HashUtils.hash("key12").substring(1),
+                "6" + HashUtils.hash("key13").substring(1),
+                "6" + HashUtils.hash("key14").substring(1),
+                "7" + HashUtils.hash("key15").substring(1),
+                "8" + HashUtils.hash("key16").substring(1)
         };
         for (String key : keySet2)
             pm2.write(key, key.getBytes());
 
         String[] keySet3 = new String[]{
-                "a" + HashUtils.getHash("key17").substring(1),
-                "a" + HashUtils.getHash("key18").substring(1),
-                "b" + HashUtils.getHash("key19").substring(1),
-                "b" + HashUtils.getHash("key20").substring(1),
-                "c" + HashUtils.getHash("key21").substring(1),
-                "c" + HashUtils.getHash("key22").substring(1),
-                "d" + HashUtils.getHash("key23").substring(1),
-                "d" + HashUtils.getHash("key24").substring(1)
+                "a" + HashUtils.hash("key17").substring(1),
+                "a" + HashUtils.hash("key18").substring(1),
+                "b" + HashUtils.hash("key19").substring(1),
+                "b" + HashUtils.hash("key20").substring(1),
+                "c" + HashUtils.hash("key21").substring(1),
+                "c" + HashUtils.hash("key22").substring(1),
+                "d" + HashUtils.hash("key23").substring(1),
+                "d" + HashUtils.hash("key24").substring(1)
         };
         for (String key : keySet3)
             pm3.write(key, key.getBytes());

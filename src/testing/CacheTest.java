@@ -7,7 +7,7 @@ import org.apache.logging.log4j.Logger;
 import org.junit.Test;
 import protocol.K;
 import protocol.V;
-import server.storage.CacheManager;
+import server.storage.cache.CacheManager;
 import server.storage.cache.CacheDisplacementStrategy;
 
 import java.lang.reflect.InvocationTargetException;
@@ -120,7 +120,7 @@ public class CacheTest extends TestCase {
   }
 
   /**
-   * Test one of the edge cases when there is a cache of size one, check if eviction works
+   * Test one of the edge cases when there is a cache of loadedDataSize one, check if eviction works
    * @param strategy {@link CacheDisplacementStrategy}
    */
   private void testCacheOneItemEvict(CacheDisplacementStrategy strategy) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {

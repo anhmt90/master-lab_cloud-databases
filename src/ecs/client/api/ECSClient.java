@@ -33,7 +33,7 @@ public class ECSClient implements IECS {
 	}
 
 	@Override
-	public void shutDown() {
+	public void shutdown() {
 		// TODO Auto-generated method stub
 		
 	}

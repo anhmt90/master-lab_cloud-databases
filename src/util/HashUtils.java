@@ -7,19 +7,20 @@ import java.security.NoSuchAlgorithmException;
 public class HashUtils {
     public static final String MAX_HASH = new String(new char[8]).replace("\0", "ffff");
     public static final String MIN_HASH = new String(new char[8]).replace("\0", "0000");
-    private static MessageDigest md5;
 
-    static {
+    public static String hash(String key) {
+        byte[] digest = digest(key);
+        return getHashStringOf(digest);
+    }
+
+    public static byte[] digest(String key) {
+        byte[] hash = null;
         try {
-            md5 = MessageDigest.getInstance("MD5");
+            hash = MessageDigest.getInstance("MD5").digest(key.getBytes(StandardCharsets.US_ASCII));
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         }
-    }
-
-    public static String getHash(String key) {
-        byte[] digest = getHashBytes(key);
-        return getHashStringOf(digest);
+        return hash;
     }
 
     public static byte[] getHashBytesOf(String hashString) {
@@ -30,13 +31,10 @@ public class HashUtils {
         return output;
     }
 
-    public static byte[] getHashBytes(String key) {
-        return md5.digest(key.getBytes(StandardCharsets.US_ASCII));
-    }
 
-    public static String getHashStringOf(byte[] digest) {
+    public static String getHashStringOf(byte[] hashBytes) {
         StringBuffer sb = new StringBuffer();
-        for (byte b : digest) {
+        for (byte b : hashBytes) {
             sb.append(Integer.toHexString((b & 0xFF) | 0x100).substring(1, 3));
         }
 
@@ -46,7 +44,7 @@ public class HashUtils {
         return sb.toString().toLowerCase();
     }
 
-    public static String increaseHashBy1 (String hashString) {
+    public static String increaseHashBy1(String hashString) {
         byte[] hashBytes = getHashBytesOf(hashString);
         int i = hashBytes.length - 1;
         while (hashBytes[i] == 0xFF) {
@@ -64,8 +62,8 @@ public class HashUtils {
      * @param by
      * @return
      */
-    public static String increaseHashBy (String hashString, int by) {
-        for (int i = 1; i <= by ; i++) {
+    public static String increaseHashBy(String hashString, int by) {
+        for (int i = 1; i <= by; i++) {
             hashString = increaseHashBy1(hashString);
         }
         return hashString;
@@ -83,10 +81,10 @@ public class HashUtils {
         Validate.isTrue(hashA.length == hashB.length, "Length of 2 hash values do not match");
 
         for (int i = 0; i < hashA.length; i++) {
-            if ((hashA[i] & 0xFF)  < (hashB[i] & 0xFF))
+            if ((hashA[i] & 0xFF) < (hashB[i] & 0xFF))
                 return -1;
 
-            else if ((hashA[i] & 0xFF)  > (hashB[i] & 0xFF))
+            else if ((hashA[i] & 0xFF) > (hashB[i] & 0xFF))
                 return 1;
 
         }

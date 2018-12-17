@@ -5,7 +5,14 @@ import java.io.Serializable;
 import ecs.Metadata;
 
 public interface IMessage extends Serializable {
-    public static final int MAX_MESSAGE_LENGTH = 1 + 3 + 16 + 1024 * 120;
+    /**
+     * 1 byte indicating message status
+     * 1 byte indicating whether batch data or not
+     * 3 bytes indicating the length of {@link V} in byte
+     * 16 bytes contains the MD5 hash of {@link K}
+     * 1024 * 120 bytes are the actual data of V
+     */
+    public static final int MAX_MESSAGE_LENGTH = 1 + 1 + 3 + 16 + 1024 * 120;
     enum Status {
         GET(0x01),            /* Get - request */
         GET_ERROR(0x02),        /* requested tuple (i.e. value) not found */
@@ -19,7 +26,7 @@ public interface IMessage extends Serializable {
 
         SERVER_STOPPED(0x0A),           /* Server is stopped, no requests are processed */
         SERVER_WRITE_LOCK(0x0B),        /* Server locked for out, only get possible */
-        SERVER_NOT_RESPONSIBLE(0x0C)    /* Request not successful, server not responsible for key */
+        SERVER_NOT_RESPONSIBLE(0x0C),    /* Request not successful, server not responsible for key */
         ;
 
 
@@ -82,8 +89,8 @@ public interface IMessage extends Serializable {
      */
     public Metadata getMetadata();
 
-    public boolean isMovingData();
+    public boolean isBatchData();
 
-    public void setMovingData(boolean movingData);
+    public void setBatchData();
 
 }

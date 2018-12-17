@@ -1,5 +1,8 @@
 package testing.performance;
 
+import util.FileUtils;
+import util.StringUtils;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -8,59 +11,25 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 
 class ReportBuilder {
-  private ArrayList<String> lines = new ArrayList<>();
-  private Character delim = ';';
-  private boolean firstValue = true;
-  private StringBuilder sb = new StringBuilder();
+    private StringBuilder sb = new StringBuilder();
 
-  public void addSb() {
-    lines.add(sb.toString());
-    sb = new StringBuilder();
-    firstValue = true;
-  }
-
-  public void addValue(long val) {
-    addValue(String.valueOf(val));
-  }
-
-  public void addValues(int[] vals) {
-    for (int val: vals) {
-      addValue(val);
+    public void insert(String line) {
+        sb.append(line + "\n");
     }
-  }
 
-  public void addValues(long[] vals) {
-    for (long val: vals) {
-      addValue(val);
+    public void blankLine() {
+        insert(StringUtils.EMPTY_STRING);
     }
-    addSb();
-  }
 
-  public void addValue(String val) {
-    if (!firstValue) {
-      sb.append(delim);
+    public void lineSeparator() {
+        insert("=====================================================================");
     }
-    sb.append(val);
-  }
 
-  public void addHeader(String header) {
-    if (sb.length() > 0) {
-      addSb();
+    public void save(Path path) throws IOException {
+        if (!FileUtils.exists(path)) {
+            Files.createFile(path);
+        }
+
+        Files.write(path, sb.toString().getBytes());
     }
-    lines.add(header);
-  }
-
-  public void writeToFile(String path) throws IOException {
-    addSb();
-    Path p = Paths.get(path);
-    if (!Files.exists(p)) {
-      File file = new File(path);
-      file.createNewFile();
-    }
-    Files.write(p, lines);
-  }
-
-  public void writeToFile(Path path) throws IOException {
-    writeToFile(path.toString());
-  }
 }

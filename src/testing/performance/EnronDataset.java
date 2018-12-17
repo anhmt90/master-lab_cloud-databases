@@ -1,6 +1,10 @@
 package testing.performance;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import testing.AllTests;
 import util.FileUtils;
+import util.StringUtils;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -12,118 +16,107 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static util.FileUtils.USER_DIR;
+
 public class EnronDataset {
-  class KV {
-    public final String key;
-    public final String val;
-    Pattern keyPattern = Pattern.compile("\\d+\\.\\d+");
+    class KV {
 
-    public KV(String key, String val) {
-      this.val = val;
+        public final String key;
+        public final String val;
+        Pattern keyPattern = Pattern.compile("\\d+\\.\\d+");
 
-      Matcher m = keyPattern.matcher(key);
-      String s = "stub";
-      while (m.find()) {
-        s = m.group();
-        // s now contains "BAR"
-      }
-      this.key = s;
+        public KV(String key, String val) {
+            this.val = val;
+
+            Matcher m = keyPattern.matcher(key);
+            String s = "";
+            while (m.find()) {
+                s = m.group();
+            }
+            this.key = s;
+        }
+
     }
 
-  }
-  private final Path rootPath;
-  private CopyOnWriteArrayList<KV> kvs;
-  private List<Path> files = new ArrayList<Path>();
+    private static Logger LOG = LogManager.getLogger(AllTests.TEST_LOG);
 
-  public EnronDataset(String datasetPath) throws IOException {
-    this.rootPath = Paths.get(datasetPath);
-    if (!Files.exists(this.rootPath)) {
-      throw new IOException("Enron dataset was not found");
-    }
-    loadFileNames();
-  }
+    private static final int MAX_VAL_LENGTH = 122880;
+//    private static final String ENRON_DATASET = USER_DIR + "/../enron_mail_20150507/maildir";
+    private static final String ENRON_DATASET = USER_DIR + "/../maildir";
 
-  private void loadFileNames() throws IOException {
-    Files.walk(this.rootPath)
-        .filter(Files::isRegularFile)
-        .forEach(filePath -> this.files.add(filePath));
-    System.out.println(String.format("Number of entries in the dataset: %d", this.files.size()));
-  }
+    private final Path datasetPath;
+    private ArrayList<KV> dataLoaded;
+    private List<Path> files = new ArrayList<>();
 
-  private void loadMsg(Path filePath) {
-    List<String> lines = null;
-    try {
-      lines = Files.readAllLines(filePath);
-    } catch (IOException e) {
-      System.out.println(String.format("Couldn't read a file: %s", filePath));
-      return;
+    public EnronDataset() throws IOException {
+        this.datasetPath = Paths.get(ENRON_DATASET);
+        if (!FileUtils.dirExists(this.datasetPath))
+            throw new IOException("Enron dataset was not found");
+        loadFileLocations();
     }
 
-    StringBuilder sb = new StringBuilder();
-    Iterator<String> iter = lines.iterator();
-    String key = iter.next();
-    int limit = 2;
-    while (iter.hasNext()) {
-      sb.append(iter.next());
-      if (limit-- <= 0 ) {
-        break;
-      }
-    }
-    String value = sb.toString();
-
-    this.kvs.add(new KV(key, value));
-  }
-
-  public void loadMessages(int amount) {
-    this.kvs = new CopyOnWriteArrayList<>();
-
-    Collections.shuffle(this.files);
-
-    List<Thread> threads = new ArrayList<>(amount);
-    for (int i = 0; i < amount; i++) {
-      Path filePath = this.files.get(i);
-
-      Thread t = new Thread(() -> loadMsg(filePath));
-      t.start();
-      threads.add(t);
+    private void loadFileLocations() throws IOException {
+        Files.walk(this.datasetPath)
+                .filter(FileUtils::isFile)
+                .forEach(filePath -> files.add(filePath));
+        LOG.info(String.format("Number of entries in the dataset: %d", files.size()));
     }
 
-    for (Thread t: threads) {
-      try {
-        t.join();
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
-  }
 
-  public void loadAllMessages() {
-    this.loadMessages(this.files.size());
-  }
+    public void loadData(int amount) {
+        this.dataLoaded = new ArrayList<>(amount * 2);
+        Collections.shuffle(files);
 
-  public static void main(String[] args) {
-    EnronDataset ed = null;
-    try {
-      ed = new EnronDataset(FileUtils.WORKING_DIR + "/../../maildir");
-    } catch (IOException e) {
-      e.printStackTrace();
-      return;
+        for (int i = 0; i < amount; i++) {
+            Path filePath = this.files.get(i);
+            readFile(filePath);
+        }
+
+        LOG.info("Numbers of data loaded " + dataLoaded.size());
     }
 
-    ed.loadMessages(2);
-    System.out.println("Loaded msgs: " + ed.size());
-  }
+    private void readFile(Path filePath) {
+        List<String> lines = null;
+        try {
+            lines = Files.readAllLines(filePath);
+        } catch (IOException e) {
+            LOG.info(String.format("Couldn't read file %s", filePath));
+            return;
+        }
 
-  public CopyOnWriteArrayList<KV> loadedEntries() {
-    return this.kvs;
-  }
+        StringBuilder sb = new StringBuilder();
+        Iterator<String> iter = lines.iterator();
+        String key = iter.next();
+        while (iter.hasNext() && sb.length() <= MAX_VAL_LENGTH)
+            sb.append(iter.next());
 
-  public int size() {
-    return this.kvs.size();
-  }
+        if (sb.length() > MAX_VAL_LENGTH) {
+            System.out.println("VALUE too large!");
+            return;
+        }
+        String value = sb.toString();
+        if(StringUtils.isEmpty(key) || StringUtils.isEmpty(value)) {
+            LOG.warn("Key or value is empty. Skipping file " + filePath.toString());
+            return;
+        }
 
-  public KV getRandom() {
-    int n = ThreadLocalRandom.current().nextInt(this.size());
-    return this.kvs.get(n);
-  }
+        this.dataLoaded.add(new KV(key, value));
+    }
+
+    public void loadEntireDataset() {
+        this.loadData(this.files.size());
+    }
+
+    public ArrayList<KV> getDataLoaded() {
+        return this.dataLoaded;
+    }
+
+    public int loadedDataSize() {
+        return dataLoaded.size();
+    }
+
+    public KV getRandom() {
+        int n = ThreadLocalRandom.current().nextInt(loadedDataSize());
+        return dataLoaded.get(n);
+    }
 }

@@ -8,60 +8,80 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
-import server.api.AdminConnection;
-import server.api.BatchDataTransferProcessor;
-import server.api.ClientConnection;
-import server.storage.CacheManager;
+import server.api.*;
+import server.storage.cache.CacheManager;
 import server.storage.cache.CacheDisplacementStrategy;
-import util.LogUtils;
+import util.FileUtils;
 
-import java.io.BufferedInputStream;
 import java.io.IOException;
-import java.net.BindException;
-import java.net.ServerSocket;
-import java.net.Socket;
+import java.net.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.NoSuchElementException;
-import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+
+import static util.FileUtils.WORKING_DIR;
 
 /**
  * Storage server implementation.
  */
 public class Server extends Thread implements IExternalConfigurationService {
     public static final String SERVER_LOG = "kvServer";
-    private static final String DEFAULT_LOG_LEVEL = "ALL";
-    private static final int DEFAULT_CACHE_SIZE = 100;
-    private static final int DEFAULT_PORT = 50000;
-    private boolean adminConnected;
+    private static final String DEFAULT_LOG_LEVEL = "ERROR";
+
+    private Replicator replicator1;
+    private Replicator replicator2;
 
     private static Logger LOG = LogManager.getLogger(SERVER_LOG);
 
-    private int port;
+    /**
+     * Expected time interval to receive a heartbeat from predecessor
+     */
+    public static final int HEARTBEAT_INTERVAL = 2000;
+
+    private int servicePort;
+    private int adminPort;
     private CacheManager cm;
 
     NodeState state;
+    NodeState previousState;
     boolean running;
 
     private ServerSocket kvSocket;
     /* keeps the range of values that this and other servers are responsible for */
     private Metadata metadata;
-    private KeyHashRange hashRange;
-    private String serverName;
+    private KeyHashRange writeRange;
+    private KeyHashRange readRange;
+    private String serverId;
+
+    private final InternalConnectionManager internalConnectionManager;
+
+
+    private HeartbeatReceiver heartbeatReceiver;
+    private HeartbeatSender heartbeatSender;
+    private static final int HEARTBEAT_RECEIVE_PORT_DISTANCE = -500;
 
 
     /**
-     * Start KV Server at given port
+     * Start KV Server at given servicePort
      *
-     * @param port     given port for disk server to operate
-     * @param logLevel specifies the logging Level on the server
+     * @param servicePort given servicePort for disk server to operate
+     * @param logLevel    specifies the logging Level on the server
      */
-    public Server(String serverName, int port, String logLevel) {
-        this.port = port;
-        this.serverName = serverName;
+    public Server(String serverId, int servicePort, int adminPort, String logLevel) {
+        this.serverId = serverId;
+        this.servicePort = servicePort;
+        this.adminPort = adminPort;
         Configurator.setRootLevel(Level.getLevel(logLevel));
         state = NodeState.STOPPED;
 
-        LOG.info("Server created listening on port " + this.port + " with logging Level " + logLevel);
+        internalConnectionManager = new InternalConnectionManager(this);
+
+
+        LOG.info("Server constructed with servicePort " + this.servicePort + " and  with logging Level " + logLevel);
 
     }
 
@@ -87,33 +107,38 @@ public class Server extends Thread implements IExternalConfigurationService {
             return false;
         }
 
-        this.cm = new CacheManager(serverName, cacheSize, getDisplacementStrategyByName(strategy));
-        this.metadata = metadata;
+        this.cm = new CacheManager(serverId, cacheSize, getDisplacementStrategyByName(strategy));
+        boolean success = update(metadata);
+        if (success)
+            LOG.info("Server initialized with cache size " + cacheSize
+                    + " and displacement strategy " + strategy);
+        return success;
+    }
 
-        try {
-            hashRange = getHashRange(metadata);
-        } catch (NoSuchElementException nsee) {
-            return LogUtils.exitWithError(LOG, nsee);
-        }
+    private void startHeartbeat(Metadata metadata) {
+        LOG.info("Starting heartbeat receiver...");
+        this.heartbeatReceiver = new HeartbeatReceiver(servicePort + HEARTBEAT_RECEIVE_PORT_DISTANCE, this);
+        new Thread(heartbeatReceiver).start();
 
-        LOG.info("Server initialized with cache size " + cacheSize
-                + " and displacement strategy " + strategy);
-        return true;
+        LOG.info("Starting heartbeat sender...");
+        NodeInfo successor = metadata.getSuccessor(writeRange);
+        this.heartbeatSender = new HeartbeatSender(successor.getHost(), successor.getPort() + HEARTBEAT_RECEIVE_PORT_DISTANCE, this);
+        new Thread(heartbeatSender).start();
     }
 
     /**
-     * Stops the server insofar that it won't listen at the given port any more.
+     * Stops the server insofar that it won't listen at the given servicePort any more.
      */
     @Override
     public boolean stopService() {
         if (isStarted() || isWriteLocked()) {
+            state = NodeState.STOPPED;
             try {
-                kvSocket.close();
-                state = NodeState.STOPPED;
-                return true;
-            } catch (IOException e) {
-                LOG.error("Error! " + "Unable to close socket on port: " + port, e);
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                LOG.error(e);
             }
+            return true;
         }
         return false;
     }
@@ -128,15 +153,23 @@ public class Server extends Thread implements IExternalConfigurationService {
 
     @Override
     public boolean shutdown() {
-        if (stopService())
-            running = false;
+        if (state.equals(NodeState.STOPPED) || stopService()) {
+            try {
+                internalConnectionManager.getAdminSocket().close();
+                kvSocket.close();
+                heartbeatReceiver.close();
+                heartbeatSender.close();
+                running = false;
+            } catch (IOException e) {
+                LOG.error("Unable to close internal management socket or KV-socket! \n" + e);
+            }
+        }
         return !running;
     }
 
     @Override
     public boolean lockWrite() {
-        if (!isStarted())
-            return false;
+        previousState = state;
         state = NodeState.WRITE_LOCKED;
         return true;
     }
@@ -145,60 +178,91 @@ public class Server extends Thread implements IExternalConfigurationService {
     public boolean unlockWrite() {
         if (!isWriteLocked())
             return false;
-        state = NodeState.STARTED;
+        state = previousState;
+        previousState = null;
         return true;
     }
 
     @Override
     public boolean update(Metadata metadata) {
-        try {
-            hashRange = getHashRange(metadata);
-        } catch (NoSuchElementException nsee) {
-            return LogUtils.exitWithError(LOG, nsee);
-        }
+        Metadata oldMetadata = this.metadata;
+        KeyHashRange oldWriteRange = writeRange;
+        KeyHashRange oldReadRange = readRange;
+        KeyHashRange oldWriteRangeOfReplica2 = null;
+        if (replicator2 != null)
+            oldWriteRangeOfReplica2 = replicator2.getReplica().getWriteRange();
+
         this.metadata = metadata;
-        return false;
+        try {
+            updateWriteRange();
+            updateReadRange();
+        } catch (NoSuchElementException nsee) {
+            LOG.error(nsee);
+            return false;
+        }
+        setReplicas();
+
+        LOG.info("Current Metadata = " + this.metadata);
+
+        if (heartbeatSender != null && heartbeatReceiver != null) {
+            heartbeatReceiver.close();
+            heartbeatSender.close();
+        }
+        startHeartbeat(metadata);
+
+        DataReconciliationHandler reconciler = new DataReconciliationHandler(this)
+                .withOldMetadata(oldMetadata)
+                .withOldReadRange(oldReadRange)
+                .withOldWriteRange(oldWriteRange)
+                .withOldWriteRangeOfReplica2(oldWriteRangeOfReplica2);
+
+        return reconciler.reconcile();
+    }
+
+    private void setReplicas() {
+        NodeInfo replica1 = metadata.getSuccessor(writeRange);
+        replicator1 = new Replicator(replica1);
+
+        NodeInfo replica2 = metadata.getSuccessor(replica1.getWriteRange());
+        replicator2 = new Replicator(replica2);
     }
 
 
     public boolean moveData(KeyHashRange range, NodeInfo target) {
-        if (!range.isSubRangeOf(this.hashRange))
+        LOG.info("handle Move data with range " + range + " and with target " + target);
+        if (!isWriteLocked()) {
+            LOG.error("Not in state " + NodeState.WRITE_LOCKED + ". Current state is " + state);
             return false;
-        if (!isWriteLocked())
-            return false;
+        }
+        LOG.info("Moving data to " + target.getId());
         return new BatchDataTransferProcessor(target, cm.getPersistenceManager().getDbPath()).handleTransferData(range);
 
     }
 
 
+
+    private ConcurrentHashMap<String, ClientConnection> clientConnectionTable;
+
     /**
      * Initializes and starts the server. Loops until the the server should be
      * closed.
      */
+    @Override
     public void run() {
-        running = initServer();
+        running = openServiceSocket();
+        LOG.info("Server's running = " + running);
+        new Thread(internalConnectionManager).start();
+
         if (kvSocket != null) {
             while (isRunning()) {
                 try {
                     Socket client = kvSocket.accept();
-                    BufferedInputStream input = new BufferedInputStream(client.getInputStream());
-                    byte[] messageBytes = new byte[1];
+                    ClientConnection connection = new ClientConnection(this, client, cm);
+                    new Thread(connection).start();
+                    LOG.info("Client connection initialized");
 
-                    int bytesCopied = input.read(messageBytes);
-                    LOG.info("MessageBytes: " + Arrays.toString(messageBytes));
-
-                    if (messageBytes[0] == 1) {
-                        LOG.info("Admin connection initialized");
-                        AdminConnection ecs = new AdminConnection(this, client);
-                        new Thread(ecs).start();
-                    } else {
-                        ClientConnection connection = new ClientConnection(this, client, cm);
-                        new Thread(connection).start();
-                        LOG.info("Client connection initialized");
-
-                        LOG.info(
-                                "Connected to " + client.getInetAddress().getHostName() + " on port " + client.getPort());
-                    }
+                    LOG.info(
+                            "Connected to " + client.getInetAddress().getHostName() + " on servicePort " + kvSocket.getLocalPort());
                 } catch (IOException e) {
                     LOG.error("Error! " + "Unable to establish connection. \n", e);
                 }
@@ -212,20 +276,20 @@ public class Server extends Thread implements IExternalConfigurationService {
      *
      * @return boolean value indicating if socket was successfully set up
      */
-    private boolean initServer() {
-        LOG.info("Initialize server ...");
+    private boolean openServiceSocket() {
         try {
-                kvSocket = new ServerSocket(port);
-            LOG.info("Server listening on port: " + kvSocket.getLocalPort());
+            kvSocket = new ServerSocket(servicePort);
+            LOG.info("Server listening on servicePort: " + kvSocket.getLocalPort());
             return true;
         } catch (IOException e) {
-            LOG.error("Error! Cannot open server socket:");
+            LOG.error("Error! Cannot poll server socket:");
             if (e instanceof BindException) {
-                LOG.error("Port " + port + " is already bound!");
+                LOG.error("Port " + servicePort + " is already bound!");
             }
             return false;
         }
     }
+
 
     /**
      * Gets metadata
@@ -239,19 +303,31 @@ public class Server extends Thread implements IExternalConfigurationService {
     /**
      * Gets range of hash-values that the server is responsible for storing
      *
-     * @return hashRange
+     * @return writeRange
      */
-    public KeyHashRange getHashRange() {
-        return hashRange;
+    public KeyHashRange getWriteRange() {
+        return writeRange;
     }
 
-    private KeyHashRange getHashRange(Metadata metadata) throws NoSuchElementException {
-        Optional<NodeInfo> nodeData = metadata.get().stream()
-                .filter(md -> md.getPort() == kvSocket.getLocalPort() && md.getName().equals(serverName))
-                .findFirst();
-        if (!nodeData.isPresent())
-            throw new NoSuchElementException("Metadata does not contain info for this node");
-        return nodeData.get().getRange();
+    public KeyHashRange getReadRange() {
+        return readRange;
+    }
+
+    private void updateWriteRange() throws NoSuchElementException {
+        LOG.info(metadata);
+        LOG.info("kvSocket.getLocalPort() = " + kvSocket.getLocalPort());
+        LOG.info("serverId = " + serverId);
+
+        int i = metadata.getIndexById(serverId);
+        writeRange = metadata.get(i).getWriteRange();
+    }
+
+
+    public void updateReadRange() {
+        int i = metadata.getIndexById(serverId);
+        int index2ndPredecessor = (i - 2 + metadata.getLength()) % metadata.getLength();
+        KeyHashRange secondPredecessorRange = metadata.get(index2ndPredecessor).getWriteRange();
+        readRange = new KeyHashRange(secondPredecessorRange.getStart(), writeRange.getEnd());
     }
 
     /**
@@ -273,16 +349,20 @@ public class Server extends Thread implements IExternalConfigurationService {
         return state;
     }
 
-    public int getPort() {
-        return port;
+    public int getServicePort() {
+        return servicePort;
+    }
+
+    public String getServerId() {
+        return serverId;
     }
 
     public void setNodeState(NodeState state) {
         this.state = state;
     }
 
-    public void setServerName(String serverName) {
-        this.serverName = serverName;
+    public void setServerId(String serverId) {
+        this.serverId = serverId;
     }
 
     /**
@@ -307,31 +387,31 @@ public class Server extends Thread implements IExternalConfigurationService {
     }
 
     /**
-     * Checks whether the {@param portAsString} is a valid port number
+     * Checks whether the {@param portAsString} is a valid servicePort number
      *
-     * @param portAsString The port number in string format
-     * @return boolean value indicating the {@param portAsString} is a valid port
+     * @param portAsString The servicePort number in string format
+     * @return boolean value indicating the {@param portAsString} is a valid servicePort
      * number or not
      */
     private static boolean isValidPortNumber(String portAsString) {
         if (portAsString.matches("^([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$"))
             return true;
-        LOG.error("Invalid port number. Port number should contain only digits and range from 0 to 65535.");
+        LOG.error("Invalid servicePort number. Port number should contain only digits and range from 0 to 65535.");
         return false;
     }
 
     /**
-     * Checks whether the {@param cacheSizeString} is a valid cache size
+     * Checks whether the {@param cacheSizeString} is a valid cache loadedDataSize
      *
-     * @param cacheSize The cache size to be checked
+     * @param cacheSize The cache loadedDataSize to be checked
      * @return boolean value indicating the {@param cacheSize} is a valid cache
-     * size or not
+     * loadedDataSize or not
      */
     private static boolean isValidCacheSize(int cacheSize) {
-        if (cacheSize > 1 && cacheSize < 1073741824)
+        if (cacheSize >= 1 && cacheSize <= 1073741824)
             return true;
         else {
-            LOG.error("Invalid cache size. Cache Size has to be a number between 1 and 2^30.");
+            LOG.error("Invalid cache size. Cache Size has to be a number between 1 and 2^30. Provided cacheSize is " + cacheSize);
             return false;
         }
     }
@@ -387,37 +467,53 @@ public class Server extends Thread implements IExternalConfigurationService {
     /**
      * Main entry point for the echo server application.
      *
-     * @param args contains the port number at args[0], the cache size at args[1], the cache displacement strategy at args[2] and the logging Level at args[3].
+     * @param args contains the servicePort number at args[0], the cache loadedDataSize at args[1], the cache displacement strategy at args[2] and the logging Level at args[3].
      */
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
+        Path logDir = Paths.get(WORKING_DIR + "/logs");
+        System.out.println("LOGS DIR ==========================================================> " + logDir);
+        if (!FileUtils.dirExists(logDir))
+            Files.createDirectories(logDir);
+
         Server server = createServer(args);
-        server.setServerName(args[0]);
-        LOG.info("Server " + server.getName() + " created and serving on port " + server.getPort());
+        LOG.info("Server " + server.getServerId() + " created and serving on servicePort " + server.getServicePort());
         server.start();
     }
 
 
     private static Server createServer(String[] args) {
-        if (args.length < 2 || args.length > 3)
-            throw new IllegalArgumentException("Port must be provided to start the server");
+        if (args.length < 3 || args.length > 4)
+            throw new IllegalArgumentException("Server name and servicePort must be provided to start the server");
 
-        String serverNameStr = args[0];
-        String portStr = args[1];
+        String serverName = args[0];
+        String portString = args[1];
+        String adminPortString = args[2];
         String logLevel = DEFAULT_LOG_LEVEL;
-        if (args.length == 3 && isValidLogLevel(args[2]))
-            logLevel = args[2];
+        if (args.length == 4 && isValidLogLevel(args[3]))
+            logLevel = args[3];
 
-        int port = -1;
-        if (isValidPortNumber(portStr))
-            port = Integer.parseInt(portStr);
+        int port = isValidPortNumber(portString) ? Integer.parseInt(portString) : -1;
+        int adminPort = isValidPortNumber(adminPortString) ? Integer.parseInt(adminPortString) : -1;
 
-        return new Server(serverNameStr, port, logLevel);
+        if (port < 0 || adminPort < 0) {
+            IllegalArgumentException e = new IllegalArgumentException("Invalid service servicePort or administration servicePort!");
+            LOG.error(e);
+            throw e;
+        }
+
+        return new Server(serverName, port, adminPort, logLevel);
     }
 
-    private static boolean isValidAddress(String address) {
-        if (address.matches("^((0|1\\d?\\d?|2[0-4]?\\d?|25[0-5]?|[3-9]\\d?)\\.){3}(0|1\\d?\\d?|2[0-4]?\\d?|25[0-5]?|[3-9]\\d?)$"))
-            return true;
-        LOG.error("Invalid IP address. IP address should contain 4 octets separated by '.' (dot). Each octet comprises only digits and ranges from 0 to 255.");
-        return false;
+    public int getAdminPort() {
+        return adminPort;
+    }
+
+
+    public Replicator getReplicator1() {
+        return replicator1;
+    }
+
+    public Replicator getReplicator2() {
+        return replicator2;
     }
 }

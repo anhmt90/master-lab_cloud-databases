@@ -10,7 +10,10 @@
         <File name="kvServer" filename="logs/server.log">
             <PatternLayout pattern="%d{DEFAULT} [%t] %-5level %logger{36} %l - %msg%n"/>
         </File>
-        <File name="ECS" filename="logs/management-ecs.log">
+        <File name="ECS" filename="logs/ecs.log">
+            <PatternLayout pattern="%d{DEFAULT} [%t] %-5level %logger{36} %l - %msg%n"/>
+        </File>
+        <File name="failure_reporter" filename="logs/failure.log">
             <PatternLayout pattern="%d{DEFAULT} [%t] %-5level %logger{36} %l - %msg%n"/>
         </File>
         <File name="tests" filename="logs/tests.log">
@@ -22,21 +25,23 @@
             <!--<AppenderRef ref="Console"/>-->
             <!--<AppenderRef ref="CloudDB" />-->
         </Root>
-        <Logger name="kvClient" level="all" additivity="false">
+        <Logger name="kvClient" level="debug" additivity="false">
             <AppenderRef ref="Console" />
-            <appender-ref ref="kvClient" />
         </Logger>
-        <Logger name="kvServer" level="all" additivity="false">
+        <Logger name="kvServer" level="debug" additivity="false">
             <AppenderRef ref="Console" />
             <appender-ref ref="kvServer" />
         </Logger>
-        <Logger name="ECS" level="all" additivity="false">
+        <Logger name="ECS" level="info" additivity="false">
             <AppenderRef ref="Console" />
             <appender-ref ref="ECS" />
         </Logger>
+        <Logger name="failure_detection" level="info" additivity="false">
+            <AppenderRef ref="Console" />
+            <appender-ref ref="failure_reporter" />
+        </Logger>
         <Logger name="tests" level="all" additivity="false">
             <AppenderRef ref="Console" />
-            <appender-ref ref="tests" />
         </Logger>
     </Loggers>
 </Configuration>

@@ -34,7 +34,7 @@ public class LFU implements ICacheDisplacementTracker {
   }
 
   @Override
-  public K evict() {
+  public synchronized K evict() {
     Optional<Map.Entry<K, Counter>> min = registry.entrySet()
         .stream()
         .min(Map.Entry.comparingByValue());
@@ -48,7 +48,7 @@ public class LFU implements ICacheDisplacementTracker {
   }
 
   @Override
-  public K register(K k) {
+  public synchronized K register(K k) {
     Counter c = registry.get(k);
 
     if (c == null) {
@@ -60,7 +60,7 @@ public class LFU implements ICacheDisplacementTracker {
   }
 
   @Override
-  public void unregister(K k) {
+  public synchronized void unregister(K k) {
     this.registry.remove(k);
   }
 
