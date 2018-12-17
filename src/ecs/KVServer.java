@@ -61,7 +61,7 @@ public class KVServer implements Comparable<KVServer> {
                         + " &"
         };
         this.sshCMD = cmds;
-        this.hashKey = HashUtils.getHash(String.format("%s:%d", this.getHost(), this.servicePort));
+        this.hashKey = HashUtils.hash(String.format("%s:%d", this.getHost(), this.servicePort));
     }
 
     public String getHost() {

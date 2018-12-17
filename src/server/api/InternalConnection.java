@@ -77,7 +77,7 @@ public class InternalConnection implements Runnable {
     void close() throws IOException {
         boolean success = manager.getConnectionTable().remove(this);
         if (peer != null) {
-            LOG.warn("remove success=" + success + " closing connection to " + peer.toString());
+            LOG.warn("remove success=" + success + ". Closing connection to " + peer.getInetAddress());
             bis.close();
             bos.close();
             peer.close();

@@ -7,7 +7,7 @@ import java.io.Serializable;
  *
  */
 public class NodeInfo implements Serializable {
-    private String name;
+    private String id;
     private String host;
     private int port;
     private KeyHashRange range;
@@ -17,7 +17,7 @@ public class NodeInfo implements Serializable {
     }
 
     public NodeInfo(String nodeName, String host, int port, KeyHashRange range) {
-        this.name = nodeName;
+        this.id = nodeName;
         this.host = host;
         this.port = port;
         this.range = range;
@@ -28,8 +28,8 @@ public class NodeInfo implements Serializable {
         this.port = port;
     }
 
-    public String getName() {
-        return name;
+    public String getId() {
+        return id;
     }
 
     public String getHost() {
@@ -47,7 +47,7 @@ public class NodeInfo implements Serializable {
     @Override
     public String toString() {
         return "\nNodeInfo{" +
-                "name='" + name + '\'' +
+                "id='" + id + '\'' +
                 ", host='" + host + '\'' +
                 ", port=" + port +
                 ", range=" + range +

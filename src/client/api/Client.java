@@ -132,7 +132,7 @@ public class Client implements IClient {
             int justRead = bis.read(messageBuffer);
 
             int inBuffer = justRead;
-            while (justRead > 0  && !MessageMarshaller.isMessageComplete(messageBuffer, inBuffer)) {
+            while (justRead > 0 && !MessageMarshaller.isMessageComplete(messageBuffer, inBuffer)) {
                 LOG.info("input hasn't reached EndOfStream, keep reading...");
                 justRead = bis.read(messageBuffer, inBuffer, messageBuffer.length - inBuffer);
                 if (justRead > 0)
@@ -189,24 +189,27 @@ public class Client implements IClient {
 
     @Override
     public IMessage put(String key, String value) throws IOException {
-        String keyHashed = HashUtils.getHash(key);
+        String keyHashed = HashUtils.hash(key);
         String val = (value == null || value.toLowerCase().equals("null")) ? "val=NULL" : "";
         LOG.info("PUT key=" + keyHashed + val);
 
+        return performPUT(keyHashed, value);
+    }
+
+    public IMessage performPUT(String keyHashed, String value) throws IOException {
         IMessage serverResponse = null;
-//        socket.isConnected() && !socket.isClosed()
         while (true) {
-            selectServer(keyHashed);
+            selectServerPUT(keyHashed);
             if (value != null && value.equals("null"))
                 value = null;
 
             if (value != null) {
-                serverResponse = storeToServer(key, value);
+                serverResponse = storeToServer(keyHashed, value);
                 if (serverResponse == null)
                     return new Message(Status.PUT_ERROR);
 
             } else {
-                serverResponse = removeOnServer(key);
+                serverResponse = removeOnServer(keyHashed);
                 if (serverResponse == null)
                     return new Message(Status.DELETE_ERROR);
             }
@@ -219,26 +222,44 @@ public class Client implements IClient {
         }
     }
 
-    private void selectServer(String keyHashed) throws IOException {
-        KeyHashRange range = getConnectedRange();
-        if (range == null && metadata == null)  // the very first request
+    private void selectServerPUT(String keyHashed) throws IOException {
+        KeyHashRange connectedRange = getConnectedRange();
+        if (connectedRange == null && metadata == null)  // the very first request
             return;
 
-        if (range != null && range.inRange(keyHashed))
+        if (connectedRange != null && connectedRange.contains(keyHashed))
             return;
 
-        LOG.info("Selecting an appropriate server to send request to");
-        NodeInfo nodeInfo = metadata.findMatchingServer(keyHashed);
-        if (nodeInfo == null) {
+        LOG.info("Selecting an appropriate server to send PUT-request to");
+        NodeInfo coordinator = metadata.getCoordinator(keyHashed);
+        if (coordinator == null) {
             print("No server found being responsible for the key.");
             throw LogUtils.printLogError(LOG, new IOException(), "No server found responsible for key can't route request.");
         }
-        connectedNode = nodeInfo;
+        setConnectedNode(coordinator);
+        reroute();
+    }
+
+    private void selectServerGET(String keyHashed) throws IOException {
+        KeyHashRange connectedRange = getConnectedRange();
+        if (connectedRange == null && metadata == null)  // the very first request
+            return;
+
+        if (connectedRange != null && connectedRange.contains(keyHashed))
+            return;
+
+        LOG.info("Selecting an appropriate server to send GET-request to");
+        NodeInfo nodeForGET = metadata.getNodeToReadFrom(keyHashed);
+        setConnectedNode(nodeForGET);
         reroute();
     }
 
     private KeyHashRange getConnectedRange() {
         return connectedNode.getRange();
+    }
+
+    private void setConnectedNode(NodeInfo connectedNode) {
+        this.connectedNode = connectedNode;
     }
 
     /**
@@ -255,27 +276,23 @@ public class Client implements IClient {
         this.metadata = metadata;
     }
 
-    public IMessage put(String key) throws IOException {
-        return put(key, null);
-    }
-
     /**
      * Intermediary method for deletion of key-value pairs on server
      *
-     * @param key key for the value that is supposed to be deleted
+     * @param keyHashed hashed key for the value that is supposed to be deleted
      * @return the server response
      * @throws IOException
      */
-    private IMessage removeOnServer(String key) throws IOException {
-        return sendWithoutValue(key, Status.PUT);
+    private IMessage removeOnServer(String keyHashed) throws IOException {
+        return sendWithoutValue(keyHashed, Status.PUT);
     }
 
     @Override
     public IMessage get(String key) throws IOException {
-        String keyHashed = HashUtils.getHash(key);
+        String keyHashed = HashUtils.hash(key);
         while (true) {
-            selectServer(keyHashed);
-            IMessage serverResponse = sendWithoutValue(key, Status.GET);
+            selectServerGET(keyHashed);
+            IMessage serverResponse = sendWithoutValue(keyHashed, Status.GET);
             if (serverResponse == null)
                 return new Message(Status.GET_ERROR);
             if (serverResponse.getStatus() == Status.SERVER_NOT_RESPONSIBLE) {
@@ -289,13 +306,13 @@ public class Client implements IClient {
     /**
      * Handles delivering of Messages without a value. For GET and DELETE operations
      *
-     * @param key    key for the value that is accessed
+     * @param keyHashed    key for the value that is accessed
      * @param status message specification
      * @return the server response
      * @throws IOException
      */
-    private IMessage sendWithoutValue(String key, Status status) throws IOException {
-        byte[] keyBytes = HashUtils.getHashBytes(key);
+    private IMessage sendWithoutValue(String keyHashed, Status status) throws IOException {
+        byte[] keyBytes = HashUtils.getHashBytesOf(keyHashed);
         IMessage toSend = new Message(status, new K(keyBytes));
         send(MessageMarshaller.marshall(toSend));
         IMessage response = MessageMarshaller.unmarshall(receive());
@@ -309,13 +326,13 @@ public class Client implements IClient {
     /**
      * Handles delivery of PUT messages to storage. For CREATE and UPDATE
      *
-     * @param key   key in the key-value pair represented as MD5-hash
-     * @param value value for the key-value pair
+     * @param keyHashed   hashed key in the key-value pair represented as MD5-hash
+     * @param value value for the keyHashed-value pair
      * @return the server response
      * @throws IOException
      */
-    private IMessage storeToServer(String key, String value) throws IOException {
-        byte[] keyBytes = HashUtils.getHashBytes(key);
+    private IMessage storeToServer(String keyHashed, String value) throws IOException {
+        byte[] keyBytes = HashUtils.getHashBytesOf(keyHashed);
         byte[] valueBytes = value.getBytes(StandardCharsets.US_ASCII);
         IMessage toSend = new Message(Status.PUT, new K(keyBytes), new V(valueBytes));
         send(MessageMarshaller.marshall(toSend));

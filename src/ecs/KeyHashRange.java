@@ -24,7 +24,7 @@ public class KeyHashRange implements Serializable {
      * @param hashString hex-String that is checked
      * @return true if hex-String is within hash range
      */
-    public boolean inRange(String hashString) {
+    public boolean contains(String hashString) {
         if(isWrappedAround()) {
             if(hashString.compareTo(start) > -1 && hashString.compareTo(HashUtils.MAX_HASH) < 1)
                 return true;

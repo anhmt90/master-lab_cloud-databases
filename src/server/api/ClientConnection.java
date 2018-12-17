@@ -12,7 +12,13 @@ import util.LogUtils;
 import static protocol.IMessage.MAX_MESSAGE_LENGTH;
 
 import java.io.*;
+import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 
 /**
@@ -23,10 +29,10 @@ import java.net.Socket;
  * is received it is going to be echoed back to the client.
  */
 public class ClientConnection implements Runnable {
-
-    private static final int MAX_ALLOWED_EOF = 3;
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
 
+    private static final int MAX_ALLOWED_EOF = 3;
+    private static final Set<Status> SUCCESS_STATUS = new HashSet<>(Arrays.asList(new Status[]{Status.PUT_SUCCESS, Status.PUT_UPDATE, Status.DELETE_SUCCESS}));
     private boolean isOpen;
 
     private final Server server;
@@ -53,14 +59,14 @@ public class ClientConnection implements Runnable {
      * Loops until the connection is closed or aborted by the client.
      */
     public void run() {
-        IMessage requestMessage = null;
-        IMessage responseMessage;
+        IMessage request = null;
+        IMessage response;
         int eofCounter = 0;
         try {
             while (isOpen && server.isRunning()) {
                 try {
-                    requestMessage = receive();
-                    if (requestMessage == null) {
+                    request = receive();
+                    if (request == null) {
                         eofCounter++;
                         if (eofCounter >= MAX_ALLOWED_EOF) {
                             LOG.warn("Got " + eofCounter + " successive EOF signals! Assume the other end has terminated but not closed the socket properly. " +
@@ -69,16 +75,19 @@ public class ClientConnection implements Runnable {
                         }
                         continue;
                     }
-                    responseMessage = handleRequest(requestMessage);
-                    send(responseMessage);
+                    response = handleRequest(request);
+                    send(response);
                     eofCounter = 0;
+
+                    if (SUCCESS_STATUS.contains(response.getStatus()))
+                        replicate(response);
                 } catch (IOException ioe) {
                     LOG.error("Error! Connection lost!", ioe);
                     LOG.warn("Setting isOpen to false");
                     isOpen = false;
                 } catch (IllegalArgumentException iae) {
                     LOG.error("IllegalArgumentException", iae);
-                    LOG.error(requestMessage.toString());
+                    LOG.error(request.toString());
                     try {
                         send(new Message(Status.PUT_ERROR));
                     } catch (IOException ioe) {
@@ -133,28 +142,36 @@ public class ClientConnection implements Runnable {
         K key = message.getK();
         V val = message.getV();
 
-        if (!server.getHashRange().inRange(key.getString())) {
-            LOG.info("Server not responsible! Server hash range is " + server.getHashRange() + ", key is " + key.getString());
-            LOG.info("Sending following metadata to client: " + server.getMetadata());
-            return new Message(Status.SERVER_NOT_RESPONSIBLE, server.getMetadata());
-        }
-
         switch (message.getStatus()) {
             case GET:
-                if (!server.getMetadata().isReplicaOrCoordinatorKeyrange(key.getString(), server.getHashRange())) {
-                    LOG.info("Server not responsible! Server hash range is " + server.getHashRange() + ", key is " + key.getString());
+                if (!server.getReadRange().contains(key.getString())) {
+                    LOG.info("Server not responsible! Server hash range is " + server.getWriteRange() + ", key is " + key.getString());
                     return new Message(Status.SERVER_NOT_RESPONSIBLE, server.getMetadata());
                 }
                 return handleGET(message);
             case PUT:
+                if (!server.getWriteRange().contains(key.getString())) {
+                    LOG.info("Server not responsible! Server hash range is " + server.getWriteRange() + ", key is " + key.getString());
+                    LOG.info("Sending following metadata to client: " + server.getMetadata());
+                    return new Message(Status.SERVER_NOT_RESPONSIBLE, server.getMetadata());
+                }
                 if (server.isWriteLocked() && !message.isBatchData()) {
                     LOG.info("Server is write-locked");
                     return new Message(Status.SERVER_WRITE_LOCK);
                 }
                 return handlePUT(key, val);
+
             default:
                 throw LogUtils.printLogError(LOG, new IllegalArgumentException("Unknown Request Type " + message.getStatus()));
         }
+    }
+
+    private void replicate(IMessage message) {
+        server.getReplicator1().setMessage(message);
+        new Thread(server.getReplicator1()).start();
+
+        server.getReplicator2().setMessage(message);
+        new Thread(server.getReplicator2()).start();
     }
 
     /**

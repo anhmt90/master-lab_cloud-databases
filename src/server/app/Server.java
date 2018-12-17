@@ -1,5 +1,6 @@
 package server.app;
 
+import client.api.Client;
 import ecs.KeyHashRange;
 import ecs.Metadata;
 import ecs.NodeInfo;
@@ -8,11 +9,7 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
-import server.api.BatchDataTransferProcessor;
-import server.api.ClientConnection;
-import server.api.HeartbeatReceiver;
-import server.api.HeartbeatSender;
-import server.api.InternalConnectionManager;
+import server.api.*;
 import server.storage.cache.CacheManager;
 import server.storage.cache.CacheDisplacementStrategy;
 import util.FileUtils;
@@ -24,7 +21,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.NoSuchElementException;
-import java.util.Optional;
 
 import static util.FileUtils.WORKING_DIR;
 
@@ -34,6 +30,9 @@ import static util.FileUtils.WORKING_DIR;
 public class Server extends Thread implements IExternalConfigurationService {
     public static final String SERVER_LOG = "kvServer";
     private static final String DEFAULT_LOG_LEVEL = "ERROR";
+
+    private Replicator replicator1;
+    private Replicator replicator2;
 
     private static Logger LOG = LogManager.getLogger(SERVER_LOG);
 
@@ -53,8 +52,9 @@ public class Server extends Thread implements IExternalConfigurationService {
     private ServerSocket kvSocket;
     /* keeps the range of values that this and other servers are responsible for */
     private Metadata metadata;
-    private KeyHashRange hashRange;
-    private String serverName;
+    private KeyHashRange writeRange;
+    private KeyHashRange readRange;
+    private String serverId;
 
     private final InternalConnectionManager internalConnectionManager;
 
@@ -70,8 +70,8 @@ public class Server extends Thread implements IExternalConfigurationService {
      * @param servicePort given servicePort for disk server to operate
      * @param logLevel    specifies the logging Level on the server
      */
-    public Server(String serverName, int servicePort, int adminPort, String logLevel) {
-        this.serverName = serverName;
+    public Server(String serverId, int servicePort, int adminPort, String logLevel) {
+        this.serverId = serverId;
         this.servicePort = servicePort;
         this.adminPort = adminPort;
         Configurator.setRootLevel(Level.getLevel(logLevel));
@@ -106,21 +106,12 @@ public class Server extends Thread implements IExternalConfigurationService {
             return false;
         }
 
-        this.cm = new CacheManager(serverName, cacheSize, getDisplacementStrategyByName(strategy));
-        this.metadata = metadata;
-        LOG.info("Current Metadata = " + this.metadata);
-        try {
-            setHashRange(metadata);
-        } catch (NoSuchElementException nsee) {
-            LOG.error(nsee);
-            return false;
-        }
-
-        startHeartbeat(metadata);
-
-        LOG.info("Server initialized with cache size " + cacheSize
-                + " and displacement strategy " + strategy);
-        return true;
+        this.cm = new CacheManager(serverId, cacheSize, getDisplacementStrategyByName(strategy));
+        boolean success = update(metadata);
+        if (success)
+            LOG.info("Server initialized with cache size " + cacheSize
+                    + " and displacement strategy " + strategy);
+        return success;
     }
 
     private void startHeartbeat(Metadata metadata) {
@@ -129,7 +120,7 @@ public class Server extends Thread implements IExternalConfigurationService {
         new Thread(heartbeatReceiver).start();
 
         LOG.info("Starting heartbeat sender...");
-        NodeInfo successor = metadata.getSuccessor(hashRange);
+        NodeInfo successor = metadata.getSuccessor(writeRange);
         this.heartbeatSender = new HeartbeatSender(successor.getHost(), successor.getPort() + HEARTBEAT_RECEIVE_PORT_DISTANCE, this);
         new Thread(heartbeatSender).start();
     }
@@ -193,33 +184,46 @@ public class Server extends Thread implements IExternalConfigurationService {
 
     @Override
     public boolean update(Metadata metadata) {
+        this.metadata = metadata;
         try {
-            setHashRange(metadata);
+            setWriteRange();
+            setReadRange();
         } catch (NoSuchElementException nsee) {
             LOG.error(nsee);
             return false;
         }
-        this.metadata = metadata;
-        LOG.info("Current Metadata = " + this.metadata);
-        heartbeatReceiver.close();
-        heartbeatSender.close();
-        startHeartbeat(metadata);
+        setReplicas();
 
+        LOG.info("Current Metadata = " + this.metadata);
+
+        if (heartbeatSender != null && heartbeatReceiver != null) {
+            heartbeatReceiver.close();
+            heartbeatSender.close();
+        }
+        startHeartbeat(metadata);
         return true;
+    }
+
+    private void setReplicas() {
+        NodeInfo replica1 = metadata.getSuccessor(writeRange);
+        replicator1 = new Replicator(replica1);
+
+        NodeInfo replica2 = metadata.getSuccessor(replica1.getRange());
+        replicator2 = new Replicator(replica2);
     }
 
 
     public boolean moveData(KeyHashRange range, NodeInfo target) {
         LOG.info("handle Move data with range " + range + " and with target " + target);
-        if (!range.isSubRangeOf(this.hashRange)) {
-            LOG.error("Range " + range + " is not a subrange of Server's range, which is " + hashRange);
+        if (!range.isSubRangeOf(this.writeRange)) {
+            LOG.error("Range " + range + " is not a subrange of Server's range, which is " + writeRange);
             return false;
         }
         if (!isWriteLocked()) {
             LOG.error("Not in state " + NodeState.WRITE_LOCKED + ". Current state is " + state);
             return false;
         }
-        LOG.info("Moving data to " + target.getName());
+        LOG.info("Moving data to " + target.getId());
         return new BatchDataTransferProcessor(target, cm.getPersistenceManager().getDbPath()).handleTransferData(range);
 
     }
@@ -285,23 +289,31 @@ public class Server extends Thread implements IExternalConfigurationService {
     /**
      * Gets range of hash-values that the server is responsible for storing
      *
-     * @return hashRange
+     * @return writeRange
      */
-    public KeyHashRange getHashRange() {
-        return hashRange;
+    public KeyHashRange getWriteRange() {
+        return writeRange;
     }
 
-    private void setHashRange(Metadata metadata) throws NoSuchElementException {
+    public KeyHashRange getReadRange() {
+        return readRange;
+    }
+
+    private void setWriteRange() throws NoSuchElementException {
         LOG.info(metadata);
         LOG.info("kvSocket.getLocalPort() = " + kvSocket.getLocalPort());
-        LOG.info("serverName = " + serverName);
-        Optional<NodeInfo> nodeData = metadata.get().stream()
-                .filter(md -> md.getPort() == servicePort && md.getName().equals(serverName))
-                .findFirst();
-        if (!nodeData.isPresent())
-            throw new NoSuchElementException("Metadata does not contain info for this node");
-        LOG.info("SERVER RANGE = " + nodeData.get().getRange());
-        hashRange = nodeData.get().getRange();
+        LOG.info("serverId = " + serverId);
+
+        int i = metadata.getIndexById(serverId);
+        writeRange = metadata.get(i).getRange();
+    }
+
+
+    public void setReadRange() {
+        int i = metadata.getIndexById(serverId);
+        int index2ndPredecessor = (i - 2 + metadata.getLength()) % metadata.getLength();
+        KeyHashRange secondPredecessorRange = metadata.get(index2ndPredecessor).getRange();
+        readRange = new KeyHashRange(secondPredecessorRange.getStart(), writeRange.getEnd());
     }
 
     /**
@@ -327,16 +339,16 @@ public class Server extends Thread implements IExternalConfigurationService {
         return servicePort;
     }
 
-    public String getServerName() {
-        return serverName;
+    public String getServerId() {
+        return serverId;
     }
 
     public void setNodeState(NodeState state) {
         this.state = state;
     }
 
-    public void setServerName(String serverName) {
-        this.serverName = serverName;
+    public void setServerId(String serverId) {
+        this.serverId = serverId;
     }
 
     /**
@@ -450,7 +462,7 @@ public class Server extends Thread implements IExternalConfigurationService {
             Files.createDirectories(logDir);
 
         Server server = createServer(args);
-        LOG.info("Server " + server.getServerName() + " created and serving on servicePort " + server.getServicePort());
+        LOG.info("Server " + server.getServerId() + " created and serving on servicePort " + server.getServicePort());
         server.start();
     }
 
@@ -480,5 +492,14 @@ public class Server extends Thread implements IExternalConfigurationService {
 
     public int getAdminPort() {
         return adminPort;
+    }
+
+
+    public Replicator getReplicator1() {
+        return replicator1;
+    }
+
+    public Replicator getReplicator2() {
+        return replicator2;
     }
 }

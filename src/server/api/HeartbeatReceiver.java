@@ -78,7 +78,7 @@ public class HeartbeatReceiver implements Runnable {
 
         if (reporter != null) {
             LOG.info("sending failure report");
-            boolean success = reporter.sendFailureReport(server.getMetadata().getPredecessor(server.getHashRange()));
+            boolean success = reporter.sendFailureReport(server.getMetadata().getPredecessor(server.getWriteRange()));
             LOG.info(success ? "Report successfully sent" : "Fail to send report");
         } else {
             LOG.info("Predecessor failure detected but unable to notify ECS about it.");

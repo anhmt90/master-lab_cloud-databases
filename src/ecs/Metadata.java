@@ -1,11 +1,9 @@
 package ecs;
 
-import util.Validate;
-
-import javax.xml.soap.Node;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class Metadata implements Serializable {
@@ -36,9 +34,9 @@ public class Metadata implements Serializable {
      * @param keyHashed hashed key in hex format
      * @return String containing server address and port
      */
-    public NodeInfo findMatchingServer(String keyHashed) {
+    public NodeInfo getCoordinator(String keyHashed) {
         for (NodeInfo nodeInfo : meta) {
-            if (nodeInfo.getRange().inRange(keyHashed)) {
+            if (nodeInfo.getRange().contains(keyHashed)) {
                 return nodeInfo;
             }
         }
@@ -48,17 +46,13 @@ public class Metadata implements Serializable {
     /**
      * Finds a server which is either the coordinator or one of the replicas for the client to read from
      *
-     * @param hexKey hashed Key in hex format
+     * @param keyToGET hashed Key in hex format
      * @return metadata of matching server
      */
-    public NodeInfo findMatchingServerOrReplicator(String hexKey) {
-    	for(int i = 0; i < meta.size(); i++) {
-    		if(meta.get(i).getRange().inRange(hexKey)) {
-    			int randomOffset = ThreadLocalRandom.current().nextInt(0, 2 + 1);
-    			return meta.get((i + randomOffset) % meta.size());
-    		}
-    	}
-    	return null;
+    public NodeInfo getNodeToReadFrom(String keyToGET) {
+        int coordinatorIndex = getIndexByKeyResponsibility(keyToGET);
+        int randomOffset = ThreadLocalRandom.current().nextInt(0, 2 + 1);
+        return meta.get((coordinatorIndex + randomOffset) % meta.size());
     }
 
     /**
@@ -68,52 +62,52 @@ public class Metadata implements Serializable {
      * @return metadata of a matching server
      */
     public NodeInfo findByHashRange(KeyHashRange targetRange) {
-    	for (NodeInfo nodeInfo : meta) {
+        for (NodeInfo nodeInfo : meta) {
             if (targetRange.isSubRangeOf(nodeInfo.getRange())) {
                 return nodeInfo;
             }
         }
-    	return null;
+        return null;
     }
 
     /**
      * Checks for a hash range if it corresponds to the coordinator or a replica storing a certain hexKey
      *
-     * @param hexKey hashed key in hex format
+     * @param hexKey         hashed key in hex format
      * @param connectedRange range that is checked to be a subrange
      * @return true if connectedRange is a subrange of either the coordinator or a replica
      */
     public boolean isReplicaOrCoordinatorKeyrange(String hexKey, KeyHashRange connectedRange) {
-    	for(int i = 0; i < meta.size(); i++) {
-    		if(meta.get(i).getRange().inRange(hexKey)) {
-    			for(int j = 0; j < 3; j++) {
-    				if(connectedRange.isSubRangeOf(meta.get((i + j) % meta.size()).getRange())) {
-    					return true;
-    				}
-    			}
-    		}
-    	}
-    	return false;
+        for (int i = 0; i < meta.size(); i++) {
+            if (meta.get(i).getRange().contains(hexKey)) {
+                for (int j = 0; j < 3; j++) {
+                    if (connectedRange.isSubRangeOf(meta.get((i + j) % meta.size()).getRange())) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
-    
+
     /**
      * Returns the next node in the ring for a given server hashRange
-     * 
+     *
      * @param serverRange the hashRange of the server
      * @return metadata of matching server
      */
     public NodeInfo getSuccessor(KeyHashRange serverRange) {
-    	for(int i = 0; i < meta.size(); i++) {
-    		if(meta.get(i).getRange().isSubRangeOf(serverRange)) {
-    			return meta.get((i + 1) % meta.size());
-    		}
-    	}
-    	return null;
+        for (int i = 0; i < meta.size(); i++) {
+            if (meta.get(i).getRange().isSubRangeOf(serverRange)) {
+                return meta.get((i + 1) % meta.size());
+            }
+        }
+        return null;
     }
-    
+
     /**
      * Returns the previous node in the ring for a given server hashRange
-     * 
+     *
      * @param serverRange the hashRange of the server
      * @return metadata of matching server
      */
@@ -124,6 +118,30 @@ public class Metadata implements Serializable {
     		}
     	}
     	return null;
+    }
+
+    public int getIndexById(String nodeId) {
+        for (int i = 0; i < meta.size(); i++) {
+            NodeInfo nodeInfo = meta.get(i);
+            if (nodeInfo.getId().equals(nodeId)) {
+                return i;
+            }
+        }
+        throw new NoSuchElementException("Metadata does not contain info for this node");
+    }
+
+    public int getIndexByKeyResponsibility(String keyHashed) {
+        for (int i = 0; i < meta.size(); i++) {
+            NodeInfo nodeInfo = meta.get(i);
+            if (nodeInfo.getRange().contains(keyHashed)) {
+                return i;
+            }
+        }
+        throw new NoSuchElementException("Metadata does not contain info for this node");
+    }
+
+    public NodeInfo get(int index) {
+        return meta.get(index);
     }
 
     /**
