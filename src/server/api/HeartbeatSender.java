@@ -13,7 +13,10 @@ import management.ReportStatus;
 import management.ConfigMessageMarshaller;
 import server.app.Server;
 
-
+/**
+ * sends a UDP heartbeat UDP packet to a given UDP socket of the next server in the hash ring
+ * 
+ */
 public class HeartbeatSender implements Runnable {
 
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
@@ -29,6 +32,7 @@ public class HeartbeatSender implements Runnable {
         this.successorAddress = successorAddress;
     }
 
+   
     public void run() {
         try {
             address = InetAddress.getByName(successorAddress);
@@ -51,6 +55,9 @@ public class HeartbeatSender implements Runnable {
 
     }
 
+    /**
+     * closes the socket and ends the heartbeat sending
+     */
     public void close() {
         if(heartbeatSocket != null)
             heartbeatSocket.close();

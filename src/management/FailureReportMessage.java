@@ -4,6 +4,10 @@ import ecs.NodeInfo;
 
 import java.io.Serializable;
 
+/**
+ * Failure Report exchanged between ECS and storage servers when a failure is detected in the service
+ * 
+ */
 public class FailureReportMessage implements Serializable {
     private ReportStatus status;
     private NodeInfo failedServer;

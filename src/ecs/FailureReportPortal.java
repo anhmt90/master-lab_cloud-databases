@@ -9,6 +9,10 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashSet;
 
+/**
+ * Establishes a failure report connection whenever a storage server wants to contact the ECS for a failure report
+ * 
+ */
 public class FailureReportPortal implements Runnable {
     public static final String FAILURE_LOG = "failure_detection";
     private static Logger LOG = LogManager.getLogger(FAILURE_LOG);

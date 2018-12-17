@@ -25,6 +25,10 @@ import util.LogUtils;
 
 import static protocol.IMessage.MAX_MESSAGE_LENGTH;
 
+/**
+ * Establishes a connection with the ECS and then sends a failure report to it
+ * 
+ */
 public class FailureReporter {
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
     public static final int REPORT_PORT = 54321;
@@ -50,6 +54,12 @@ public class FailureReporter {
         }
 	}
 
+	/**
+	 * Sends the failure report
+	 * 
+	 * @param failedServer the server that has failed
+	 * @return true if failure was successfully handled
+	 */
     public boolean sendFailureReport(NodeInfo failedServer) {
         FailureReportMessage reportMessage = new FailureReportMessage(ReportStatus.SERVER_FAILED, failedServer);
         LOG.info("Sending message " + reportMessage + " to ECS");
