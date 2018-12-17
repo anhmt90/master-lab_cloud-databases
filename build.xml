@@ -24,7 +24,7 @@
     <!-- Configuration for ECS application -->
     <property name="ecsjar.file" value="ms4-ecs.jar"/>
     <property name="ecsmanifest.file" value="ECS_MANIFEST.MF"/>
-    <property name="ecsmain.class" value="ecs.client.app.ECSApplication"/>
+    <property name="ecsmain.class" value="ecs.client.ECSApplication"/>
 
     <!-- path to libraries-->
     <path id="external.jars">
@@ -67,7 +67,7 @@
     <target name="cleanall" depends="clean"/>
 
     <!-- build complete project -->
-    <target name="build" depends="init, doc">
+    <target name="build" depends="init">
         <echo message="${ant.project.name}: ${ant.file}"/>
         <javac debug="true" debuglevel="${debuglevel}" destdir="bin"
                source="${source}" target="${target}"
