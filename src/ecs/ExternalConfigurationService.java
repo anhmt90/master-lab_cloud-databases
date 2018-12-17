@@ -11,7 +11,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
 
 import static util.StringUtils.WHITE_SPACE;
 
@@ -26,21 +25,21 @@ public class ExternalConfigurationService implements IECS {
     /**
      * Structures keeping track of the servers in the storage service and their connections
      */
-    private NodesChord chord = new NodesChord();
+    private NodesChord chord;
     private List<KVServer> serverPool = new ArrayList<>();
 
     private boolean isRingUp = false;
     private boolean serving = false;
-    
-   /**
-    * Standard parameters for server failure restructuring
-    */
-    private static final String STANDARD_REPLACEMENT_STRATEGY = "FIFO";
-    private static final int STANDARD_CACHE_SIZE = 100;
+
+    /**
+     * Standard parameters for server failure restructuring
+     */
+    private static final String DEFAULT_REPLACEMENT_STRATEGY = "FIFO";
+    private static final int DEFAULT_CACHE_SIZE = 1000;
     public static final int REPORT_PORT = 54321;
     public static final String ECS_ADDRESS = "127.0.0.1";
-    private FailureReportingManager reportManager;
-    
+    private FailureReportPortal reportManager;
+
     /**
      * Sends the updated local metadata to all servers participating in the storage service
      */
@@ -48,7 +47,7 @@ public class ExternalConfigurationService implements IECS {
         Metadata md = chord.getMetadata();
         for (KVServer kvServer : this.chord.nodes()) {
             boolean success = kvServer.update(md);
-            Validate.isTrue(success, "Server " + kvServer.getNodeName() + " couldn't update metadata");
+            Validate.isTrue(success, "Server " + kvServer.getServerId() + " couldn't update metadata");
         }
     }
 
@@ -86,7 +85,7 @@ public class ExternalConfigurationService implements IECS {
                     kvServer.init(chord.getMetadata(), cacheSize, displacementStrategy);
                 } else {
                     LOG.error("Couldn't initialize the service, shutting down");
-                    this.shutDown();
+                    this.shutdown();
                     return;
                 }
             });
@@ -127,22 +126,40 @@ public class ExternalConfigurationService implements IECS {
     }
 
     @Override
-    public void shutDown() {
+    public void shutdown() {
         int numServerShutdown = 0;
-        for (int i = 0; i < chord.size(); i++) {
-            KVServer kvServer = chord.nodes().get(i);
-            boolean success = kvServer.shutDown();
+        for (KVServer kvServer : chord.nodes()) {
+            boolean success = kvServer.shutdown();
             if (!success) {
                 continue; //TODO Handle trying to reconnect to the server
             }
             numServerShutdown++;
         }
         if (numServerShutdown == chord.size() && chord.size() > 0) {
-            if (closeSockets()) {
-                serverPool.addAll(chord.nodes());
-                chord.getNodesMap().clear();
-                serving = false;
-                isRingUp = false;
+            handleAfterShutdown();
+        }
+    }
+
+    private void handleAfterShutdown() {
+        if (closeSockets()) {
+            serverPool.addAll(chord.nodes());
+            chord.getNodesMap().clear();
+            serving = false;
+            isRingUp = false;
+        }
+    }
+
+    public void shutdown(String serverId) {
+        for (KVServer kvServer : chord.nodes()) {
+            if (!kvServer.getServerId().toLowerCase().equals(serverId))
+                continue;
+            boolean success = kvServer.shutdown();
+
+            if (success && chord.size() == 1)
+                handleAfterShutdown();
+            else if (success) {
+                chord.remove(kvServer);
+                serverPool.add(kvServer);
             }
         }
     }
@@ -235,51 +252,45 @@ public class ExternalConfigurationService implements IECS {
             done = nodeToRemove.moveData(rangeToTransfer, successor);
             Validate.isTrue(done, "update metadata on successor failed!");
         } else {
-            LOG.info("It's the only nodeToRemove in the service, nothing to move");
+            LOG.info("It's the only node in the service, abort invoking data transfer");
         }
 
         broadcastMetadata();
-        done = nodeToRemove.shutDown();
+        done = nodeToRemove.shutdown();
         Validate.isTrue(done, "shutdown nodeToRemove failed!");
     }
-    
-    
-    
-    
+
+
     /**
      * Handles failure of a node in the storage service by removing it first from the ring and then later
      * trying to re-add it or another node with standard parameters from the server pool
-     * 
+     *
      * @param failedServerRange KeyHashRange of the failed server reported by one of the Replicas
      */
     public boolean handleFailure(KeyHashRange failedServerRange) {
-    	KVServer failedNode = chord.findByHashKey(failedServerRange.getEnd());
-    	if(failedNode == null) {
-    		LOG.error("Failed node not found in chord. HashKey of failed node:" + failedServerRange.getEnd());
-    		return false;
-    	}
-    	else {
-    		try {
-    			failedNode.closeSocket();
-    		} catch (IOException ex) {
-    			LOG.error("Failed to close failed socket");
-    		}
-			chord.remove(failedNode);
-			chord.calcMetadata();
-			broadcastMetadata();
-			try {
-				TimeUnit.SECONDS.sleep(5);
-			} catch (InterruptedException e) {
-				LOG.error("Timeout between Metadata update and readding of new node interrupted.");
-			}
-			//TODO: Try to restart failed server and add it instead
-			addNode(STANDARD_CACHE_SIZE, STANDARD_REPLACEMENT_STRATEGY);
-			return true;
-    	}
+        KVServer failedNode = chord.findByHashKey(failedServerRange.getEnd());
+        if (failedNode == null) {
+            LOG.error(new IllegalStateException("Failed node not found in chord. Possible false report or node was removed properly. HashKey of failed node:" + failedServerRange.getEnd()));
+            return false;
+        }
+
+        try {
+            failedNode.closeSocket();
+        } catch (IOException ex) {
+            LOG.error("Failed to close failed socket");
+        }
+        chord.remove(failedNode);
+        chord.calcMetadata();
+        broadcastMetadata();
+
+        //TODO: Try to restart failed server and add it instead
+        addNode(DEFAULT_CACHE_SIZE, DEFAULT_REPLACEMENT_STRATEGY);
+        return true;
     }
 
 
     public ExternalConfigurationService(String configFile) throws IOException {
+        chord = new NodesChord();
         List<String> lines = Files.readAllLines(Paths.get(configFile));
 
         Collections.shuffle(lines);
@@ -294,8 +305,8 @@ public class ExternalConfigurationService implements IECS {
 
 
         }
-        
-        reportManager = new FailureReportingManager(this);
+
+        reportManager = new FailureReportPortal(this);
         new Thread(reportManager).start();
     }
 
@@ -329,12 +340,20 @@ public class ExternalConfigurationService implements IECS {
     public NodesChord getChord() {
         return this.chord;
     }
-    
+
     public int getReportPort() {
-    	return REPORT_PORT;
+        return REPORT_PORT;
     }
 
-    public FailureReportingManager getReportManager() {
+    public FailureReportPortal getReportManager() {
         return reportManager;
+    }
+
+    public void setRingUp(boolean ringUp) {
+        isRingUp = ringUp;
+    }
+
+    public void setServing(boolean serving) {
+        this.serving = serving;
     }
 }

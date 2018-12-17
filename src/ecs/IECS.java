@@ -33,7 +33,7 @@ public interface IECS {
 	/**
 	 * Shutsdown all connected servers and releases the connection
 	 */
-	void shutDown();
+	void shutdown();
 	
 	/**
 	 * Adds a storage server to the storage service

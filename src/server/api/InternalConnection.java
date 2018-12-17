@@ -180,6 +180,9 @@ public class InternalConnection implements Runnable {
             try {
                 bis = new BufferedInputStream(peer.getInputStream());
                 int justRead = bis.read(messageBuffer);
+                if(justRead < 0)
+                    return null;
+
                 ConfigMessage message = ConfigMessageMarshaller.unmarshall(Arrays.copyOfRange(messageBuffer, 0, justRead));
 
                 LOG.info("RECEIVE \t<"

@@ -9,16 +9,17 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashSet;
 
-public class FailureReportingManager implements Runnable {
-    private static Logger LOG = LogManager.getLogger("ECS");
+public class FailureReportPortal implements Runnable {
+    public static final String FAILURE_LOG = "failure_detection";
+    private static Logger LOG = LogManager.getLogger(FAILURE_LOG);
 
     private ServerSocket reportSocket;
 
     private ExternalConfigurationService ecs;
     private int port;
-    private HashSet<FailureReportConnection> connectionTable;
+    private HashSet<ReporterConnection> connectionTable;
 
-    public FailureReportingManager(ExternalConfigurationService ecs) {
+    public FailureReportPortal(ExternalConfigurationService ecs) {
         this.ecs = ecs;
         port = ecs.getReportPort();
         connectionTable = new HashSet<>();
@@ -48,22 +49,22 @@ public class FailureReportingManager implements Runnable {
         try {
             LOG.info("running = " + ecs.isRingUp());
             while (true) {
-                LOG.info("ECS is waiting for incoming connection from storage on port " + reportSocket.getLocalPort() + " for failure detection");
+                LOG.info("Report portal is waiting for incoming connection on port " + reportSocket.getLocalPort() + " for failure report");
                 Socket peer = reportSocket.accept();
-                FailureReportConnection failureConnection = new FailureReportConnection(this, peer, ecs);
+                ReporterConnection failureConnection = new ReporterConnection(this, peer, ecs);
                 connectionTable.add(failureConnection);
                 new Thread(failureConnection).start();
             }
         } catch (IOException ioe) {
-            LOG.error("Error! Connection could not be established!", ioe);
+            LOG.warn("Failure report portal is closed!");
         } finally {
             try {
                 if (reportSocket != null) {
                     if (!reportSocket.isClosed())
                         reportSocket.close();
                 }
-                for (FailureReportConnection ic : connectionTable)
-                    ic.close();
+                for (ReporterConnection rc : connectionTable)
+                    rc.close();
             } catch (IOException ioe) {
                 LOG.error("Error! Unable to tear down connection!", ioe);
             }
@@ -74,7 +75,7 @@ public class FailureReportingManager implements Runnable {
         return reportSocket;
     }
 
-    public HashSet<FailureReportConnection> getConnectionTable() {
+    public HashSet<ReporterConnection> getConnectionTable() {
         return connectionTable;
     }
 }

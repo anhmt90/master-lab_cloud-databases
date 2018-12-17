@@ -12,7 +12,6 @@ import util.StringUtils;
 import static util.FileUtils.SEP;
 
 public class ECSApplication {
-
     static Logger LOG = LogManager.getLogger("ECS");
     private static final String CONFIG_FILE = System.getProperty("user.dir") + SEP + "config" + SEP + "server-info";
 
@@ -36,10 +35,10 @@ public class ECSApplication {
     public static void main(String[] args) throws Exception {
         Scanner input = new Scanner(System.in);
 
-        if(args == null || args.length > 0)
-        	ecs = new ExternalConfigurationService(args[0]);
+        if (args == null || args.length > 0)
+            ecs = new ExternalConfigurationService(args[0]);
         else
-        	ecs = new ExternalConfigurationService(CONFIG_FILE);
+            ecs = new ExternalConfigurationService(CONFIG_FILE);
 
         while (true) {
             printCommandPrompt();
@@ -61,7 +60,7 @@ public class ECSApplication {
                     handleInitiateService(cmdComponents);
                     break;
                 case SHUTDOWN:
-                    handleShutdown();
+                    handleShutdown(cmdComponents);
                     break;
                 case ADD:
                     handleAddNode(cmdComponents);
@@ -102,8 +101,6 @@ public class ECSApplication {
     }
 
 
-
-
     /**
      * Handles the command {@see INIT}
      *
@@ -134,7 +131,7 @@ public class ECSApplication {
         if (!isValidCacheSize(cmdArgs[1]) || !isValidDisplacementStrategy(cmdArgs[2])) {
             return;
         }
-        if (ecs.isRingUp()) {
+        if (ecs.isRingUp() && ecs.getChord().size() > 0) {
             print("Storage service is already running.");
             return;
         }
@@ -143,67 +140,78 @@ public class ECSApplication {
 
 
     /**
-	 * Handles the command {@see SHUTDOWN}
-	 */
-	private static void handleShutdown() {
-		if(ecs.isEmpty()) {
-			print("No active nodes that could be shutdown.");
-			return;
-		}
-		if(ecs.isRingUp()) {
-			ecs.shutDown();
-			print("Storage service shutting down");
-			LOG.info("Shutdown");
-		}
-		else {
-			print("Storage service is not currently running.");
-		}
-	}
+     * Handles the command {@see SHUTDOWN}
+     *
+     * @param cmdComponents
+     */
+    private static void handleShutdown(String[] cmdComponents) {
+        if (ecs.isEmpty()) {
+            print("No active nodes that could be shutdown.");
+            return;
+        }
+
+        if (ecs.isRingUp()) {
+            if (cmdComponents.length > 1) {
+                handleShutdown(cmdComponents[1]);
+                return;
+            }
+            ecs.shutdown();
+            LOG.info("Shutdown");
+        } else {
+            print("Storage service is not currently running.");
+        }
+    }
+
+    private static void handleShutdown(String serverId) {
+        print("Try to shut down server " + serverId);
+        ecs.shutdown(serverId);
+    }
 
 
-	/**
-	 * Handles the command {@see STOP}
-	 */
-	private static void handleStop() {
-		if(ecs.isEmpty()) {
-			print("Service currently has no active nodes.");
-			return;
-		}
-		if (!ecs.isServing()) {
-			print("Couldn't stop service! Storage service is already stopped.");
-			return;
-		}
-		ecs.stopService();
-		
-	}
-	
-	/**
-	 * Handles the command {@see REMOVE}
-	 */
-	private static void handleRemoveNode() {
-		if(ecs.isEmpty()) {
-			print("Service currently has no active nodes.");
-			return;
-		}
-		ecs.removeNode();
-	}
+    /**
+     * Handles the command {@see STOP}
+     */
+    private static void handleStop() {
+        if (ecs.isEmpty()) {
+            print("Service currently has no active nodes.");
+            return;
+        }
+        if (!ecs.isServing()) {
+            print("Couldn't stop service! Storage service is already stopped.");
+            return;
+        }
+        ecs.stopService();
+
+    }
+
+    /**
+     * Handles the command {@see REMOVE}
+     */
+    private static void handleRemoveNode() {
+        if (ecs.isEmpty()) {
+            print("Service currently has no active nodes.");
+            return;
+        }
+        ecs.removeNode();
+    }
 
 
-	/**
-	 * Handles the command {@see START}
-	 */
-	private static void handleStart() {
-		if(ecs.isEmpty()) {
-			print("Service currently has no active nodes.");
-			return;
-		}
-		if (ecs.isServing()) {
-			print("Couldn't start the service! Storage service has been already started.");
-			return;
-		}
-		ecs.startService();
-		
-	}
+    /**
+     * Handles the command {@see START}
+     */
+    private static void handleStart() {
+        if (ecs.isEmpty()) {
+            print("Service currently has no active nodes.");
+            return;
+        }
+        if (ecs.isServing()) {
+            print("Couldn't start the service! Storage service has been already started.");
+            return;
+        }
+        ecs.startService();
+
+    }
+
     /**
      * Handles the command {@see QUIT}
      *
@@ -212,7 +220,7 @@ public class ECSApplication {
     private static void handleQuit(Scanner input) throws IOException {
         print("Exiting application");
         LOG.info("quit");
-        ecs.shutDown();
+        ecs.shutdown();
         ecs.getReportManager().getReportSocket().close();
         input.close();
     }
@@ -238,21 +246,21 @@ public class ECSApplication {
     private static String getUsage(String commandName) {
         switch (commandName) {
             case START:
-                return "'"+ START +"' - starts service on all storage server instances participating in the service\n";
+                return "'" + START + "' - starts service on all storage server instances participating in the service\n";
             case STOP:
-                return "'"+ STOP +"' - servers stop processing client requests\n";
+                return "'" + STOP + "' - servers stop processing client requests\n";
             case INIT:
-                return "'"+ INIT +"' <numberOfNodes> <cacheSize> <displacementStrategy>' - starts the storage service with the given parameters\n";
+                return "'" + INIT + "' <numberOfNodes> <cacheSize> <displacementStrategy>' - starts the storage service with the given parameters\n";
             case SHUTDOWN:
-                return "'"+ SHUTDOWN +"' - stop all servers and exit the remote process\n";
+                return "'" + SHUTDOWN + "' - stop all servers and exit the remote process\n";
             case ADD:
-                return "'"+ ADD +"' <cacheSize> <displacementStrategy> - create a storage server and add it to storage service at arbitrary position\n";
+                return "'" + ADD + "' <cacheSize> <displacementStrategy> - create a storage server and add it to storage service at arbitrary position\n";
             case REMOVE:
-                return "'"+ REMOVE +"' - remove arbitrary node from storage service\n";
+                return "'" + REMOVE + "' - remove arbitrary node from storage service\n";
             case HELP:
-                return "'"+ HELP +"'- display list of commands\n";
+                return "'" + HELP + "'- display list of commands\n";
             case QUIT:
-                return "'"+ QUIT +"' - end any ongoing connections and stop the application\n";
+                return "'" + QUIT + "' - end any ongoing connections and stop the application\n";
             default:
                 return ("Unknown command");
         }
@@ -334,7 +342,7 @@ public class ECSApplication {
      * displacement strategy
      */
     private static boolean isValidDisplacementStrategy(String strategy) {
-        switch (strategy) {
+        switch (strategy.toUpperCase()) {
             case "FIFO":
                 return true;
             case "LRU":

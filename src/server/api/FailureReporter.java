@@ -1,10 +1,8 @@
 package server.api;
 
 import management.FailureReportMessage;
-import management.ConfigMessage;
 import management.ConfigMessageMarshaller;
-import management.ConfigStatus;
-import management.FailureStatus;
+import management.ReportStatus;
 
 
 import java.io.BufferedInputStream;
@@ -27,32 +25,49 @@ import util.LogUtils;
 
 import static protocol.IMessage.MAX_MESSAGE_LENGTH;
 
-public class ECSReportConnection {
-
+public class FailureReporter {
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
-        
-    private Socket socket;
+    public static final int REPORT_PORT = 54321;
+    public static final String ECS_ADDRESS = "127.0.0.1";
 
-    private BufferedOutputStream bos;    
+    private Socket socket;
+    private BufferedOutputStream bos;
     private BufferedInputStream bis;
 	
-	private Server server;
+
 	
-	
-	public ECSReportConnection(Server server) throws IOException {
+	public FailureReporter() throws IOException {
 		try {
             socket = new Socket();
-            socket.connect(new InetSocketAddress(ExternalConfigurationService.ECS_ADDRESS, ExternalConfigurationService.REPORT_PORT), 5000);
-        } catch (UnknownHostException uhe) {
-            throw LogUtils.printLogError(LOG, uhe, "Unknown host");
-        } catch (SocketTimeoutException ste) {
-            throw LogUtils.printLogError(LOG, ste, "Could not connect to ECS. Connection timeout.");
-        } catch (IOException ioe) {
-            throw LogUtils.printLogError(LOG, ioe, "Could not connect to ECS.");
+            socket.connect(new InetSocketAddress(ECS_ADDRESS, REPORT_PORT), 5000);
+            LOG.info("Connection to failure report portal established!");
+        } catch (UnknownHostException e) {
+            throw LogUtils.printLogError(LOG, e, "Unknown host");
+        } catch (SocketTimeoutException e) {
+            throw LogUtils.printLogError(LOG, e, "Could not connect to ECS. Connection timeout.");
+        } catch (IOException e) {
+            throw LogUtils.printLogError(LOG, e, "Could not connect to ECS.");
         }
-		this.server = server;
 	}
-	
+
+    public boolean sendFailureReport(NodeInfo failedServer) {
+        FailureReportMessage reportMessage = new FailureReportMessage(ReportStatus.SERVER_FAILED, failedServer);
+        LOG.info("Sending message " + reportMessage + " to ECS");
+
+        return sendAndExpect(reportMessage, ReportStatus.REPORT_RECEIVED);
+    }
+
+    private boolean sendAndExpect(FailureReportMessage toSend, ReportStatus expected) {
+        try {
+            send(toSend);
+            FailureReportMessage response = receive();
+            return response.getStatus().equals(expected);
+        } catch (IOException e) {
+            LOG.error("Error! ", e);
+            return false;
+        }
+    }
+
 	public void send(FailureReportMessage message) throws IOException {
         try {
             bos = new BufferedOutputStream(socket.getOutputStream());
@@ -90,20 +105,4 @@ public class ECSReportConnection {
         }
     }
 	
-	private boolean sendAndExpect(FailureReportMessage toSend, FailureStatus expected) {
-        try {
-            send(toSend);
-            FailureReportMessage response = receive();
-            return response.getStatus().equals(expected);
-        } catch (IOException e) {
-            LOG.error("Error! ", e);
-            return false;
-        }
-    }
-	
-	
-	public boolean sendFailureReport(NodeInfo failedServer) {
-		FailureReportMessage failureMessage = new FailureReportMessage(FailureStatus.SERVER_FAILURE, failedServer);
-		return sendAndExpect(failureMessage, FailureStatus.FAILURE_RESOLVED);
-	}
 }

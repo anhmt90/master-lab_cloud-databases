@@ -9,66 +9,84 @@ import java.net.DatagramPacket;
 import java.net.SocketTimeoutException;
 
 import management.FailureReportMessage;
-import management.FailureStatus;
+import management.ReportStatus;
 import management.ConfigMessageMarshaller;
 import server.app.Server;
 
 
-public class HeartbeatReceiver implements Runnable{
+public class HeartbeatReceiver implements Runnable {
 
-	private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
-	
-	private int missedHeartbeats;
-	private int receiverPort;
-	private Server server;
+    private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
 
-	private DatagramSocket socket;
-	
-	public HeartbeatReceiver(int receiverPort, Server server) {
-		this.receiverPort = receiverPort;
-		this.server = server;
-	}
-	
-	public void run() {
-		try {
-			missedHeartbeats = 0;
-			byte[] marshalledHeartbeat = ConfigMessageMarshaller.marshall(new FailureReportMessage(FailureStatus.HEARTBEAT));
-			int heartbeatMessageLength = marshalledHeartbeat.length;
-			
-			socket = new DatagramSocket(receiverPort);
-			socket.setSoTimeout(2 * server.getHeartbeatInterval());
-			
-			while(socket != null && !socket.isClosed()) {
-				if(missedHeartbeats > 4) {
-					server.reportFailure();
-					return;
-				}
-				
-				DatagramPacket heartbeat = new DatagramPacket(new byte[heartbeatMessageLength], heartbeatMessageLength);
-				try{
-					socket.receive(heartbeat);
-					byte[] receivedHeartbeat = heartbeat.getData();
-					FailureReportMessage heartbeatMessage = ConfigMessageMarshaller.unmarshallFailureReportMessage(receivedHeartbeat);
-					if(heartbeatMessage.getStatus() == FailureStatus.HEARTBEAT) {
-						LOG.debug("Received heartbeat from <" + heartbeat.getAddress() + ":" + heartbeat.getPort() + ">");
-						missedHeartbeats = 0;
-					}
-				} catch (SocketTimeoutException ex) {
-					missedHeartbeats++;
-					LOG.warn("Didn't receive heartbeat. Timeout " + missedHeartbeats + " times");
-				}
-				
-			}
-		} catch (IOException ex) {
-			LOG.error("Error trying to receive heartbeat.");
-		} finally {
+    private int receiverPort;
+    private Server server;
+
+    private DatagramSocket heartbeatSocket;
+
+    public HeartbeatReceiver(int receiverPort, Server server) {
+        this.receiverPort = receiverPort;
+        this.server = server;
+    }
+
+    public void run() {
+        try {
+            int missedHeartbeats = 0;
+            byte[] marshalledHeartbeat = ConfigMessageMarshaller.marshall(new FailureReportMessage(ReportStatus.HEARTBEAT));
+            int heartbeatMessageLength = marshalledHeartbeat.length;
+
+            heartbeatSocket = new DatagramSocket(receiverPort);
+            heartbeatSocket.setSoTimeout(2 * Server.HEARTBEAT_INTERVAL);
+
+            while (heartbeatSocket != null && !heartbeatSocket.isClosed()) {
+                if (missedHeartbeats > 4) {
+                    reportFailure();
+                    return;
+                }
+
+                DatagramPacket heartbeat = new DatagramPacket(new byte[heartbeatMessageLength], heartbeatMessageLength);
+                try {
+                    heartbeatSocket.receive(heartbeat);
+                    byte[] receivedHeartbeat = heartbeat.getData();
+                    FailureReportMessage heartbeatMessage = ConfigMessageMarshaller.unmarshallFailureReportMessage(receivedHeartbeat);
+                    if (heartbeatMessage.getStatus() == ReportStatus.HEARTBEAT) {
+                        LOG.debug("Received heartbeat from <" + heartbeat.getAddress() + ":" + heartbeatSocket.getPort() + ">" + heartbeat.getSocketAddress());
+                        missedHeartbeats = 0;
+                    }
+                } catch (SocketTimeoutException ex) {
+                    missedHeartbeats++;
+                    LOG.warn("Didn't receive heartbeat. Timeout " + missedHeartbeats + " times");
+                }
+
+            }
+        } catch (IOException ex) {
+            LOG.error("Error trying to receive heartbeat.");
+        } finally {
             close();
         }
-		
-	}
-	
-	public void close() {
-		socket.close();
-		socket = null;
-	}
+    }
+
+    /*******************************************************************************************************/
+    private FailureReporter reporter;
+
+    public void reportFailure() {
+        LOG.info("Detect failure! File a report to ECS...");
+        try {
+            reporter = new FailureReporter();
+        } catch (IOException ex) {
+            LOG.error("Couldn't establish connection to the ECS for failure reporting.");
+        }
+
+        if (reporter != null) {
+            LOG.info("sending failure report");
+            boolean success = reporter.sendFailureReport(server.getMetadata().getPredecessor(server.getHashRange()));
+            LOG.info(success ? "Report successfully sent" : "Fail to send report");
+        } else {
+            LOG.info("Predecessor failure detected but unable to notify ECS about it.");
+        }
+    }
+
+    public void close() {
+        if(heartbeatSocket != null)
+            heartbeatSocket.close();
+    }
 }

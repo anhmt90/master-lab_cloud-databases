@@ -9,7 +9,7 @@ import java.net.DatagramPacket;
 import java.net.InetAddress;
 
 import management.FailureReportMessage;
-import management.FailureStatus;
+import management.ReportStatus;
 import management.ConfigMessageMarshaller;
 import server.app.Server;
 
@@ -20,28 +20,26 @@ public class HeartbeatSender implements Runnable {
 
     private String successorAddress;
     private int successorPort;
-    private Server server;
 
     private InetAddress address;
-    private DatagramSocket socket;
+    private DatagramSocket heartbeatSocket;
 
     public HeartbeatSender(String successorAddress, int successorPort, Server server) {
         this.successorPort = successorPort;
         this.successorAddress = successorAddress;
-        this.server = server;
     }
 
     public void run() {
         try {
             address = InetAddress.getByName(successorAddress);
-            socket = new DatagramSocket();
-            while (socket != null && !socket.isClosed() && address != null) {
-                byte[] marshalledHeartbeat = ConfigMessageMarshaller.marshall(new FailureReportMessage(FailureStatus.HEARTBEAT));
+            heartbeatSocket = new DatagramSocket();
+            while (heartbeatSocket != null && !heartbeatSocket.isClosed() && address != null) {
+                byte[] marshalledHeartbeat = ConfigMessageMarshaller.marshall(new FailureReportMessage(ReportStatus.HEARTBEAT));
                 DatagramPacket packet = new DatagramPacket(marshalledHeartbeat, marshalledHeartbeat.length, address, successorPort);
                 LOG.info("Sending heartbeat to <" + address + ":" + successorPort + ">");
-                socket.send(packet);
+                heartbeatSocket.send(packet);
 
-                Thread.sleep(server.getHeartbeatInterval());
+                Thread.sleep(Server.HEARTBEAT_INTERVAL);
             }
         } catch (IOException ex) {
             LOG.error("Error during sending of heartbeat occured.");
@@ -54,7 +52,7 @@ public class HeartbeatSender implements Runnable {
     }
 
     public void close() {
-        socket.close();
-        socket = null;
+        if(heartbeatSocket != null)
+            heartbeatSocket.close();
     }
 }

@@ -10,7 +10,6 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
 import server.api.BatchDataTransferProcessor;
 import server.api.ClientConnection;
-import server.api.ECSReportConnection;
 import server.api.HeartbeatReceiver;
 import server.api.HeartbeatSender;
 import server.api.InternalConnectionManager;
@@ -35,11 +34,13 @@ import static util.FileUtils.WORKING_DIR;
 public class Server extends Thread implements IExternalConfigurationService {
     public static final String SERVER_LOG = "kvServer";
     private static final String DEFAULT_LOG_LEVEL = "ERROR";
-    private static final int DEFAULT_CACHE_SIZE = 100;
-    private static final int DEFAULT_PORT = 50000;
-    private boolean adminConnected;
 
     private static Logger LOG = LogManager.getLogger(SERVER_LOG);
+
+    /**
+     * Expected time interval to receive a heartbeat from predecessor
+     */
+    public static final int HEARTBEAT_INTERVAL = 2000;
 
     private int servicePort;
     private int adminPort;
@@ -56,16 +57,12 @@ public class Server extends Thread implements IExternalConfigurationService {
     private String serverName;
 
     private final InternalConnectionManager internalConnectionManager;
-    
-    /**
-     * Parameters for failure detection and handling
-     */
-    private final int heartbeatInterval = 2000;
+
+
     private HeartbeatReceiver heartbeatReceiver;
     private HeartbeatSender heartbeatSender;
     private static final int HEARTBEAT_RECEIVE_PORT_DISTANCE = -500;
-    
-    private ECSReportConnection ecsReporter;
+
 
     /**
      * Start KV Server at given servicePort
@@ -81,9 +78,8 @@ public class Server extends Thread implements IExternalConfigurationService {
         state = NodeState.STOPPED;
 
         internalConnectionManager = new InternalConnectionManager(this);
-        
 
-        
+
         LOG.info("Server constructed with servicePort " + this.servicePort + " and  with logging Level " + logLevel);
 
     }
@@ -120,14 +116,14 @@ public class Server extends Thread implements IExternalConfigurationService {
             return false;
         }
 
-        initHeartbeatProtocol(metadata);
+        startHeartbeat(metadata);
 
         LOG.info("Server initialized with cache size " + cacheSize
                 + " and displacement strategy " + strategy);
         return true;
     }
 
-    private void initHeartbeatProtocol(Metadata metadata) {
+    private void startHeartbeat(Metadata metadata) {
         LOG.info("Starting heartbeat receiver...");
         this.heartbeatReceiver = new HeartbeatReceiver(servicePort + HEARTBEAT_RECEIVE_PORT_DISTANCE, this);
         new Thread(heartbeatReceiver).start();
@@ -207,7 +203,7 @@ public class Server extends Thread implements IExternalConfigurationService {
         LOG.info("Current Metadata = " + this.metadata);
         heartbeatReceiver.close();
         heartbeatSender.close();
-        initHeartbeatProtocol(metadata);
+        startHeartbeat(metadata);
 
         return true;
     }
@@ -215,7 +211,7 @@ public class Server extends Thread implements IExternalConfigurationService {
 
     public boolean moveData(KeyHashRange range, NodeInfo target) {
         LOG.info("handle Move data with range " + range + " and with target " + target);
-        if (!range.isSubRangeOf(this.hashRange)){
+        if (!range.isSubRangeOf(this.hashRange)) {
             LOG.error("Range " + range + " is not a subrange of Server's range, which is " + hashRange);
             return false;
         }
@@ -275,28 +271,7 @@ public class Server extends Thread implements IExternalConfigurationService {
             return false;
         }
     }
-    
-    public void reportFailure() {
-        try {
-            ecsReporter = new ECSReportConnection(this);
-        } catch (IOException ex) {
-            LOG.error("Couldn't establish connection to the ECS for failure reporting.");
 
-        }
-
-    	if(ecsReporter != null) {
-    		boolean success = ecsReporter.sendFailureReport(metadata.getPredecessor(hashRange));
-    		if(success) {
-    			LOG.info("Failed node successfully removed");
-    		}
-    		else {
-    			LOG.info("Failed node could not be removed");
-    		}
-    	}
-    	else {
-    		LOG.info("Predecessor failure detected but unable to notify ECS about it.");
-    	}
-    }
 
     /**
      * Gets metadata
@@ -326,7 +301,7 @@ public class Server extends Thread implements IExternalConfigurationService {
         if (!nodeData.isPresent())
             throw new NoSuchElementException("Metadata does not contain info for this node");
         LOG.info("SERVER RANGE = " + nodeData.get().getRange());
-        hashRange =  nodeData.get().getRange();
+        hashRange = nodeData.get().getRange();
     }
 
     /**
@@ -505,9 +480,5 @@ public class Server extends Thread implements IExternalConfigurationService {
 
     public int getAdminPort() {
         return adminPort;
-    }
-    
-    public int getHeartbeatInterval() {
-    	return heartbeatInterval;
     }
 }

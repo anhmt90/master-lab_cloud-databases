@@ -6,7 +6,6 @@ import management.ConfigStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import util.HashUtils;
-import util.LogUtils;
 
 import java.io.*;
 import java.net.InetSocketAddress;
@@ -28,7 +27,7 @@ public class KVServer implements Comparable<KVServer> {
 
     private String hashKey;
 
-    private String nodeName;
+    private String serverId;
     private int servicePort;
     private InetSocketAddress address;
     private Socket socket;
@@ -40,16 +39,16 @@ public class KVServer implements Comparable<KVServer> {
     private final static int RETRY_NUM = 5;
     private final static int RETRY_WAIT_TIME = 1000; // milliseconds
 
-    public KVServer(String serverName, String hostAddress, String servicePort, String adminPort) {
-        this(serverName, hostAddress, Integer.parseInt(servicePort), Integer.parseInt(adminPort));
+    public KVServer(String serverId, String hostAddress, String servicePort, String adminPort) {
+        this(serverId, hostAddress, Integer.parseInt(servicePort), Integer.parseInt(adminPort));
     }
 
-    public KVServer(String serverName, String hostAddress, int servicePort, int adminPort) {
-        this(serverName, servicePort, new InetSocketAddress(hostAddress, adminPort));
+    public KVServer(String serverId, String hostAddress, int servicePort, int adminPort) {
+        this(serverId, servicePort, new InetSocketAddress(hostAddress, adminPort));
     }
 
-    public KVServer(String serverName, int servicePort, InetSocketAddress address) {
-        this.nodeName = serverName;
+    public KVServer(String serverId, int servicePort, InetSocketAddress address) {
+        this.serverId = serverId;
         this.servicePort = servicePort;
         this.address = address;
 
@@ -57,8 +56,8 @@ public class KVServer implements Comparable<KVServer> {
 
         String[] cmds = {"ssh", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
                 "tuan-anh@" + getHost(),
-                "nohup java -jar /mnt/data/Workspace/uni-project/cloud-databases/gr7-ms3/ms3-server.jar " + nodeName + " " + this.servicePort + " " + getAdminPort()
-                        + " > /mnt/data/Workspace/uni-project/cloud-databases/gr7-ms3/logs/" + nodeName + ".log"
+                "nohup java -jar /mnt/data/Workspace/uni-project/cloud-databases/gr7-ms3/ms3-server.jar " + this.serverId + " " + this.servicePort + " " + getAdminPort()
+                        + " > /mnt/data/Workspace/uni-project/cloud-databases/gr7-ms3/logs/" + this.serverId + ".log"
                         + " &"
         };
         this.sshCMD = cmds;
@@ -111,22 +110,6 @@ public class KVServer implements Comparable<KVServer> {
         }
     }
 
-//    private boolean heartbeat() throws IOException {
-//        boolean success = false;
-//        for (int i = 0; i < 3; i++) {
-//            success = sendAndExpect(new ConfigMessage(ConfigStatus.HEART_BEAT), ConfigStatus.ALIVE);
-//            if (success)
-//                return success;
-//            try {
-//                TimeUnit.MILLISECONDS.sleep(RETRY_WAIT_TIME);
-//            } catch (InterruptedException e) {
-//                LogUtils.printLogError(LOG, e);
-//            }
-//        }
-//        return false;
-//
-//    }
-
 
     /**
      * Sends a message to the connected server
@@ -178,7 +161,7 @@ public class KVServer implements Comparable<KVServer> {
     }
 
     boolean init(Metadata metadata, int cacheSize, String strategy) {
-        ConfigMessage msg = new ConfigMessage(ConfigStatus.INIT, cacheSize, strategy, metadata);
+        ConfigMessage msg = new ConfigMessage(ConfigStatus.INIT, cacheSize, strategy.toUpperCase(), metadata);
         return sendAndExpect(msg, ConfigStatus.INIT_SUCCESS);
     }
 
@@ -192,7 +175,7 @@ public class KVServer implements Comparable<KVServer> {
         return sendAndExpect(msg, ConfigStatus.STOP_SUCCESS);
     }
 
-    boolean shutDown() {
+    boolean shutdown() {
         ConfigMessage msg = new ConfigMessage(ConfigStatus.SHUTDOWN);
         return sendAndExpect(msg, ConfigStatus.SHUTDOWN_SUCCESS);
     }
@@ -208,7 +191,7 @@ public class KVServer implements Comparable<KVServer> {
     }
 
     boolean moveData(KeyHashRange range, KVServer target) {
-        NodeInfo meta = new NodeInfo(target.getNodeName(), target.getHost(), target.getServicePort(), range);
+        NodeInfo meta = new NodeInfo(target.getServerId(), target.getHost(), target.getServicePort(), range);
         ConfigMessage msg = new ConfigMessage(ConfigStatus.MOVE_DATA, meta);
         boolean success = false;
         try {
@@ -245,37 +228,35 @@ public class KVServer implements Comparable<KVServer> {
         }
     }
 
-    private void initSocket() {
-        LOG.debug("Initializing socket");
-        if (socket == null || !socket.isConnected() || socket.isClosed()) {
-            LOG.info("Connecting to the server");
-            for (int i = 0; i < RETRY_NUM; i++) {
-                try {
-                    socket = new Socket();
-                    socket.setSoTimeout(SOCKET_TIMEOUT);
-                    TimeUnit.MILLISECONDS.sleep(RETRY_WAIT_TIME);
-                    socket.connect(address, 5000);
-                    break;
-                } catch (IOException | InterruptedException e) {
-                    LOG.error(String.format("Couldn't connect trying again (%d/%d)...", i + 1, RETRY_NUM) + e);
-                    if (i == RETRY_NUM - 1)
-                        return;
-                }
-            }
-            LOG.info("Connect to server " + address.getHostString() + ":" + address.getPort() + " successfully");
-        }
+    public void setServerId(String serverId) {
+        this.serverId = serverId;
     }
 
-    public void setNodeName(String nodeName) {
-        this.nodeName = nodeName;
-    }
-
-    public String getNodeName() {
-        return nodeName;
+    public String getServerId() {
+        return serverId;
     }
 
     public String getHashKey() {
         return hashKey;
+    }
+
+    private void initSocket() {
+        LOG.debug("Initializing socket");
+        LOG.info("Connecting to the server");
+        for (int i = 0; i < RETRY_NUM; i++) {
+            try {
+                socket = new Socket();
+                socket.setSoTimeout(SOCKET_TIMEOUT);
+                TimeUnit.MILLISECONDS.sleep(RETRY_WAIT_TIME);
+                socket.connect(address, 5000);
+                break;
+            } catch (IOException | InterruptedException e) {
+                LOG.error(String.format("Couldn't connect trying again (%d/%d)...", i + 1, RETRY_NUM) + e);
+                if (i == RETRY_NUM - 1)
+                    return;
+            }
+            LOG.info("Connect to server " + address.getHostString() + ":" + address.getPort() + " successfully");
+        }
     }
 
     public void closeSocket() throws IOException {

@@ -54,7 +54,7 @@ public class NodesChord {
             int j = i - 1 < 0 ? nodesMap.size() - 1 : i - 1;
             String start = HashUtils.increaseHashBy1(keys[j]);
             KVServer node = kvServers[i];
-            md.add(node.getNodeName(), node.getHost(), node.getServicePort(), start, end);
+            md.add(node.getServerId(), node.getHost(), node.getServicePort(), start, end);
         }
         LOG.info("METADATA ===> " + md);
     }

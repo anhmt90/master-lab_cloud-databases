@@ -120,7 +120,7 @@ public class Metadata implements Serializable {
     public NodeInfo getPredecessor(KeyHashRange serverRange) {
     	for(int i = 0; i < meta.size(); i++) {
     		if(meta.get(i).getRange().isSubRangeOf(serverRange)) {
-    			return meta.get((i - 1) % meta.size());
+    			return meta.get((meta.size() + i - 1) % meta.size());
     		}
     	}
     	return null;

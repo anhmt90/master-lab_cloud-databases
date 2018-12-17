@@ -4,7 +4,6 @@ import client.api.Client;
 import ecs.ExternalConfigurationService;
 import ecs.KVServer;
 import org.junit.Test;
-import protocol.IMessage;
 import protocol.IMessage.Status;
 import util.FileUtils;
 
@@ -69,7 +68,7 @@ public class PerfTest {
             reportBuilder.insert("average_throughput: " + Arrays.stream(throughputs).mapToDouble(tp -> tp).average().getAsDouble());
             reportBuilder.blankLine();
         }
-        ecs.shutDown();
+        ecs.shutdown();
         Thread.sleep(30000);
     }
 
@@ -221,7 +220,7 @@ public class PerfTest {
         }
         saveReport("scale_" + numServersToScale + "_with_initial_" + numServers + "servers");
 
-        ecs.shutDown();
+        ecs.shutdown();
         Thread.sleep(10000);
     }
 
