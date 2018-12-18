@@ -167,11 +167,14 @@ public class ClientConnection implements Runnable {
     }
 
     private void replicate(IMessage message) {
-        server.getReplicator1().setMessage(message);
-        new Thread(server.getReplicator1()).start();
+        if (!message.isBatchData()) {
+            message.setBatchData();
+            server.getReplicator1().setMessage(message);
+            new Thread(server.getReplicator1()).start();
 
-        server.getReplicator2().setMessage(message);
-        new Thread(server.getReplicator2()).start();
+            server.getReplicator2().setMessage(message);
+            new Thread(server.getReplicator2()).start();
+        }
     }
 
     /**
