@@ -60,9 +60,10 @@ public class Replicator implements Runnable {
             if (!client.isConnected())
                 client.connect();
             LOG.info("replicating  " + message);
-            client.performPUT(message.getKey(), message.getValue()); // attention: message.getKey() returns a HASHED key
+            client.performPUT(message.getKey(), message.getValue(), true); // attention: message.getKey() returns a HASHED key
         } catch (IOException e) {
             LOG.error(e);
+        } finally {
             resetClient();
         }
     }

@@ -80,7 +80,7 @@ public class ClientConnection implements Runnable {
                     eofCounter = 0;
 
                     if (SUCCESS_STATUS.contains(response.getStatus()))
-                        replicate(response);
+                        replicate(response, request.isBatchData());
                 } catch (IOException ioe) {
                     LOG.error("Error! Connection lost!", ioe);
                     LOG.warn("Setting isOpen to false");
@@ -170,8 +170,8 @@ public class ClientConnection implements Runnable {
         }
     }
 
-    private void replicate(IMessage message) {
-        if (!message.isBatchData()) {
+    private void replicate(IMessage message, boolean isRequestBatchData) {
+        if (!isRequestBatchData) {
             message.setBatchData();
             server.getReplicator1().setMessage(message);
             new Thread(server.getReplicator1()).start();

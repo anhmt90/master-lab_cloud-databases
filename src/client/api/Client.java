@@ -193,10 +193,10 @@ public class Client implements IClient {
         String val = (value == null || value.toLowerCase().equals("null")) ? "val=NULL" : "";
         LOG.info("PUT key=" + keyHashed + val);
 
-        return performPUT(keyHashed, value);
+        return performPUT(keyHashed, value, false);
     }
 
-    public IMessage performPUT(String keyHashed, String value) throws IOException {
+    public IMessage performPUT(String keyHashed, String value, boolean isBatch) throws IOException {
         IMessage serverResponse = null;
         while (true) {
             selectServerPUT(keyHashed);
@@ -204,12 +204,12 @@ public class Client implements IClient {
                 value = null;
 
             if (value != null) {
-                serverResponse = storeToServer(keyHashed, value);
+                serverResponse = storeToServer(keyHashed, value, isBatch);
                 if (serverResponse == null)
                     return new Message(Status.PUT_ERROR);
 
             } else {
-                serverResponse = removeOnServer(keyHashed);
+                serverResponse = removeOnServer(keyHashed, isBatch);
                 if (serverResponse == null)
                     return new Message(Status.DELETE_ERROR);
             }
@@ -280,11 +280,12 @@ public class Client implements IClient {
      * Intermediary method for deletion of key-value pairs on server
      *
      * @param keyHashed hashed key for the value that is supposed to be deleted
+     * @param isBatch
      * @return the server response
      * @throws IOException
      */
-    private IMessage removeOnServer(String keyHashed) throws IOException {
-        return sendWithoutValue(keyHashed, Status.PUT);
+    private IMessage removeOnServer(String keyHashed, boolean isBatch) throws IOException {
+        return sendWithoutValue(keyHashed, Status.PUT, isBatch);
     }
 
     @Override
@@ -292,7 +293,7 @@ public class Client implements IClient {
         String keyHashed = HashUtils.hash(key);
         while (true) {
             selectServerGET(keyHashed);
-            IMessage serverResponse = sendWithoutValue(keyHashed, Status.GET);
+            IMessage serverResponse = sendWithoutValue(keyHashed, Status.GET, false);
             if (serverResponse == null)
                 return new Message(Status.GET_ERROR);
             if (serverResponse.getStatus() == Status.SERVER_NOT_RESPONSIBLE) {
@@ -306,14 +307,17 @@ public class Client implements IClient {
     /**
      * Handles delivering of Messages without a value. For GET and DELETE operations
      *
-     * @param keyHashed    key for the value that is accessed
-     * @param status message specification
+     * @param keyHashed key for the value that is accessed
+     * @param status    message specification
+     * @param isBatch
      * @return the server response
      * @throws IOException
      */
-    private IMessage sendWithoutValue(String keyHashed, Status status) throws IOException {
+    private IMessage sendWithoutValue(String keyHashed, Status status, boolean isBatch) throws IOException {
         byte[] keyBytes = HashUtils.getHashBytesOf(keyHashed);
         IMessage toSend = new Message(status, new K(keyBytes));
+        if (isBatch)
+            toSend.setBatchData();
         send(MessageMarshaller.marshall(toSend));
         IMessage response = MessageMarshaller.unmarshall(receive());
         if (response == null)
@@ -326,15 +330,17 @@ public class Client implements IClient {
     /**
      * Handles delivery of PUT messages to storage. For CREATE and UPDATE
      *
-     * @param keyHashed   hashed key in the key-value pair represented as MD5-hash
-     * @param value value for the keyHashed-value pair
+     * @param keyHashed hashed key in the key-value pair represented as MD5-hash
+     * @param value     value for the keyHashed-value pair
+     * @param isBatch
      * @return the server response
      * @throws IOException
      */
-    private IMessage storeToServer(String keyHashed, String value) throws IOException {
+    private IMessage storeToServer(String keyHashed, String value, boolean isBatch) throws IOException {
         byte[] keyBytes = HashUtils.getHashBytesOf(keyHashed);
         byte[] valueBytes = value.getBytes(StandardCharsets.US_ASCII);
         IMessage toSend = new Message(Status.PUT, new K(keyBytes), new V(valueBytes));
+        if (isBatch) toSend.setBatchData();
         send(MessageMarshaller.marshall(toSend));
         IMessage response = MessageMarshaller.unmarshall(receive());
         if (response == null)
