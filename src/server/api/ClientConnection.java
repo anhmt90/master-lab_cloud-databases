@@ -150,14 +150,18 @@ public class ClientConnection implements Runnable {
                 }
                 return handleGET(message);
             case PUT:
+                if (server.isWriteLocked() && !message.isBatchData()) {
+                    LOG.info("Server is write-locked");
+                    return new Message(Status.SERVER_WRITE_LOCK);
+                }
+                if(server.getReadRange().contains(key.getString()) && message.isBatchData()) {
+                    LOG.info("Message is replicated on the server");
+                    return handlePUT(key, val);
+                }
                 if (!server.getWriteRange().contains(key.getString())) {
                     LOG.info("Server not responsible! Server hash range is " + server.getWriteRange() + ", key is " + key.getString());
                     LOG.info("Sending following metadata to client: " + server.getMetadata());
                     return new Message(Status.SERVER_NOT_RESPONSIBLE, server.getMetadata());
-                }
-                if (server.isWriteLocked() && !message.isBatchData()) {
-                    LOG.info("Server is write-locked");
-                    return new Message(Status.SERVER_WRITE_LOCK);
                 }
                 return handlePUT(key, val);
 
