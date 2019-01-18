@@ -1,4 +1,4 @@
-package protocol;
+package protocol.kv;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -9,7 +9,7 @@ import org.apache.logging.log4j.Logger;
 
 import ecs.NodeInfo;
 import ecs.Metadata;
-import protocol.IMessage.Status;
+import protocol.kv.IMessage.Status;
 import server.app.Server;
 import util.HashUtils;
 import util.StringUtils;

@@ -3,7 +3,7 @@ package client.api;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 
-import protocol.IMessage;
+import protocol.kv.IMessage;
 
 public interface IClient {
 

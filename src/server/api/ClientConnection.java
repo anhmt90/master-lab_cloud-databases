@@ -2,20 +2,17 @@ package server.api;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
-import protocol.*;
-import protocol.IMessage.Status;
+import protocol.kv.*;
+import protocol.kv.IMessage.Status;
 import server.app.Server;
 import server.storage.PUTStatus;
 import server.storage.cache.CacheManager;
 import util.LogUtils;
 
-import static protocol.IMessage.MAX_MESSAGE_LENGTH;
+import static protocol.kv.IMessage.MAX_MESSAGE_LENGTH;
 
 import java.io.*;
-import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.SocketTimeoutException;
-import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -270,20 +267,4 @@ public class ClientConnection implements Runnable {
                 + message.toString() + "'");
         return message;
     }
-
-
-    private byte[] copy(int size, byte[] messageBytes, byte[] bufferBytes) {
-        byte[] tmp;
-        if (messageBytes == null) {
-            tmp = new byte[size];
-            System.arraycopy(bufferBytes, 0, tmp, 0, size);
-        } else {
-            tmp = new byte[messageBytes.length + size];
-            System.arraycopy(messageBytes, 0, tmp, 0, messageBytes.length);
-            System.arraycopy(bufferBytes, 0, tmp, messageBytes.length, size);
-        }
-        return tmp;
-    }
-
-
 }

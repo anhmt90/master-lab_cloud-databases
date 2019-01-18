@@ -1,7 +1,7 @@
 package ecs;
 
 import management.FailureReportMessage;
-import management.ConfigMessageMarshaller;
+import management.MessageSerializer;
 import management.ReportStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -11,7 +11,7 @@ import java.net.Socket;
 import java.util.Arrays;
 
 import static ecs.FailureReportPortal.FAILURE_LOG;
-import static protocol.IMessage.MAX_MESSAGE_LENGTH;
+import static protocol.kv.IMessage.MAX_MESSAGE_LENGTH;
 
 /**
  * Responsible for receiving failure reports from servers in the storage service
@@ -120,7 +120,7 @@ public class ReporterConnection implements Runnable {
      */
     public void send(FailureReportMessage message) throws IOException {
         bos = new BufferedOutputStream(serverSocket.getOutputStream());
-        byte[] bytes = ConfigMessageMarshaller.marshall(message);
+        byte[] bytes = MessageSerializer.serialize(message);
         bos.write(bytes);
         bos.flush();
 
@@ -145,7 +145,7 @@ public class ReporterConnection implements Runnable {
                 if (justRead < 0)
                     return null;
 
-                FailureReportMessage message = ConfigMessageMarshaller.unmarshallFailureReportMessage(Arrays.copyOfRange(messageBuffer, 0, justRead));
+                FailureReportMessage message = MessageSerializer.deserialize(Arrays.copyOfRange(messageBuffer, 0, justRead));
 
                 LOG.info("RECEIVE \t<"
                         + serverSocket.getInetAddress().getHostAddress() + ":"

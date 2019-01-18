@@ -1,12 +1,10 @@
 package testing;
 
-import junit.framework.TestCase;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.Test;
-import protocol.K;
-import protocol.V;
+import protocol.kv.K;
+import protocol.kv.V;
 import server.storage.cache.CacheManager;
 import server.storage.cache.CacheDisplacementStrategy;
 

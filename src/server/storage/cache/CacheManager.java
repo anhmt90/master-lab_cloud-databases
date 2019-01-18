@@ -1,7 +1,7 @@
 package server.storage.cache;
 
-import protocol.K;
-import protocol.V;
+import protocol.kv.K;
+import protocol.kv.V;
 import server.storage.IStorageCRUD;
 import server.storage.PUTStatus;
 import server.storage.disk.PersistenceManager;

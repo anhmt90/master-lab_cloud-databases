@@ -10,7 +10,7 @@ import java.net.InetAddress;
 
 import management.FailureReportMessage;
 import management.ReportStatus;
-import management.ConfigMessageMarshaller;
+import management.MessageSerializer;
 import server.app.Server;
 
 /**
@@ -40,7 +40,7 @@ public class HeartbeatSender implements Runnable {
             address = InetAddress.getByName(successorAddress);
             heartbeatSocket = new DatagramSocket();
             while (heartbeatSocket != null && !heartbeatSocket.isClosed() && address != null) {
-                byte[] marshalledHeartbeat = ConfigMessageMarshaller.marshall(new FailureReportMessage(ReportStatus.HEARTBEAT));
+                byte[] marshalledHeartbeat = MessageSerializer.serialize(new FailureReportMessage(ReportStatus.HEARTBEAT));
                 DatagramPacket packet = new DatagramPacket(marshalledHeartbeat, marshalledHeartbeat.length, address, successorPort);
                 LOG.info("Sending heartbeat to <" + address + ":" + successorPort + ">");
                 heartbeatSocket.send(packet);

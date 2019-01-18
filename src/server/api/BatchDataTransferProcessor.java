@@ -4,7 +4,7 @@ import ecs.KeyHashRange;
 import ecs.NodeInfo;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import protocol.*;
+import protocol.kv.*;
 import server.app.Server;
 import util.FileUtils;
 import util.HashUtils;

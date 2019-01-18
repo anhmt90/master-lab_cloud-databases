@@ -3,26 +3,26 @@ package client.api;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.net.SocketTimeoutException;
-import java.net.UnknownHostException;
+import java.net.*;
 import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
 
+import client.mapreduce.Driver;
+import client.mapreduce.Job;
 import ecs.KeyHashRange;
+import mapreduce.common.ApplicationID;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import ecs.NodeInfo;
 import ecs.Metadata;
-import protocol.*;
-import protocol.IMessage;
-import protocol.IMessage.Status;
+import protocol.kv.*;
+import protocol.kv.IMessage.Status;
 import util.HashUtils;
 import util.LogUtils;
 import util.Validate;
 
-import static protocol.IMessage.MAX_MESSAGE_LENGTH;
+import static protocol.kv.IMessage.MAX_MESSAGE_LENGTH;
 
 
 public class Client implements IClient {
@@ -55,6 +55,8 @@ public class Client implements IClient {
      * Info of the server the client is currently connected to
      */
     private NodeInfo connectedNode;
+
+    private Driver driver;
 
     /**
      * Creates a new client and opens a client socket to immediately connect to the
@@ -348,5 +350,13 @@ public class Client implements IClient {
         else
             LOG.info("Received from server: " + response.toString());
         return response;
+    }
+
+    private void initMRJob(ApplicationID appId, HashSet<String> input){
+        if(metadata == null) {
+            // TODO Add a method to request the metadata from the node that client is currently connected to
+        }
+        driver = new Driver(metadata);
+        driver.exec(new Job(appId, input));
     }
 }

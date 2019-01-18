@@ -5,8 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 import client.api.Client;
-import protocol.IMessage;
-import protocol.IMessage.Status;
+import protocol.kv.IMessage;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;

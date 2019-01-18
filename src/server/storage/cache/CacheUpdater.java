@@ -1,10 +1,7 @@
 package server.storage.cache;
 
-import protocol.K;
-import protocol.V;
-import util.Validate;
-
-import java.util.concurrent.ConcurrentHashMap;
+import protocol.kv.K;
+import protocol.kv.V;
 
 class CacheUpdater implements Runnable{
     private CacheManager cm;

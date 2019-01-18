@@ -1,6 +1,6 @@
 package server.storage.cache;
 
-import protocol.K;
+import protocol.kv.K;
 
 /**
  * cache displacement strategy, that decides which entry to evict from the storage

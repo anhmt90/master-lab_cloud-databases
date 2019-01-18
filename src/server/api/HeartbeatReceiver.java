@@ -10,7 +10,7 @@ import java.net.SocketTimeoutException;
 
 import management.FailureReportMessage;
 import management.ReportStatus;
-import management.ConfigMessageMarshaller;
+import management.MessageSerializer;
 import server.app.Server;
 
 /**
@@ -37,7 +37,7 @@ public class HeartbeatReceiver implements Runnable {
     public void run() {
         try {
             int missedHeartbeats = 0;
-            byte[] marshalledHeartbeat = ConfigMessageMarshaller.marshall(new FailureReportMessage(ReportStatus.HEARTBEAT));
+            byte[] marshalledHeartbeat = MessageSerializer.serialize(new FailureReportMessage(ReportStatus.HEARTBEAT));
             int heartbeatMessageLength = marshalledHeartbeat.length;
 
             heartbeatSocket = new DatagramSocket(receiverPort);
@@ -53,7 +53,7 @@ public class HeartbeatReceiver implements Runnable {
                 try {
                     heartbeatSocket.receive(heartbeat);
                     byte[] receivedHeartbeat = heartbeat.getData();
-                    FailureReportMessage heartbeatMessage = ConfigMessageMarshaller.unmarshallFailureReportMessage(receivedHeartbeat);
+                    FailureReportMessage heartbeatMessage = MessageSerializer.deserialize(receivedHeartbeat);
                     if (heartbeatMessage.getStatus() == ReportStatus.HEARTBEAT) {
                         LOG.debug("Received heartbeat from <" + heartbeat.getAddress() + ":" + heartbeatSocket.getPort() + ">" + heartbeat.getSocketAddress());
                         missedHeartbeats = 0;

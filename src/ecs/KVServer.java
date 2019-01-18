@@ -1,7 +1,7 @@
 package ecs;
 
 import management.ConfigMessage;
-import management.ConfigMessageMarshaller;
+import management.MessageSerializer;
 import management.ConfigStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -15,7 +15,7 @@ import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
-import static protocol.IMessage.MAX_MESSAGE_LENGTH;
+import static protocol.kv.IMessage.MAX_MESSAGE_LENGTH;
 
 /**
  * Handles connection from ECS to one key-value storage server
@@ -123,7 +123,7 @@ public class KVServer implements Comparable<KVServer> {
     public void send(ConfigMessage message) throws IOException {
         try {
             bos = new BufferedOutputStream(socket.getOutputStream());
-            byte[] bytes = ConfigMessageMarshaller.marshall(message);
+            byte[] bytes = MessageSerializer.serialize(message);
             bos.write(bytes);
             bos.flush();
 
@@ -152,7 +152,7 @@ public class KVServer implements Comparable<KVServer> {
                 int justRead = bis.read(messageBuffer);
                 if(justRead < 0)
                     return null;
-                ConfigMessage message = ConfigMessageMarshaller.unmarshall(Arrays.copyOfRange(messageBuffer, 0, justRead));
+                ConfigMessage message = MessageSerializer.deserialize(Arrays.copyOfRange(messageBuffer, 0, justRead));
 
                 LOG.info("RECEIVE \t<"
                         + socket.getInetAddress().getHostAddress() + ":"

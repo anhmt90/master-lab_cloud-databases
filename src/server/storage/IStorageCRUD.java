@@ -1,7 +1,7 @@
 package server.storage;
 
-import protocol.K;
-import protocol.V;
+import protocol.kv.K;
+import protocol.kv.V;
 
 /**
  * CRUD interface

@@ -1,7 +1,7 @@
 package server.api;
 
 import management.FailureReportMessage;
-import management.ConfigMessageMarshaller;
+import management.MessageSerializer;
 import management.ReportStatus;
 
 
@@ -18,12 +18,11 @@ import java.util.Arrays;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import ecs.ExternalConfigurationService;
 import ecs.NodeInfo;
 import server.app.Server;
 import util.LogUtils;
 
-import static protocol.IMessage.MAX_MESSAGE_LENGTH;
+import static protocol.kv.IMessage.MAX_MESSAGE_LENGTH;
 
 /**
  * Establishes a connection with the ECS and then sends a failure report to it
@@ -87,7 +86,7 @@ public class FailureReporter {
 	public void send(FailureReportMessage message) throws IOException {
         try {
             bos = new BufferedOutputStream(socket.getOutputStream());
-            byte[] bytes = ConfigMessageMarshaller.marshall(message);
+            byte[] bytes = MessageSerializer.serialize(message);
             bos.write(bytes);
             bos.flush();
 
@@ -108,7 +107,7 @@ public class FailureReporter {
             try {
                 bis = new BufferedInputStream(socket.getInputStream());
                 int justRead = bis.read(messageBuffer);
-                FailureReportMessage message = ConfigMessageMarshaller.unmarshallFailureReportMessage(Arrays.copyOfRange(messageBuffer, 0, justRead));
+                FailureReportMessage message = MessageSerializer.deserialize(Arrays.copyOfRange(messageBuffer, 0, justRead));
 
                 LOG.info("RECEIVE \t<"
                         + socket.getInetAddress().getHostAddress() + ":"

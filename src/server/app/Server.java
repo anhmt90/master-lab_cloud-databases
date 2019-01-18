@@ -30,17 +30,17 @@ import static util.FileUtils.WORKING_DIR;
  */
 public class Server extends Thread implements IExternalConfigurationService {
     public static final String SERVER_LOG = "kvServer";
-    private static final String DEFAULT_LOG_LEVEL = "ERROR";
+    private static Logger LOG = LogManager.getLogger(SERVER_LOG);
 
+    private static final String DEFAULT_LOG_LEVEL = "ERROR";
     private Replicator replicator1;
     private Replicator replicator2;
 
-    private static Logger LOG = LogManager.getLogger(SERVER_LOG);
 
     /**
      * Expected time interval to receive a heartbeat from predecessor
      */
-    public static final int HEARTBEAT_INTERVAL = 2000;
+    public static final int HEARTBEAT_INTERVAL = 3000;
 
     private int servicePort;
     private int adminPort;
@@ -48,7 +48,7 @@ public class Server extends Thread implements IExternalConfigurationService {
 
     NodeState state;
     NodeState previousState;
-    boolean running;
+    private boolean running;
 
     private ServerSocket kvSocket;
     /* keeps the range of values that this and other servers are responsible for */

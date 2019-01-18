@@ -1,6 +1,6 @@
 package server.storage.cache;
 
-import protocol.K;
+import protocol.kv.K;
 
 import java.util.LinkedHashSet;
 

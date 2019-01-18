@@ -4,7 +4,7 @@ import client.api.Client;
 import ecs.ExternalConfigurationService;
 import ecs.KVServer;
 import org.junit.Test;
-import protocol.IMessage.Status;
+import protocol.kv.IMessage.Status;
 import util.FileUtils;
 
 import java.io.IOException;

@@ -3,7 +3,7 @@ package testing.performance;
 import client.api.Client;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import protocol.IMessage.Status;
+import protocol.kv.IMessage.Status;
 import testing.AllTests;
 
 import java.io.IOException;

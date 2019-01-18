@@ -1,10 +1,9 @@
 package testing;
 
-import junit.framework.TestCase;
-import protocol.*;
 import client.app.CommandLineApp;
-import protocol.IMessage;
-import protocol.IMessage.Status;
+import protocol.kv.*;
+import protocol.kv.IMessage;
+import protocol.kv.IMessage.Status;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -94,7 +93,7 @@ public class ClientAppTest {
     public void testResponseHandling() throws NoSuchMethodException {
 		testApp = new CommandLineApp();	
 		parameters = new Class[2];
-		parameters[0] = protocol.IMessage.class;
+		parameters[0] = IMessage.class;
 		parameters[1] = java.lang.String.class;
 		handleServerResponse = testApp.getClass().getDeclaredMethod("handleServerResponse", parameters);
 		handleServerResponse.setAccessible(true);

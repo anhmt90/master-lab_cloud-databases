@@ -16,6 +16,9 @@
         <File name="failure_reporter" filename="logs/failure.log">
             <PatternLayout pattern="%d{DEFAULT} [%t] %-5level %logger{36} %l - %msg%n"/>
         </File>
+        <File name="mapreduce" filename="logs/mapreduce.log">
+            <PatternLayout pattern="%d{DEFAULT} [%t] %-5level %logger{36} %l - %msg%n"/>
+        </File>
         <File name="tests" filename="logs/tests.log">
             <PatternLayout pattern="%d{DEFAULT} [%t] %-5level %logger{36} %l - %msg%n"/>
         </File>
@@ -39,6 +42,10 @@
         <Logger name="failure_detection" level="info" additivity="false">
             <!--<AppenderRef ref="Console" />-->
             <appender-ref ref="failure_reporter" />
+        </Logger>
+        <Logger name="mapreduce" level="info" additivity="false">
+            <!--<AppenderRef ref="Console" />-->
+            <appender-ref ref="mapreduce" />
         </Logger>
         <Logger name="tests" level="all" additivity="false">
             <AppenderRef ref="Console" />

@@ -7,7 +7,7 @@ MANIFEST.mf
 *.MF
 *.csv
 logs
-doc
+doc/
 commit*
 data
 *.dat

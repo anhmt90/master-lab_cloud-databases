@@ -1,8 +1,7 @@
 package testing;
 
-import protocol.*;
-import protocol.IMessage.Status;
-import junit.framework.TestCase;
+import protocol.kv.*;
+import protocol.kv.IMessage.Status;
 
 import java.nio.charset.StandardCharsets;
 

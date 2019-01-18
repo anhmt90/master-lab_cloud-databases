@@ -1,18 +1,16 @@
 package testing;
 
 import client.api.Client;
-import junit.framework.TestCase;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import protocol.IMessage;
-import protocol.IMessage.Status;
+import protocol.kv.IMessage;
+import protocol.kv.IMessage.Status;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;

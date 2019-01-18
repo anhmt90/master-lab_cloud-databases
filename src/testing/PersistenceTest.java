@@ -1,11 +1,10 @@
 package testing;
 
-import junit.framework.TestCase;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
-import protocol.K;
-import protocol.V;
+import protocol.kv.K;
+import protocol.kv.V;
 import server.storage.PUTStatus;
 import server.storage.disk.PersistenceManager;
 import util.FileUtils;

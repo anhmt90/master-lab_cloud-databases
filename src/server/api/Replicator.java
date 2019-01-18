@@ -4,7 +4,7 @@ import client.api.Client;
 import ecs.NodeInfo;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import protocol.IMessage;
+import protocol.kv.IMessage;
 import server.app.Server;
 
 import java.io.IOException;
