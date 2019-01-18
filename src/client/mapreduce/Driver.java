@@ -7,6 +7,7 @@ import mapreduce.common.Task;
 import mapreduce.common.TaskType;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import protocol.Constants;
 import protocol.mapreduce.TaskMessage;
 import util.Validate;
 
@@ -16,6 +17,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+
+import static protocol.Constants.MR_PORT_DISTANCE;
 
 public class Driver {
     public static final String MAPREDUCE_LOG = "mapreduce";
@@ -112,7 +115,9 @@ public class Driver {
                 try {
                     TaskMessage taskMessage = new TaskMessage(task, collector.getCallbackInfo());
                     byte[] serialized = MessageSerializer.serialize(taskMessage);
-                    DatagramPacket packet = new DatagramPacket(serialized, serialized.length, InetAddress.getByName(node.getHost()), node.getPort());
+                    DatagramPacket packet = new DatagramPacket(serialized, serialized.length,
+                            InetAddress.getByName(node.getHost()), node.getPort() + MR_PORT_DISTANCE);
+                    
                     LOG.info("Sending " + task + " to <" + node.getHost() + ":" + node.getPort() + ">");
                     taskDeliverySocket.send(packet);
 

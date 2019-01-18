@@ -4,12 +4,23 @@ import java.io.Serializable;
 
 /**
  * Metadata of a particular server such as server id, address, port and write range
- *
  */
 public class NodeInfo implements Serializable {
+    /**
+     * Unique id to identify the node from other nodes
+     */
     private String id;
+
+    /**
+     * Serive IPv4 address
+     */
     private String host;
+
+    /**
+     * Service port
+     */
     private int port;
+
     private KeyHashRange writeRange;
 
     public NodeInfo(String nodeName, String host, int port, String start, String end) {
