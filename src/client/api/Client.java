@@ -352,11 +352,43 @@ public class Client implements IClient {
         return response;
     }
 
-    private void initMRJob(ApplicationID appId, HashSet<String> input){
+    private void initMRJob(ApplicationID appId, HashSet<String> input) throws IOException{
         if(metadata == null) {
-            // TODO Add a method to request the metadata from the node that client is currently connected to
+            boolean metadataUpdated = requestMetadata();
+            if(!metadataUpdated) {
+            	LOG.error("Metadata request failed. Can not execute Map-Reduce task.");
+            	print("No metadata available to start Map-Reduce task.");
+            	return;
+            }
         }
         driver = new Driver(metadata);
         driver.exec(new Job(appId, input));
+    }
+    
+    /**
+     * Requests Metadata from connected server node
+     * 
+     * @return true if Metadata has been successfully updated
+     * @throws IOException
+     */
+    private boolean requestMetadata() throws IOException{
+    	if(isConnected()) {
+    		IMessage toSend = new Message(Status.REQUEST_METADATA);
+    		send(MessageMarshaller.marshall(toSend));
+    		IMessage response = MessageMarshaller.unmarshall(receive());
+    		if (response == null) {
+                LOG.info("Received from server: null");
+    			return false;
+    		}
+            else {
+                LOG.info("Received from server: " + response.toString());
+    			updateMetadata(response.getMetadata());
+    			if (this.metadata != null)
+    				return true;
+    			else
+    				return false;
+            }
+    	}
+    	return false;
     }
 }

@@ -140,6 +140,8 @@ public class ClientConnection implements Runnable {
         V val = message.getV();
 
         switch (message.getStatus()) {
+        	case REQUEST_METADATA:
+        		return new Message(Status.SERVER_NOT_RESPONSIBLE, server.getMetadata());
             case GET:
                 if (!server.getReadRange().contains(key.getString())) {
                     LOG.info("Server not responsible! Server hash range is " + server.getWriteRange() + ", key is " + key.getString());

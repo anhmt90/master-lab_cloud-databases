@@ -27,6 +27,8 @@ public interface IMessage extends Serializable {
         SERVER_STOPPED(0x0A),           /* Server is stopped, no requests are processed */
         SERVER_WRITE_LOCK(0x0B),        /* Server locked for out, only get possible */
         SERVER_NOT_RESPONSIBLE(0x0C),    /* Request not successful, server not responsible for key */
+        
+        REQUEST_METADATA(0x0D),          /* Metadata - request */
         ;
 
 

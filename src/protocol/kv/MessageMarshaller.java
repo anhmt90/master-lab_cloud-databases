@@ -32,7 +32,7 @@ public class MessageMarshaller {
         Status status = message.getStatus();
         if (status.equals(Status.SERVER_NOT_RESPONSIBLE)) {
             return marshallMetadata(message);
-        } else if (status.equals(Status.SERVER_STOPPED) || status.equals(Status.SERVER_WRITE_LOCK)) {
+        } else if (status.equals(Status.SERVER_STOPPED) || status.equals(Status.SERVER_WRITE_LOCK) || status.equals(Status.REQUEST_METADATA)) {
             return new byte[]{status.getCode()};
         }
         byte[] keyBytes = message.getK() != null ? message.getK().get() : new byte[]{};
