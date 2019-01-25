@@ -30,11 +30,12 @@ public class MessageMarshaller {
             return null;
         }
         Status status = message.getStatus();
-        if (status.equals(Status.SERVER_NOT_RESPONSIBLE)) {
+        if (status.equals(Status.SERVER_NOT_RESPONSIBLE) || status.equals(Status.METADATA)) {
             return marshallMetadata(message);
-        } else if (status.equals(Status.SERVER_STOPPED) || status.equals(Status.SERVER_WRITE_LOCK)) {
+        } else if (status.equals(Status.SERVER_STOPPED) || status.equals(Status.SERVER_WRITE_LOCK) || status.equals(Status.GET_METADATA)) {
             return new byte[]{status.getCode()};
         }
+
         byte[] keyBytes = message.getK() != null ? message.getK().get() : new byte[]{};
         byte[] valueBytes = message.getV() != null ? message.getV().get() : new byte[]{};
         byte[] output = new byte[1 + 1 + 3 + keyBytes.length + valueBytes.length];
@@ -69,11 +70,11 @@ public class MessageMarshaller {
             return null;
         }
 
-        if (status.equals(Status.SERVER_NOT_RESPONSIBLE)) {
+        if (status.equals(Status.SERVER_NOT_RESPONSIBLE) || status.equals(Status.METADATA)) {
             return unmarshallMetadata(msgBytes, status);
         }
         if (msgBytes.length < 16)
-            return new Message(status);
+            return getMessageNoKeyValue(status);
 
         boolean isBatchData = msgBytes[1] == 1 ? true : false;
 
@@ -86,12 +87,24 @@ public class MessageMarshaller {
         System.arraycopy(msgBytes, 1 + 1 + 3 + keyBytes.length, valBytes, 0, valLength);
 
         IMessage message = (valLength == 0) ?
-                new Message(status, new K(keyBytes))
-                : new Message(status, new K(keyBytes), new V(valBytes));
+                getMessageNoValue(status, keyBytes)
+                : getFullMessage(status, keyBytes, valBytes);
 
         if (isBatchData)
             message.setBatchData();
         return message;
+    }
+
+    private static Message getFullMessage(Status status, byte[] keyBytes, byte[] valBytes) {
+        return new Message(status, new K(keyBytes), new V(valBytes));
+    }
+
+    private static Message getMessageNoValue(Status status, byte[] keyBytes) {
+        return new Message(status, new K(keyBytes));
+    }
+
+    private static Message getMessageNoKeyValue(Status status) {
+        return new Message(status);
     }
 
     /**
@@ -137,6 +150,7 @@ public class MessageMarshaller {
      */
     public static byte[] marshallMetadata(IMessage message) {
         Metadata metadata = message.getMetadata();
+        // 1*Status + 1*Length + 4*Host + 2*Port + 4*StartRange + 4*EndRange
         byte[] output = new byte[1 + 1 + metadata.getLength() * NODE_INFO_SIZE];
 
 
@@ -179,10 +193,10 @@ public class MessageMarshaller {
 
     public static boolean isMessageComplete(byte[] msgBytes, int bytesRead) {
         Status status = Status.getByCode(msgBytes[0]);
-        if (status.equals(Status.SERVER_NOT_RESPONSIBLE)) {
+        if (status.equals(Status.SERVER_NOT_RESPONSIBLE) || status.equals(Status.METADATA)) {
             int metadataLength = msgBytes[1];
             return 1 + 1 + metadataLength * NODE_INFO_SIZE == bytesRead;
-        } else if (status.equals(Status.SERVER_STOPPED) || status.equals(Status.SERVER_WRITE_LOCK)) {
+        } else if (status.equals(Status.SERVER_STOPPED) || status.equals(Status.SERVER_WRITE_LOCK) || status.equals(Status.GET_METADATA)) {
             return 1 == bytesRead;
         }
         int valLength = getValueLength(msgBytes[2], msgBytes[3], msgBytes[4]);

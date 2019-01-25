@@ -2,7 +2,6 @@ package ecs;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import util.HashUtils;
 import util.Validate;
 
 import java.io.IOException;
@@ -35,7 +34,7 @@ public class ExternalConfigurationService implements IECS {
      */
     private static final String DEFAULT_REPLACEMENT_STRATEGY = "FIFO";
     private static final int DEFAULT_CACHE_SIZE = 1000;
-    public static final int REPORT_PORT = 54321;
+    public static final int REPORT_PORT = 12345;
     public static final String ECS_ADDRESS = "127.0.0.1";
     private FailureReportPortal reportManager;
 
@@ -61,6 +60,40 @@ public class ExternalConfigurationService implements IECS {
         }
 
         LOG.debug("Picking servers to initialize");
+//        pickEquallyServersWithOddAndEvenPort(numberOfNodes);
+        pickServersRandomly(numberOfNodes);
+
+        Validate.isTrue(chord.nodes().size() == numberOfNodes, "Not enough nodes are added. numberOfNodes=" + numberOfNodes + " while serverPool=" + serverPool.size() + "and chord=" + chord.size());
+        chord.calcMetadata();
+
+        LOG.debug("Launching selected servers");
+        for (KVServer kvServer : chord.nodes()) {
+            kvServer.launch(launched -> {
+                if (launched) {
+                    LOG.debug(String.format("Server %s:%d launched with admin port %d", kvServer.getHost(), kvServer.getServicePort(), kvServer.getAdminPort()));
+                    kvServer.init(chord.getMetadata(), cacheSize, displacementStrategy);
+                } else {
+                    LOG.error("Couldn't initialize server " + kvServer.getServerId() + ", bringing it back to server pool");
+                    putBackToPool(kvServer);
+                    return;
+                }
+            });
+        }
+        if (chord.size() == numberOfNodes)
+            isRingUp = true;
+    }
+
+    private void pickServersRandomly(int numberOfNodes) {
+        while (chord.size() < numberOfNodes) {
+            int n = ThreadLocalRandom.current().nextInt(serverPool.size());
+            KVServer kvS = this.serverPool.get(n);
+
+            this.chord.add(kvS);
+            this.serverPool.remove(n);
+        }
+    }
+
+    private void pickEquallyServersWithOddAndEvenPort(int numberOfNodes) {
         int prevSelectedServicePort = -1;
         while (chord.size() < numberOfNodes) {
             int n = ThreadLocalRandom.current().nextInt(serverPool.size());
@@ -76,23 +109,6 @@ public class ExternalConfigurationService implements IECS {
             prevSelectedServicePort = kvS.getServicePort();
 
         }
-        Validate.isTrue(chord.nodes().size() == numberOfNodes, "Not enough nodes are added. numberOfNodes=" + numberOfNodes + " while serverPool=" + serverPool.size() + "and chord=" + chord.size());
-        chord.calcMetadata();
-
-        LOG.debug("Launching selected servers");
-        for (KVServer kvServer : chord.nodes()) {
-            kvServer.launch(launched -> {
-                if (launched) {
-                    LOG.debug(String.format("Server %s:%d launched with admin port %d", kvServer.getHost(), kvServer.getServicePort(), kvServer.getAdminPort()));
-                    kvServer.init(chord.getMetadata(), cacheSize, displacementStrategy);
-                } else {
-                    LOG.error("Couldn't initialize the service, shutting down");
-                    this.shutdown();
-                    return;
-                }
-            });
-        }
-        isRingUp = true;
     }
 
 
@@ -129,23 +145,29 @@ public class ExternalConfigurationService implements IECS {
 
     @Override
     public void shutdown() {
-        int numServerShutdown = 0;
+        int numServerShutdown = chord.size();
         for (KVServer kvServer : chord.nodes()) {
+            if (!kvServer.isLaunched())
+                continue;
+
             boolean success = kvServer.shutdown();
             if (!success) {
                 continue; //TODO Handle trying to reconnect to the server
             }
-            numServerShutdown++;
+            putBackToPool(kvServer);
+            kvServer.setLaunched(!success);
+            numServerShutdown--;
         }
-        if (numServerShutdown == chord.size() && chord.size() > 0) {
-            handleAfterShutdown();
+
+
+        if (numServerShutdown != 0) {
+            LOG.warn("Couldn't shut all server down!!!");
         }
+        handleAfterShutdown();
     }
 
     private void handleAfterShutdown() {
         if (closeSockets()) {
-            serverPool.addAll(chord.nodes());
-            chord.getNodesMap().clear();
             serving = false;
             isRingUp = false;
         }
@@ -157,13 +179,17 @@ public class ExternalConfigurationService implements IECS {
                 continue;
             boolean success = kvServer.shutdown();
 
-            if (success && chord.size() == 1)
+            if (success)
+                putBackToPool(kvServer);
+
+            if (chord.size() == 0)
                 handleAfterShutdown();
-            else if (success) {
-                chord.remove(kvServer);
-                serverPool.add(kvServer);
-            }
         }
+    }
+
+    private void putBackToPool(KVServer kvServer) {
+        chord.remove(kvServer);
+        serverPool.add(kvServer);
     }
 
     private boolean closeSockets() {
@@ -215,8 +241,7 @@ public class ExternalConfigurationService implements IECS {
         KVServer nodeToRemove = chord.nodes().get(n);
         KVServer predecessor2 = chord.getNthPredecessor(nodeToRemove.getHashKey(), 2);
 
-        chord.remove(nodeToRemove);
-        serverPool.add(nodeToRemove);
+        putBackToPool(nodeToRemove);
         chord.calcMetadata();
 
         done = nodeToRemove.shutdown();
@@ -320,9 +345,9 @@ public class ExternalConfigurationService implements IECS {
     public FailureReportPortal getReportManager() {
         return reportManager;
     }
-    
+
     public List<KVServer> getPool() {
-    	return serverPool;
+        return serverPool;
     }
 
     public void setRingUp(boolean ringUp) {

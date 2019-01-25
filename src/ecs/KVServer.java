@@ -1,8 +1,8 @@
 package ecs;
 
 import management.ConfigMessage;
-import management.MessageSerializer;
 import management.ConfigStatus;
+import management.MessageSerializer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import util.HashUtils;
@@ -15,7 +15,7 @@ import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
-import static protocol.kv.IMessage.MAX_MESSAGE_LENGTH;
+import static protocol.Constants.MAX_KV_MESSAGE_LENGTH;
 
 /**
  * Handles connection from ECS to one key-value storage server
@@ -26,7 +26,6 @@ public class KVServer implements Comparable<KVServer> {
     private static Logger LOG = LogManager.getLogger(ECS_LOG);
 
     private String hashKey;
-
     private int cacheSize;
     private String displacementStrategy;
 
@@ -38,6 +37,7 @@ public class KVServer implements Comparable<KVServer> {
     private BufferedOutputStream bos;
 
     private String[] sshCMD;
+    private boolean launched = false;
 
     private final static int RETRY_NUM = 5;
     private final static int RETRY_WAIT_TIME = 1000; // milliseconds
@@ -57,10 +57,9 @@ public class KVServer implements Comparable<KVServer> {
 
 //        String username = servicePort % 2 == 0 ? "anhmt90" : "lab";
 
-        String[] cmds = {"ssh", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
-                "tuan-anh@" + getHost(),
-                "nohup java -jar /mnt/data/Workspace/uni-project/cloud-databases/gr7-ms3/ms4-server.jar " + this.serverId + " " + this.servicePort + " " + getAdminPort()
-                        + " > /mnt/data/Workspace/uni-project/cloud-databases/gr7-ms3/logs/" + this.serverId + ".log"
+        String[] cmds = {"ssh", "anhmt@" + getHost(),
+                "nohup java -jar /mnt/Dante/Workspace/uni-project/cloud-databases/cloud-db/ms5-server.jar " + this.serverId + " " + this.servicePort + " " + getAdminPort()
+                        + " > /mnt/Dante/Workspace/uni-project/cloud-databases/cloud-db/logs/" + this.serverId + ".log"
                         + " &"
         };
         this.sshCMD = cmds;
@@ -80,14 +79,15 @@ public class KVServer implements Comparable<KVServer> {
     }
 
     void launch(Consumer<Boolean> callback) {
-        boolean launched = false;
         try {
             execSSH();
             initSocket();
             LOG.info(String.format("Started server %s:%d via ssh. Internal management port at %d", address.getHostString(), getServicePort(), getAdminPort()));
             launched = true;
         } catch (IOException e) {
-            LOG.error(String.format("Couldn't launch the server %s:%d with internal management port at %d" + e, this.getHost(), this.getServicePort(), getAdminPort()));
+            LOG.error(String.format("Couldn't launch the server %s:%d with internal management port at %d", this.getHost(), this.getServicePort(), getAdminPort()));
+        } catch (InterruptedException e) {
+            LOG.error(e);
         }
         callback.accept(launched);
     }
@@ -145,12 +145,12 @@ public class KVServer implements Comparable<KVServer> {
      * @throws IOException
      */
     private ConfigMessage receive() throws IOException {
-        byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
+        byte[] messageBuffer = new byte[MAX_KV_MESSAGE_LENGTH];
         while (true) {
             try {
                 bis = new BufferedInputStream(socket.getInputStream());
                 int justRead = bis.read(messageBuffer);
-                if(justRead < 0)
+                if (justRead < 0)
                     return null;
                 ConfigMessage message = MessageSerializer.deserialize(Arrays.copyOfRange(messageBuffer, 0, justRead));
 
@@ -228,11 +228,11 @@ public class KVServer implements Comparable<KVServer> {
         try {
             send(toSend);
             ConfigMessage response = receive();
-            if(response == null)
+            if (response == null)
                 return false;
             return response.getStatus().equals(expected);
         } catch (IOException e) {
-            LOG.error("Error! ", e);
+            LOG.error(e);
             return false;
         }
     }
@@ -257,7 +257,15 @@ public class KVServer implements Comparable<KVServer> {
         return displacementStrategy;
     }
 
-    private void initSocket() {
+    public boolean isLaunched() {
+        return launched;
+    }
+
+    public void setLaunched(boolean launched) {
+        this.launched = launched;
+    }
+
+    private void initSocket() throws IOException, InterruptedException {
         LOG.debug("Initializing socket");
         LOG.info("Connecting to the server");
         for (int i = 0; i < RETRY_NUM; i++) {
@@ -268,12 +276,12 @@ public class KVServer implements Comparable<KVServer> {
                 socket.connect(address, 5000);
                 break;
             } catch (IOException | InterruptedException e) {
-                LOG.error(String.format("Couldn't connect trying again (%d/%d)...", i + 1, RETRY_NUM) + e);
+                LOG.error(String.format("Couldn't connect trying again (%d/%d)...", i + 1, RETRY_NUM), e);
                 if (i == RETRY_NUM - 1)
-                    return;
+                    throw e;
             }
-            LOG.info("Connect to server " + address.getHostString() + ":" + address.getPort() + " successfully");
         }
+        LOG.info("Connect to server " + address.getHostString() + ":" + address.getPort() + " successfully");
     }
 
     public void closeSocket() throws IOException {

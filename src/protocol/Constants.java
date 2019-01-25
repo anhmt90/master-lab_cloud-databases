@@ -11,7 +11,13 @@ public class Constants {
      * 16 bytes contains the MD5 hash of {@link K}
      * 1024 * 120 bytes are the actual data of V
      */
-    public static final int MAX_MESSAGE_LENGTH = 1 + 1 + 3 + 16 + 1024 * 120;
+    public static final int MAX_KV_MESSAGE_LENGTH = 1 + 1 + 3 + 16 + 1024 * 120;
 
-    public static final int MR_PORT_DISTANCE = -20000;
+    public static final int MR_TASK_RECEIVER_PORT_DISTANCE = -1000;
+
+    public static final int MR_TASK_HANDLER_PORT_DISTANCE = -2000;
+
+    public static final int MAX_TASK_MESSAGE_LENGTH = 63 * 1024;
+
+    public static final int MAX_ALLOWED_EOF = 3;
 }

@@ -11,7 +11,9 @@ import java.io.*;
 import java.net.Socket;
 import java.util.Arrays;
 
-import static protocol.kv.IMessage.MAX_MESSAGE_LENGTH;
+import static protocol.Constants.MAX_ALLOWED_EOF;
+import static protocol.Constants.MAX_KV_MESSAGE_LENGTH;
+
 
 /**
  * A stateful connection from ECS to the server. This is created by {@link InternalConnectionManager}
@@ -19,7 +21,6 @@ import static protocol.kv.IMessage.MAX_MESSAGE_LENGTH;
  */
 public class InternalConnection implements Runnable {
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
-    private static final int MAX_ALLOWED_EOF = 3;
     private final InternalConnectionManager manager;
     private boolean isOpen;
 
@@ -64,7 +65,7 @@ public class InternalConnection implements Runnable {
                 ConfigMessage ack = new ConfigMessage(getAckStatus(configMessage.getStatus(), success));
                 LOG.info("sending ACK " + ack.getStatus());
                 send(ack);
-
+                eofCounter = 0;
             }
         } catch (IOException ioe) {
             LOG.error("Error! Connection lost", ioe);
@@ -185,7 +186,7 @@ public class InternalConnection implements Runnable {
      * @throws IOException
      */
     private ConfigMessage poll() throws IOException {
-        byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
+        byte[] messageBuffer = new byte[MAX_KV_MESSAGE_LENGTH];
         while (true) {
             try {
                 bis = new BufferedInputStream(peer.getInputStream());

@@ -13,7 +13,7 @@ import static util.FileUtils.SEP;
 
 public class ECSApplication {
     static Logger LOG = LogManager.getLogger("ECS");
-    private static final String CONFIG_FILE = System.getProperty("user.dir") + SEP + "config" + SEP + "server-info";
+    private static final String CONFIG_FILE = System.getProperty("user.dir") + SEP + "config" + SEP + "mr-server-info";
 
     private static final String INIT = "init";
     private static final String START = "start";
@@ -146,7 +146,7 @@ public class ECSApplication {
             return;
         }
         ecs.initService(serverNumber, Integer.parseInt(cmdArgs[1]), cmdArgs[2]);
-        print("Service initiated with " + serverNumber + " Servers.");
+        print(ecs.isRingUp() ? "Service initiated with " + serverNumber + " Servers." : "Initializing service failed");
     }
 
 

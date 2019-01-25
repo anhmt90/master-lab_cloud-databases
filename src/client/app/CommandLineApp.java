@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 import client.api.Client;
+import mapreduce.common.ApplicationID;
 import protocol.kv.IMessage;
 
 import org.apache.logging.log4j.Logger;
@@ -26,10 +27,14 @@ public class CommandLineApp {
     private static final String CONNECT = "connect";
     private static final String DISCONNECT = "disconnect";
     private static final String PUT = "put";
-    private static final String GET = "get";
     private static final String LOG_LEVEL = "logLevel";
     private static final String HELP = "help";
     private static final String QUIT = "quit";
+    private static final String GET = "get";
+
+    private static final String COUNT = "count";
+
+
 
     /**
      * The StorageClient as an instance of {@link Client} to communicate with the
@@ -67,6 +72,11 @@ public class CommandLineApp {
                 case GET:
                     handleGet(cmdComponents);
                     break;
+
+                case COUNT:
+                    handleCount(cmdComponents);
+                    break;
+
                 case LOG_LEVEL:
                     handleLogLevel(cmdComponents);
                     break;
@@ -80,6 +90,25 @@ public class CommandLineApp {
                     print("Unknown command\n");
                     printHelp();
             }
+        }
+    }
+
+    private static void handleCount(String[] cmdComponents) throws IOException {
+        if (!isClientConnected())
+            return;
+
+        if (!isValidArgs(COUNT, cmdComponents)) {
+            return;
+        }
+        String keyword = cmdComponents[1];
+
+        if (!kvClient.isClosed()) {
+            LOG.info("Counting occurences of " + keyword);
+
+            kvClient.handleMRJob(ApplicationID.WORD_COUNT, new HashSet<>(Arrays.asList(new String[]{keyword})));
+//            handleServerResponse(serverResponse, key);
+        } else {
+            print("No connection currently established. Please establish a connection before retrieving a value");
         }
     }
 
@@ -307,6 +336,8 @@ public class CommandLineApp {
 
         kvClient = new Client(address, port);
         kvClient.connect();
+
+        kvClient.getMetadata();
 
     }
 

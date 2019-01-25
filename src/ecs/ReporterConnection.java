@@ -6,12 +6,15 @@ import management.ReportStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.EOFException;
+import java.io.IOException;
 import java.net.Socket;
 import java.util.Arrays;
 
 import static ecs.FailureReportPortal.FAILURE_LOG;
-import static protocol.kv.IMessage.MAX_MESSAGE_LENGTH;
+import static protocol.Constants.MAX_KV_MESSAGE_LENGTH;
 
 /**
  * Responsible for receiving failure reports from servers in the storage service
@@ -137,7 +140,7 @@ public class ReporterConnection implements Runnable {
      * @throws IOException
      */
     private FailureReportMessage poll() throws IOException {
-        byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
+        byte[] messageBuffer = new byte[MAX_KV_MESSAGE_LENGTH];
         while (true) {
             try {
                 bis = new BufferedInputStream(serverSocket.getInputStream());

@@ -11,14 +11,16 @@ import java.net.SocketTimeoutException;
 import management.FailureReportMessage;
 import management.ReportStatus;
 import management.MessageSerializer;
+import server.Constants;
 import server.app.Server;
+
+import static server.Constants.HEARTBEAT_RECEIVE_PORT_DISTANCE;
 
 /**
  * Receives heartbeat messages from other servers in the storage service and upon detecting missing heartbeats calls failure handling
  * 
  */
 public class HeartbeatReceiver implements Runnable {
-
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
 
     private int receiverPort;
@@ -26,9 +28,9 @@ public class HeartbeatReceiver implements Runnable {
 
     private DatagramSocket heartbeatSocket;
 
-    public HeartbeatReceiver(int receiverPort, Server server) {
-        this.receiverPort = receiverPort;
+    public HeartbeatReceiver(Server server) {
         this.server = server;
+        this.receiverPort = server.getServicePort() + HEARTBEAT_RECEIVE_PORT_DISTANCE;
     }
 
     /**
@@ -40,6 +42,7 @@ public class HeartbeatReceiver implements Runnable {
             byte[] marshalledHeartbeat = MessageSerializer.serialize(new FailureReportMessage(ReportStatus.HEARTBEAT));
             int heartbeatMessageLength = marshalledHeartbeat.length;
 
+            LOG.info("Open socket for heartbeatReceiver on port " + receiverPort);
             heartbeatSocket = new DatagramSocket(receiverPort);
             heartbeatSocket.setSoTimeout(2 * Server.HEARTBEAT_INTERVAL);
 

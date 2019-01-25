@@ -69,7 +69,7 @@ public class FailureReportPortal implements Runnable {
     public void run() {
         try {
             LOG.info("running = " + ecs.isRingUp());
-            while (true) {
+            while (true && reportSocket != null) {
                 LOG.info("Report portal is waiting for incoming connection on port " + reportSocket.getLocalPort() + " for failure report");
                 Socket peer = reportSocket.accept();
                 ReporterConnection failureConnection = new ReporterConnection(this, peer, ecs);
@@ -80,16 +80,21 @@ public class FailureReportPortal implements Runnable {
             LOG.warn("Failure report portal is closed!");
         } finally {
             try {
-                if (reportSocket != null) {
-                    if (!reportSocket.isClosed())
-                        reportSocket.close();
-                }
-                for (ReporterConnection rc : connectionTable)
-                    rc.close();
+                shutdown();
             } catch (IOException ioe) {
                 LOG.error("Error! Unable to tear down connection!", ioe);
             }
         }
+    }
+
+    private void shutdown() throws IOException {
+        if (reportSocket != null) {
+            if (!reportSocket.isClosed())
+                reportSocket.close();
+        }
+        for (ReporterConnection rc : connectionTable)
+            rc.close();
+        reportSocket = null;
     }
 
     public ServerSocket getReportSocket() {

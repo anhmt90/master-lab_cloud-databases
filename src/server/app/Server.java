@@ -4,25 +4,29 @@ import ecs.KeyHashRange;
 import ecs.Metadata;
 import ecs.NodeInfo;
 import management.IExternalConfigurationService;
+import mapreduce.server.TaskReceiver;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
 import server.api.*;
-import server.storage.cache.CacheManager;
 import server.storage.cache.CacheDisplacementStrategy;
+import server.storage.cache.CacheManager;
 import util.FileUtils;
+import util.Validate;
 
 import java.io.IOException;
-import java.net.*;
+import java.net.BindException;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static server.Constants.HEARTBEAT_RECEIVE_PORT_DISTANCE;
 import static util.FileUtils.WORKING_DIR;
 
 /**
@@ -62,7 +66,8 @@ public class Server extends Thread implements IExternalConfigurationService {
 
     private HeartbeatReceiver heartbeatReceiver;
     private HeartbeatSender heartbeatSender;
-    private static final int HEARTBEAT_RECEIVE_PORT_DISTANCE = -500;
+
+    private TaskReceiver taskReceiver;
 
 
     /**
@@ -79,8 +84,7 @@ public class Server extends Thread implements IExternalConfigurationService {
         state = NodeState.STOPPED;
 
         internalConnectionManager = new InternalConnectionManager(this);
-
-
+        taskReceiver = new TaskReceiver(this);
         LOG.info("Server constructed with servicePort " + this.servicePort + " and  with logging Level " + logLevel);
 
     }
@@ -119,12 +123,12 @@ public class Server extends Thread implements IExternalConfigurationService {
         if(metadata.getLength() == 1)
             return;
         LOG.info("Starting heartbeat receiver...");
-        this.heartbeatReceiver = new HeartbeatReceiver(servicePort + HEARTBEAT_RECEIVE_PORT_DISTANCE, this);
+        this.heartbeatReceiver = new HeartbeatReceiver(this);
         new Thread(heartbeatReceiver).start();
 
         LOG.info("Starting heartbeat sender...");
         NodeInfo successor = metadata.getSuccessor(writeRange);
-        this.heartbeatSender = new HeartbeatSender(successor.getHost(), successor.getPort() + HEARTBEAT_RECEIVE_PORT_DISTANCE, this);
+        this.heartbeatSender = new HeartbeatSender(successor.getHost(), successor.getPort() + HEARTBEAT_RECEIVE_PORT_DISTANCE);
         new Thread(heartbeatSender).start();
     }
 
@@ -161,6 +165,7 @@ public class Server extends Thread implements IExternalConfigurationService {
                 kvSocket.close();
                 heartbeatReceiver.close();
                 heartbeatSender.close();
+                taskReceiver.close();
                 running = false;
             } catch (IOException e) {
                 LOG.error("Unable to close internal management socket or KV-socket! \n" + e);
@@ -260,7 +265,12 @@ public class Server extends Thread implements IExternalConfigurationService {
     public void run() {
         running = openServiceSocket();
         LOG.info("Server's running = " + running);
+
+        Validate.notNull(internalConnectionManager, "internalConnectionManager is null");
+        Validate.notNull(taskReceiver, "taskReceiver is null");
+
         new Thread(internalConnectionManager).start();
+        new Thread(taskReceiver).start();
 
         if (kvSocket != null) {
             while (isRunning()) {
@@ -293,7 +303,7 @@ public class Server extends Thread implements IExternalConfigurationService {
         } catch (IOException e) {
             LOG.error("Error! Cannot poll server socket:");
             if (e instanceof BindException) {
-                LOG.error("Port " + servicePort + " is already bound!");
+                LOG.error("Port " + servicePort + " is already bound!", e);
             }
             return false;
         }
@@ -485,7 +495,7 @@ public class Server extends Thread implements IExternalConfigurationService {
             Files.createDirectories(logDir);
 
         Server server = createServer(args);
-        LOG.info("Server " + server.getServerId() + " created and serving on servicePort " + server.getServicePort());
+        LOG.info("Server instance " + server.getServerId() + " created and is about to serve on servicePort " + server.getServicePort());
         server.start();
     }
 

@@ -27,7 +27,6 @@ public class InternalConnectionManager implements Runnable {
         this.server = server;
         port = server.getAdminPort();
         connectionTable = new HashSet<>();
-        init();
     }
 
 
@@ -35,13 +34,13 @@ public class InternalConnectionManager implements Runnable {
         LOG.info("Initialize adminSocket for internal management...");
         try {
             adminSocket = new ServerSocket(port);
-            LOG.info("Server adminSocket created on port " + adminSocket.getLocalPort() + " for internal management");
+            LOG.info("Server adminSocket created on port " + port + " for internal management");
         } catch (IOException e) {
-            LOG.error("Error! Cannot poll server adminSocket:");
+            LOG.error("Error! Cannot poll server adminSocket");
             if (e instanceof BindException) {
-                LOG.error("Port " + port + " is already bound!");
+                LOG.error("Port " + port + " is already bound!", e);
+                LOG.error("adminSocket = " + adminSocket);
             }
-            e.printStackTrace();
         }
     }
 
@@ -50,6 +49,7 @@ public class InternalConnectionManager implements Runnable {
      */
     @Override
     public void run() {
+        init();
         try {
             LOG.info("running = " + server.isRunning());
             while (server.isRunning()) {

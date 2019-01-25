@@ -12,17 +12,17 @@
     <property name="doc.dir" value="doc"/>
 
     <!-- Configuration for client application -->
-    <property name="clientjar.file" value="ms4-client.jar"/>
+    <property name="clientjar.file" value="ms5-client.jar"/>
     <property name="clientmanifest.file" value="CLIENT_MANIFEST.MF"/>
     <property name="clientmain.class" value="client.app.CommandLineApp"/>
 
     <!-- Configuration for server application -->
-    <property name="serverjar.file" value="ms4-server.jar"/>
+    <property name="serverjar.file" value="ms5-server.jar"/>
     <property name="servermanifest.file" value="SERVER_MANIFEST.MF"/>
     <property name="servermain.class" value="server.app.Server"/>
 
     <!-- Configuration for ECS application -->
-    <property name="ecsjar.file" value="ms4-ecs.jar"/>
+    <property name="ecsjar.file" value="ms5-ecs.jar"/>
     <property name="ecsmanifest.file" value="ECS_MANIFEST.MF"/>
     <property name="ecsmain.class" value="ecs.client.ECSApplication"/>
 
@@ -73,6 +73,7 @@
                source="${source}" target="${target}"
                classpathref="project.classpath" includeantruntime="false">
             <src path="${src.dir}"/>
+            <!--<compilerarg value="-Xlint:unchecked"/>-->
         </javac>
     </target>
 

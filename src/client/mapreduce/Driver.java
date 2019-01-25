@@ -7,18 +7,15 @@ import mapreduce.common.Task;
 import mapreduce.common.TaskType;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import protocol.Constants;
 import protocol.mapreduce.TaskMessage;
 import util.Validate;
 
 import java.io.IOException;
 import java.net.*;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
-import static protocol.Constants.MR_PORT_DISTANCE;
+import static protocol.Constants.MR_TASK_RECEIVER_PORT_DISTANCE;
 
 public class Driver {
     public static final String MAPREDUCE_LOG = "mapreduce";
@@ -37,11 +34,6 @@ public class Driver {
     private Job job;
 
     /**
-     * contains keys of key-value pairs emitted from the map task
-     */
-//    private ConcurrentHashMap<String, String> intermediateOutputs;
-
-    /**
      * contains key-value pairs emitted from the reduce task
      */
     private ConcurrentHashMap<String, String> outputs;
@@ -56,11 +48,14 @@ public class Driver {
 
     public void exec(Job job) {
         this.job = job;
-        startMap();
-        startReduce();
+        map();
+//        reduce();
+
+        Validate.notNull(outputs, "Output is null");
+        System.out.println(outputs.entrySet());
     }
 
-    private void startMap() {
+    private void map() {
         outputs = new ConcurrentHashMap<>();
         startOutputCollector();
         Task mapTask = new Task(TaskType.MAP, job.getApplicationID(), job.getInput());
@@ -71,7 +66,7 @@ public class Driver {
         job.setStep(Step.REDUCE);
     }
 
-    private void startReduce() {
+    private void reduce() {
         outputs = new ConcurrentHashMap<>();
         startOutputCollector();
         Task reduceTask = new Task(TaskType.REDUCE, job.getApplicationID(), job.getInput());
@@ -86,7 +81,7 @@ public class Driver {
     }
 
     private void waitForCompletetion() {
-        if(collectorThread.isAlive()) {
+        if (collectorThread.isAlive()) {
             try {
                 collectorThread.join();
             } catch (InterruptedException e) {
@@ -107,25 +102,21 @@ public class Driver {
     private void broadcast(Task task) {
         Validate.notNull(collector.getCallbackInfo(), "callbackInfo is null");
         Validate.notNull(task, "task is null");
-        Validate.isTrue(collector.getExpectedConnections().isEmpty(), "expectedConnections is not empty");
 
-        collector.setExpectedConnections(metadata.get().stream().collect(Collectors.toMap(NodeInfo::getHost, NodeInfo::getId)));
-        while (taskDeliverySocket != null && !taskDeliverySocket.isClosed()) {
-            for (NodeInfo node : metadata.get()) {
-                try {
-                    TaskMessage taskMessage = new TaskMessage(task, collector.getCallbackInfo());
-                    byte[] serialized = MessageSerializer.serialize(taskMessage);
-                    DatagramPacket packet = new DatagramPacket(serialized, serialized.length,
-                            InetAddress.getByName(node.getHost()), node.getPort() + MR_PORT_DISTANCE);
-                    
-                    LOG.info("Sending " + task + " to <" + node.getHost() + ":" + node.getPort() + ">");
-                    taskDeliverySocket.send(packet);
+        for (NodeInfo node : metadata.get()) {
+            try {
+                TaskMessage taskMessage = new TaskMessage(task, collector.getCallbackInfo());
+                byte[] serialized = MessageSerializer.serialize(taskMessage);
+                DatagramPacket taskPacket = new DatagramPacket(serialized, serialized.length,
+                        InetAddress.getByName(node.getHost()), node.getPort() + MR_TASK_RECEIVER_PORT_DISTANCE);
 
-                } catch (IOException e) {
-                    LOG.error(e);
-                }
+                LOG.info("Sending " + task + "(" + taskPacket.getLength() / 1024.0 + " KB)" + " to <" + node.getHost() + ":" + node.getPort() + ">");
+                taskDeliverySocket.send(taskPacket);
 
+            } catch (IOException e) {
+                LOG.error(e);
             }
+
         }
     }
 
@@ -133,9 +124,9 @@ public class Driver {
         return job;
     }
 
-//    public HashSet<String> getIntermediateOutputs() {
-//        return intermediateOutputs;
-//    }
+    public Metadata getMetadata() {
+        return metadata;
+    }
 
     public ConcurrentHashMap<String, String> getOutputs() {
         return outputs;

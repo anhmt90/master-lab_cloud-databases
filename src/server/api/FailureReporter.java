@@ -19,14 +19,14 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import ecs.NodeInfo;
+import protocol.Constants;
 import server.app.Server;
 import util.LogUtils;
 
-import static protocol.kv.IMessage.MAX_MESSAGE_LENGTH;
+import static protocol.Constants.MAX_KV_MESSAGE_LENGTH;
 
 /**
  * Establishes a connection with the ECS and then sends a failure report to it
- * 
  */
 public class FailureReporter {
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
@@ -36,11 +36,10 @@ public class FailureReporter {
     private Socket socket;
     private BufferedOutputStream bos;
     private BufferedInputStream bis;
-	
 
-	
-	public FailureReporter() throws IOException {
-		try {
+
+    public FailureReporter() throws IOException {
+        try {
             socket = new Socket();
             socket.connect(new InetSocketAddress(ECS_ADDRESS, REPORT_PORT), 5000);
             LOG.info("Connection to failure report portal established!");
@@ -51,14 +50,14 @@ public class FailureReporter {
         } catch (IOException e) {
             throw LogUtils.printLogError(LOG, e, "Could not connect to ECS.");
         }
-	}
+    }
 
-	/**
-	 * Sends the failure report
-	 * 
-	 * @param failedServer the server that has failed
-	 * @return true if failure was successfully handled
-	 */
+    /**
+     * Sends the failure report
+     *
+     * @param failedServer the server that has failed
+     * @return true if failure was successfully handled
+     */
     public boolean sendFailureReport(NodeInfo failedServer) {
         FailureReportMessage reportMessage = new FailureReportMessage(ReportStatus.SERVER_FAILED, failedServer);
         LOG.info("Sending message " + reportMessage + " to ECS");
@@ -79,11 +78,11 @@ public class FailureReporter {
 
     /**
      * sends a Failure report to the connected ECS
-     * 
+     *
      * @param message the report message that needs to be sent
      * @throws IOException
      */
-	public void send(FailureReportMessage message) throws IOException {
+    public void send(FailureReportMessage message) throws IOException {
         try {
             bos = new BufferedOutputStream(socket.getOutputStream());
             byte[] bytes = MessageSerializer.serialize(message);
@@ -100,9 +99,9 @@ public class FailureReporter {
             throw e;
         }
     }
-	
-	private FailureReportMessage receive() throws IOException {
-        byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
+
+    private FailureReportMessage receive() throws IOException {
+        byte[] messageBuffer = new byte[MAX_KV_MESSAGE_LENGTH];
         while (true) {
             try {
                 bis = new BufferedInputStream(socket.getInputStream());
@@ -119,5 +118,5 @@ public class FailureReporter {
             }
         }
     }
-	
+
 }

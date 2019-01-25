@@ -27,7 +27,7 @@ public class HeartbeatSender implements Runnable {
     private InetAddress address;
     private DatagramSocket heartbeatSocket;
 
-    public HeartbeatSender(String successorAddress, int successorPort, Server server) {
+    public HeartbeatSender(String successorAddress, int successorPort) {
         this.successorPort = successorPort;
         this.successorAddress = successorAddress;
     }
@@ -42,7 +42,7 @@ public class HeartbeatSender implements Runnable {
             while (heartbeatSocket != null && !heartbeatSocket.isClosed() && address != null) {
                 byte[] marshalledHeartbeat = MessageSerializer.serialize(new FailureReportMessage(ReportStatus.HEARTBEAT));
                 DatagramPacket packet = new DatagramPacket(marshalledHeartbeat, marshalledHeartbeat.length, address, successorPort);
-                LOG.info("Sending heartbeat to <" + address + ":" + successorPort + ">");
+//                LOG.info("Sending heartbeat to <" + address + ":" + successorPort + ">");
                 heartbeatSocket.send(packet);
 
                 Thread.sleep(Server.HEARTBEAT_INTERVAL);

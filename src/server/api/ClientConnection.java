@@ -1,7 +1,7 @@
 package server.api;
 
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import protocol.kv.*;
 import protocol.kv.IMessage.Status;
 import server.app.Server;
@@ -9,13 +9,15 @@ import server.storage.PUTStatus;
 import server.storage.cache.CacheManager;
 import util.LogUtils;
 
-import static protocol.kv.IMessage.MAX_MESSAGE_LENGTH;
-
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.IOException;
 import java.net.Socket;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+
+import static protocol.Constants.MAX_KV_MESSAGE_LENGTH;
 
 
 /**
@@ -161,6 +163,9 @@ public class ClientConnection implements Runnable {
                     return new Message(Status.SERVER_NOT_RESPONSIBLE, server.getMetadata());
                 }
                 return handlePUT(key, val);
+            case GET_METADATA:
+                    LOG.info("Sending following metadata to client: " + server.getMetadata());
+                    return new Message(Status.METADATA, server.getMetadata());
 
             default:
                 throw LogUtils.printLogError(LOG, new IllegalArgumentException("Unknown Request Type " + message.getStatus()));
@@ -242,7 +247,7 @@ public class ClientConnection implements Runnable {
      * @throws IOException
      */
     private IMessage receive() throws IOException {
-        byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
+        byte[] messageBuffer = new byte[MAX_KV_MESSAGE_LENGTH];
         bis = new BufferedInputStream(clientSocket.getInputStream());
         int justRead = bis.read(messageBuffer);
 

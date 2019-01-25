@@ -1,29 +1,30 @@
 package client.api;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.IOException;
-import java.net.*;
-import java.nio.charset.StandardCharsets;
-import java.util.HashSet;
-
 import client.mapreduce.Driver;
 import client.mapreduce.Job;
 import ecs.KeyHashRange;
+import ecs.Metadata;
+import ecs.NodeInfo;
 import mapreduce.common.ApplicationID;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import ecs.NodeInfo;
-import ecs.Metadata;
 import protocol.kv.*;
 import protocol.kv.IMessage.Status;
 import util.HashUtils;
 import util.LogUtils;
 import util.Validate;
 
-import static protocol.kv.IMessage.MAX_MESSAGE_LENGTH;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
 
+import static protocol.Constants.MAX_KV_MESSAGE_LENGTH;
 
 public class Client implements IClient {
     public static final String CLIENT_LOG = "kvClient";
@@ -127,7 +128,7 @@ public class Client implements IClient {
 
     @Override
     public byte[] receive() {
-        byte[] messageBuffer = new byte[MAX_MESSAGE_LENGTH];
+        byte[] messageBuffer = new byte[MAX_KV_MESSAGE_LENGTH];
         try {
             socket.setSoTimeout(60000);
             bis = new BufferedInputStream(socket.getInputStream());
@@ -320,6 +321,7 @@ public class Client implements IClient {
         IMessage toSend = new Message(status, new K(keyBytes));
         if (isBatch)
             toSend.setBatchData();
+
         send(MessageMarshaller.marshall(toSend));
         IMessage response = MessageMarshaller.unmarshall(receive());
         if (response == null)
@@ -352,11 +354,18 @@ public class Client implements IClient {
         return response;
     }
 
-    private void initMRJob(ApplicationID appId, HashSet<String> input){
-        if(metadata == null) {
-            // TODO Add a method to request the metadata from the node that client is currently connected to
+    public void handleMRJob(ApplicationID appId, HashSet<String> input){
+        if(metadata == null || metadata.get().isEmpty()) {
+            // TODO Add a method to request metadata from the node that client is currently connected to
         }
         driver = new Driver(metadata);
         driver.exec(new Job(appId, input));
+    }
+
+    public void getMetadata() throws IOException {
+        IMessage toSend = new Message(Status.GET_METADATA);
+        send(MessageMarshaller.marshall(toSend));
+        IMessage resp = MessageMarshaller.unmarshall(receive());
+        updateMetadata(resp.getMetadata());
     }
 }

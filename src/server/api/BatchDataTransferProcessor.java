@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static protocol.Constants.MAX_KV_MESSAGE_LENGTH;
 import static util.FileUtils.SEP;
 
 /**
@@ -370,7 +371,7 @@ public class BatchDataTransferProcessor {
      * @return the received byte array
      */
     private byte[] receive() {
-        byte[] messageBuffer = new byte[IMessage.MAX_MESSAGE_LENGTH];
+        byte[] messageBuffer = new byte[MAX_KV_MESSAGE_LENGTH];
         try {
             moveDataSocket.setSoTimeout(5000);
             bis = new BufferedInputStream(moveDataSocket.getInputStream());
