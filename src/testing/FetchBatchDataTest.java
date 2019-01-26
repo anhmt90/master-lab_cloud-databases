@@ -5,12 +5,15 @@ import ecs.NodeInfo;
 import org.junit.Test;
 import server.api.BatchDataTransferProcessor;
 import server.storage.disk.PersistenceManager;
+import util.FileUtils;
 import util.HashUtils;
+import util.StringUtils;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -139,9 +142,11 @@ public class FetchBatchDataTest {
                 "2" + HashUtils.hash("key7").substring(1),
                 "2" + HashUtils.hash("key8").substring(1)
         };
-
-        for (String key : keySet1)
-            pm1.write(key, key.getBytes());
+        Path filePath = null;
+        for (String key : keySet1){
+            filePath = FileUtils.buildPath(pm1.getDbPath(), HashUtils.hash(key), StringUtils.encode(key));
+            pm1.write(filePath, key.getBytes());
+        }
 
         keySet2 = new String[]{
                 "4" + HashUtils.hash("key9").substring(1),
@@ -153,8 +158,10 @@ public class FetchBatchDataTest {
                 "7" + HashUtils.hash("key15").substring(1),
                 "8" + HashUtils.hash("key16").substring(1)
         };
-        for (String key : keySet2)
-            pm2.write(key, key.getBytes());
+        for (String key : keySet2){
+            filePath = FileUtils.buildPath(pm2.getDbPath(), HashUtils.hash(key), StringUtils.encode(key));
+            pm2.write(filePath, key.getBytes());
+        }
 
         String[] keySet3 = new String[]{
                 "a" + HashUtils.hash("key17").substring(1),
@@ -166,7 +173,9 @@ public class FetchBatchDataTest {
                 "d" + HashUtils.hash("key23").substring(1),
                 "d" + HashUtils.hash("key24").substring(1)
         };
-        for (String key : keySet3)
-            pm3.write(key, key.getBytes());
+        for (String key : keySet3) {
+            filePath = FileUtils.buildPath(pm2.getDbPath(), HashUtils.hash(key), StringUtils.encode(key));
+            pm3.write(filePath, key.getBytes());
+        }
     }
 }

@@ -1,5 +1,6 @@
 package util;
 
+import java.util.Arrays;
 import java.util.UUID;
 
 public class StringUtils {
@@ -95,7 +96,7 @@ public class StringUtils {
     public static String removeChar(String str, char match) {
         StringBuilder sb = new StringBuilder();
         for (char c : str.toCharArray()) {
-            if(c == match)
+            if (c == match)
                 continue;
             sb.append(c);
         }
@@ -123,9 +124,31 @@ public class StringUtils {
     }
 
     public static String isBlank(String s) {
-        if(s== null || s.toLowerCase().trim().equals("null") || s.trim().equals(StringUtils.EMPTY_STRING))
+        if (s == null || s.toLowerCase().trim().equals("null") || s.trim().equals(StringUtils.EMPTY_STRING))
             return null;
         return s;
+    }
+
+    public static String encode(String originalKey) {
+        String[] byteStrings = Arrays.toString(originalKey.getBytes()).replaceAll("[^0-9 ]", "").trim().split(" +");
+        StringBuilder sb = new StringBuilder();
+        for (String aByte : byteStrings) {
+            while (aByte.length() < 3)
+                aByte = "0" + aByte;
+            sb.append(aByte);
+        }
+        return sb.toString();
+    }
+
+    public static String decode(String byteString) {
+        Validate.isTrue(byteString.length() % 3 == 0, "Invalid byteString");
+        String[] byteStrings = splitEvery(byteString, 3);
+        byte[] bytes = new byte[byteStrings.length];
+
+        for (byte i = 0; i < byteStrings.length; i++)
+            bytes[i] = Byte.valueOf(byteStrings[i]);
+
+        return new String(bytes);
     }
 
 }

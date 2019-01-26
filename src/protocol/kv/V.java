@@ -11,6 +11,10 @@ public class V implements Serializable {
         this.value = value;
     }
 
+    public V(byte[] value) {
+        this.value = new String(value);
+    }
+
     public String get() {
         return value;
     }

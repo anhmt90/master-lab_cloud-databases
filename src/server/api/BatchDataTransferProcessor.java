@@ -7,8 +7,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import protocol.kv.*;
 import server.app.Server;
+import server.storage.cache.CacheManager;
 import util.FileUtils;
-import util.HashUtils;
 import util.StringUtils;
 
 import java.io.BufferedInputStream;
@@ -329,6 +329,7 @@ public class BatchDataTransferProcessor {
             for (String indexFile : indexFiles) {
                 List<String> filesToMove = Files.readAllLines(Paths.get(indexFile));
                 for (String file : filesToMove) {
+
                     if (!send(file))
                         return false;
                 }
@@ -347,10 +348,23 @@ public class BatchDataTransferProcessor {
      * @return boolean value indicating whether the PUT-request ended successfully or not
      */
     private boolean send(String file) throws IOException {
-        K key = new K(HashUtils.getHashBytesOf(getHashedKeyFromFileName(Paths.get(file))));
+        String fileName = Paths.get(file).getFileName().toString();
+        String MRJobId = StringUtils.EMPTY_STRING;
+        String k = StringUtils.EMPTY_STRING;
+        if(fileName.indexOf(CacheManager.MR_KEYBYTES_SEP) >= 0) {
+            String[] nameParts = fileName.split(CacheManager.MR_KEYBYTES_SEP);
+            MRJobId = nameParts[0];
+            k = nameParts[1];
+        } else {
+            k = fileName;
+        }
+
+        K key = new K(k);
         V val = new V(FileUtils.getValueBytes(file));
         Message message = new Message(IMessage.Status.PUT, key, val);
-        message.setInternal();
+
+        finalizeMessage(MRJobId, message);
+
         byte[] toSend = MessageSerializer.serialize(message);
 
         try {
@@ -370,6 +384,14 @@ public class BatchDataTransferProcessor {
         } else
             LOG.info("Received from server: " + response.toString());
         return true;
+    }
+
+    private void finalizeMessage(String MRJobId, Message message) {
+        if (MRJobId.equals(StringUtils.EMPTY_STRING)) {
+            message.setInternal();
+        } else {
+            message.setMrjobId(MRJobId);
+        }
     }
 
 

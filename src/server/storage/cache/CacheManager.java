@@ -5,8 +5,11 @@ import protocol.kv.V;
 import server.storage.IStorageCRUD;
 import server.storage.PUTStatus;
 import server.storage.disk.PersistenceManager;
+import util.FileUtils;
+import util.StringUtils;
 import util.Validate;
 
+import java.nio.file.Path;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -20,6 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class CacheManager implements IStorageCRUD {
     public static final String ERROR = "ERROR";
+    public static final String MR_KEYBYTES_SEP = ".";
     /**
      * Keeps track of the order in which the elements in {@link this.cache} should be replaced
      */
@@ -77,18 +81,21 @@ public class CacheManager implements IStorageCRUD {
      * @return a value associated with the {@link this.key}.
      */
     @Override
-    public V get(K key) {
+    public V get(K key, String MRJobId) {
         V val;
-        if (cache.containsKey(key)) {
+        if (StringUtils.isEmpty(MRJobId) && cache.containsKey(key)) {
             val = cache.get(key);
             updateCache(key, val);
 //            new Thread(new CacheUpdater(this, key, val)).start();
             return val;
         }
-        byte[] res = pm.read(key.getHashed());
+
+        Path filePath = constructFilePath(MRJobId, key);
+
+        byte[] res = pm.read(filePath);
         if (res == null)
             return null;
-        val = new V(res);
+        val = new V(new String(res));
         updateCache(key, val);
 //        new Thread(new CacheUpdater(this, key, val)).start();
         return val;
@@ -104,13 +111,21 @@ public class CacheManager implements IStorageCRUD {
      * @return {@link PUTStatus} as exit code of the function. This will be used to send an appropriate response back to the client.
      */
     @Override
-    public PUTStatus put(K key, V val) {
-        PUTStatus status = (val != null) ? pm.write(key.getHashed(), val.get()) : pm.delete(key.getHashed());
+    public PUTStatus put(K key, V val, String MRJobId) {
+        Path filePath = constructFilePath(MRJobId, key);
+
+        PUTStatus status = (val != null) ? pm.write(filePath, val.getBytes()) : pm.delete(filePath);
         if (status.name().contains(ERROR))
             return status;
         updateCache(key, val);
 //        new Thread(new CacheUpdater(this, key, val)).start();
         return status;
+    }
+
+    private Path constructFilePath(String MRJobId, K key) {
+        String fileName = StringUtils.isEmpty(MRJobId) ? StringUtils.EMPTY_STRING : MRJobId + MR_KEYBYTES_SEP;
+        fileName += key.getByteString();
+        return FileUtils.buildPath(pm.getDbPath(), key.getHashed(), fileName);
     }
 
     /**

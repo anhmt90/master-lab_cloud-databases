@@ -43,7 +43,7 @@ public class Job {
     }
 
     public String finalizeJobId() {
-        return jobId += StringUtils.getRandomString();
-
+        jobId = applicationID.getId() + "_" + jobId + StringUtils.EMPTY_STRING + StringUtils.getRandomString();
+        return jobId;
     }
 }

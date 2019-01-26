@@ -97,7 +97,7 @@ public class ClientAppTest {
 		parameters[1] = java.lang.String.class;
 		handleServerResponse = testApp.getClass().getDeclaredMethod("handleServerResponse", parameters);
 		handleServerResponse.setAccessible(true);
-		IMessage serverResponse1 = new Message(Status.GET_SUCCESS, new K("key".getBytes(StandardCharsets.US_ASCII)),new V("value".getBytes(StandardCharsets.US_ASCII)));
+		IMessage serverResponse1 = new Message(Status.GET_SUCCESS, new K("key"),new V("value"));
 		System.setOut(new PrintStream(outContent));
 		try {
 			handleServerResponse.invoke(testApp, serverResponse1, "key");

@@ -1,8 +1,19 @@
 package mapreduce.common;
 
-import java.io.Serializable;
+import protocol.kv.IMessage;
+import util.StringUtils;
 
-public enum ApplicationID implements Serializable {
-    WORD_COUNT,
-    INVERTED_INDEX
+public enum ApplicationID  {
+    WORD_COUNT("wc"),
+    INVERTED_INDEX("ii")
+    ;
+
+    String id;
+
+    ApplicationID(String id) {
+        this.id = id;
+    }
+    public String getId() {
+        return this.id;
+    }
 }

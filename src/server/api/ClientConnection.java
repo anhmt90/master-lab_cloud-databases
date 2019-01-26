@@ -151,6 +151,7 @@ public class ClientConnection implements Runnable {
                     return new Message(Status.SERVER_NOT_RESPONSIBLE, server.getMetadata());
                 }
                 return handleGET(message);
+
             case PUT:
                 if (server.isWriteLocked() && !message.isInternal()) {
                     LOG.info("Server is write-locked");
@@ -158,14 +159,18 @@ public class ClientConnection implements Runnable {
                 }
                 if (server.getReadRange().contains(key.getHashed()) && message.isInternal()) {
                     LOG.info("Message is replicated on the server");
-                    return handlePUT(key, val);
+                    return handlePUT(message);
                 }
                 if (!server.getWriteRange().contains(key.getHashed())) {
                     LOG.info("Server not responsible! Server hash range is " + server.getWriteRange() + ", key is " + key.getHashed());
                     LOG.info("Sending following metadata to client: " + server.getMetadata());
                     return new Message(Status.SERVER_NOT_RESPONSIBLE, server.getMetadata());
                 }
-                return handlePUT(key, val);
+                if(message.getMrjobId() != null) {
+                    LOG.info("Server got a MapReduce message");
+                }
+                return handlePUT(message);
+
             case GET_METADATA:
                 LOG.info("Sending following metadata to client: " + server.getMetadata());
                 return new Message(Status.METADATA, server.getMetadata());
@@ -186,15 +191,17 @@ public class ClientConnection implements Runnable {
         }
     }
 
+
     /**
      * Handles and creates a suitable response for a put request
      *
-     * @param key key of the key-value pair
-     * @param val value of the key-value pair
      * @return server response
      */
-    private IMessage handlePUT(K key, V val) {
-        PUTStatus status = cm.put(key, val);
+    private IMessage handlePUT(IMessage message) {
+        K key = message.getK();
+        V val = message.getV();
+
+        PUTStatus status = cm.put(key, val, message.getMrjobId());
         switch (status) {
             case CREATE_SUCCESS:
                 return new Message(Status.PUT_SUCCESS, key, val);
@@ -220,7 +227,7 @@ public class ClientConnection implements Runnable {
      * @return server response to client request
      */
     private IMessage handleGET(IMessage message) {
-        V val = cm.get(message.getK());
+        V val = cm.get(message.getK(), message.getMrjobId());
         return (val == null) ? new Message(Status.GET_ERROR, message.getK())
                 : new Message(Status.GET_SUCCESS, message.getK(), val);
     }

@@ -27,6 +27,10 @@ public class K implements Serializable {
         return key.getBytes(StandardCharsets.US_ASCII);
     }
 
+    public String getByteString(){
+        return Arrays.toString(getBytes()).replaceAll("[^a-z ]", "").trim();
+    }
+
     @Override
     public String toString() {
         return key;

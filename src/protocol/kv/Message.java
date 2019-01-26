@@ -85,6 +85,7 @@ public class Message implements IMessage {
 	@Override
 	public void setMrjobId(String mrjobId) {
 		this.mrjobId = mrjobId;
+		setInternal();
 	}
 
 	@Override

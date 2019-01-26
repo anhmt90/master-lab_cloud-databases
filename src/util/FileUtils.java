@@ -100,4 +100,26 @@ public class FileUtils {
     public static String getValue(String file) throws IOException {
         return new String(Files.readAllBytes(Paths.get(file)));
     }
+
+    /**
+     * constructs a directory path for a key
+     * The key will be the file name and each of its characters will be a folder in the path to the file
+     *
+     * @param key key from which the path is constructed
+     * @return a directory path corresponding to the key
+     */
+
+    /**
+     * constructs a directory path for a key
+     * The key will be the file name and each of its characters will be a folder in the path to the file
+     *
+     * @param dbPath    path of database folder
+     * @param keyHashed MD5 hash of the key
+     * @param fileName  name of the file storing the corresponding value of the key
+     * @return corresponding Path object
+     */
+    public static Path buildPath(String dbPath, String keyHashed, String fileName) {
+        String path = dbPath + SEP + StringUtils.insertCharEvery(keyHashed, '/', 2) + fileName;
+        return Paths.get(path);
+    }
 }

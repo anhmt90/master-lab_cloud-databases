@@ -2,6 +2,8 @@ package server.storage.disk;
 
 import server.storage.PUTStatus;
 
+import java.nio.file.Path;
+
 /**
  * Persistence Manager
  * Manages data on disk 
@@ -11,26 +13,25 @@ public interface IPersistenceManager {
 	/**
 	 * Writes a value to file
 	 * 
-	 * @param key   determines the path the file is stored
+	 * @param file   determines the path the file is stored
 	 * @param value the value that is stored
 	 * @return Status indicating if operation was successful
 	 */
-    PUTStatus write(String key, byte[] value);
+    PUTStatus write(Path file, byte[] value);
 
     /**
      * Reads a value from a file
      * 
-     * @param key path to the file that is supposed to be read from
+     * @param file path to the file that is supposed to be read from
      * @return the value of the file
      */
-    byte[] read(String key);
+    byte[] read(Path file);
 
     /**
      * Delete a file
-     * 
-     * @param key path to the file that will be deleted
+     *
+     * @param file path to the file that will be deleted
      * @return Status indicating if operation was successful
      */
-    PUTStatus delete(String key);
-
+    PUTStatus delete(Path file);
 }

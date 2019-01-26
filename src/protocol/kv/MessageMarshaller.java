@@ -37,8 +37,8 @@ public class MessageMarshaller {
             return new byte[]{status.getCode()};
         }
 
-        byte[] keyBytes = message.getK() != null ? message.getK().get() : new byte[]{};
-        byte[] valueBytes = message.getV() != null ? message.getV().get() : new byte[]{};
+        byte[] keyBytes = message.getK() != null ? message.getK().getBytes() : new byte[]{};
+        byte[] valueBytes = message.getV() != null ? message.getV().getBytes() : new byte[]{};
         byte[] output = new byte[1 + 1 + 3 + keyBytes.length + valueBytes.length];
 
         final short BUFFER_CAPACITY = 4;
@@ -97,11 +97,11 @@ public class MessageMarshaller {
     }
 
     private static Message getFullMessage(Status status, byte[] keyBytes, byte[] valBytes) {
-        return new Message(status, new K(keyBytes), new V(valBytes));
+        return new Message(status, new K(new String(keyBytes)), new V(new String(valBytes)));
     }
 
     private static Message getMessageNoValue(Status status, byte[] keyBytes) {
-        return new Message(status, new K(keyBytes));
+        return new Message(status, new K(new String(keyBytes)));
     }
 
     private static Message getMessageNoKeyValue(Status status) {

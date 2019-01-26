@@ -18,3 +18,4 @@ db/
 config/server-info
 config/lab-server-info
 perf/*
+dti/

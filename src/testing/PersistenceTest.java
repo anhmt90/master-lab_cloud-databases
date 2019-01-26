@@ -20,21 +20,21 @@ import static org.hamcrest.CoreMatchers.equalTo;
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class PersistenceTest {
     PersistenceManager persistenceManager = new PersistenceManager(AllTests.DB_DIR);
-    private final K key = new K(HashUtils.digest("SomeKey=09"));
-    private V value = new V(getMaxLengthString().getBytes());
+    private final K key = new K("SomeKey=09");
+    private V value = new V(getMaxLengthString());
+    Path filePath = FileUtils.buildPath(persistenceManager.getDbPath(), key.getHashed(),key.getByteString());
 
 
     @Test
     public void test1CreateFile() {
-        PUTStatus status = persistenceManager.write(key.getHashed(), value.get());
+        PUTStatus status = persistenceManager.write(filePath, value.getBytes());
         assertThat(status, is(PUTStatus.CREATE_SUCCESS));
-        Path filePath = persistenceManager.getFilePath(key.getHashed());
         assertThat(FileUtils.exists(filePath) && !FileUtils.isDir(filePath), equalTo(Boolean.TRUE));
     }
 
     @Test
     public void test2ReadFile() {
-        byte[] get = persistenceManager.read(key.getHashed());
+        byte[] get = persistenceManager.read(filePath);
         assertThat(get, equalTo(value.get()));
     }
 
@@ -42,27 +42,26 @@ public class PersistenceTest {
     public void test3UpdateFile() {
         //Update
         String newString = "New\"Val=10";
-        V newValue = new V(newString.getBytes());
-        PUTStatus status = persistenceManager.write(key.getHashed(), newValue.get());
+        V newValue = new V(newString);
+        PUTStatus status = persistenceManager.write(filePath, newValue.getBytes());
         assertThat(status, is(PUTStatus.UPDATE_SUCCESS));
 
         //Read
-        byte[] get = persistenceManager.read(key.getHashed());
+        byte[] get = persistenceManager.read(filePath);
         assertThat(get, equalTo(newValue.get()));
 
     }
 
     @Test
     public void test4DeleteFile() {
-        PUTStatus status = persistenceManager.delete(key.getHashed());
+        PUTStatus status = persistenceManager.delete(filePath);
         assertThat(status, is(PUTStatus.DELETE_SUCCESS));
 
-        Path filePath = persistenceManager.getFilePath(key.getHashed());
         assertThat(!FileUtils.exists(filePath) && !FileUtils.isDir(filePath), equalTo(Boolean.TRUE));
     }
 
     private String getMaxLengthString() {
-        return new String(new char[1024*24]).replace("\0", "ab cd");
+        return new String(new char[1024 * 24]).replace("\0", "ab cd");
     }
 
 }

@@ -37,9 +37,9 @@ public class CacheTest {
 
     public void run() {
       for (int i = from; i < to; i++) {
-        K key = new K(Integer.toString(i).getBytes());
+        K key = new K(Integer.toString(i));
         String valStr = "test" + Integer.toString(i);
-        V val = new V(valStr.getBytes());
+        V val = new V(valStr);
         try {
           this.updateCache.invoke(cm, key, val);
         } catch (IllegalAccessException | InvocationTargetException e) {
@@ -68,7 +68,7 @@ public class CacheTest {
    * Test simple put operation on cache without exceeding the capacity
    * @param capacity capacity of the cache to test
    * @param strategy displacemetn strategy to test
-   * @throws NoSuchMethodException for some reqson {@link CacheManager#updateCache(K, V)} was not found
+   * @throws NoSuchMethodException for some reason {@link CacheManager#updateCache(K, V)} was not found
    * @throws InterruptedException if {@link TestClient} thread was interrupted
    */
   private void testCacheStrategySimplePut(int capacity, CacheDisplacementStrategy strategy) throws NoSuchMethodException, InterruptedException {
@@ -91,7 +91,7 @@ public class CacheTest {
     int to = cm.getCacheCapacity() / keysPerClient;
     to *= keysPerClient;
     for (int i = 0; i < to; i++) {
-      K key = new K(Integer.toString(i).getBytes());
+      K key = new K(Integer.toString(i));
       assertTrue(String.format("Key \"%d\" is missing", i), cm.getCache().containsKey(key));
     }
   }
@@ -128,11 +128,11 @@ public class CacheTest {
     CacheManager cm = new CacheManager(AllTests.DB_DIR, 1, strategy);
     Method updateCache = getUpdateCacheMethod(cm);
 
-    V v = new V("testValue".getBytes());
+    V v = new V("testValue");
     String k1Str = "Test1";
     String k2Str = "Test2";
-    K k1 = new K(k1Str.getBytes());
-    K k2 = new K(k2Str.getBytes());
+    K k1 = new K(k1Str);
+    K k2 = new K(k2Str);
 
     updateCache.invoke(cm, k1, v);
     assertEquals(1, cm.getCache().size());
@@ -173,9 +173,9 @@ public class CacheTest {
   private void testDelete(CacheManager cm) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
     Method updateCache = getUpdateCacheMethod(cm);
 
-    V v = new V("testValue".getBytes());
+    V v = new V("testValue");
     String kStr = "Test1";
-    K k = new K(kStr.getBytes());
+    K k = new K(kStr);
 
     updateCache.invoke(cm, k, v);
     assertEquals(1, cm.getCache().size());
