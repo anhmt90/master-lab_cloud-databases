@@ -20,4 +20,6 @@ public class Constants {
     public static final int MAX_TASK_MESSAGE_LENGTH = 63 * 1024;
 
     public static final int MAX_ALLOWED_EOF = 3;
+
+    public static final int MAX_BUFFER_LENGTH = 1024 * 1024; // 1 MB
 }

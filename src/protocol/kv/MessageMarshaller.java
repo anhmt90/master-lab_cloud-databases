@@ -14,6 +14,7 @@ import server.app.Server;
 import util.HashUtils;
 import util.StringUtils;
 
+@Deprecated
 public class MessageMarshaller {
 
     private static final int NODE_INFO_SIZE = 4 + 2 + 16 + 16;

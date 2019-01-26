@@ -3,10 +3,10 @@ package protocol.kv;
 import ecs.Metadata;
 
 public class Message implements IMessage {
-	Status status;
-	K key;
-	V value;
-	Metadata metadata;
+	private Status status;
+	private K key;
+	private V value;
+	private Metadata metadata;
 	/**
 	 * flag indicating if this message is of move data process when adding/removing servers
 	 */

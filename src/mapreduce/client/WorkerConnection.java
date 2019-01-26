@@ -92,7 +92,7 @@ public class WorkerConnection implements Runnable {
     }
 
     /**
-     * Receives a message sent by a client
+     * Receives a message sent by a worker
      *
      * @return the received message
      * @throws IOException

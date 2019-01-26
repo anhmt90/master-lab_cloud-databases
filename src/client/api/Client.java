@@ -5,25 +5,30 @@ import client.mapreduce.Job;
 import ecs.KeyHashRange;
 import ecs.Metadata;
 import ecs.NodeInfo;
+import management.MessageSerializer;
 import mapreduce.common.ApplicationID;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import protocol.kv.*;
 import protocol.kv.IMessage.Status;
+import protocol.mapreduce.OutputMessage;
 import util.HashUtils;
 import util.LogUtils;
 import util.Validate;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashSet;
 
+import static protocol.Constants.MAX_BUFFER_LENGTH;
 import static protocol.Constants.MAX_KV_MESSAGE_LENGTH;
 
 public class Client implements IClient {
@@ -113,44 +118,62 @@ public class Client implements IClient {
         }
     }
 
-    @Override
-    public void send(byte[] data) throws IOException {
+    /**
+     * sends a KV-Message
+     *
+     * @param message the report message that needs to be sent
+     * @throws IOException
+     */
+    public void send(byte[] message) throws IOException {
         try {
-            LOG.info("sending " + data.length + " bytes to server");
             bos = new BufferedOutputStream(socket.getOutputStream());
-            bos.write(data);
+            bos.write(message);
             bos.flush();
+
+            LOG.info("SEND \t<"
+                    + socket.getInetAddress().getHostAddress() + ":"
+                    + socket.getPort() + ">: '"
+                    + message.length + " bytes'");
+
         } catch (IOException e) {
-            disconnect();
-            throw LogUtils.printLogError(LOG, e, "Could't connect to the server. Disconnecting...");
+            LOG.error(e);
+            throw e;
         }
     }
 
+    /**
+     * Receives a KV-Message
+     *
+     * @return the received message
+     * @throws IOException
+     */
     @Override
     public byte[] receive() {
-        byte[] messageBuffer = new byte[MAX_KV_MESSAGE_LENGTH];
-        try {
-            socket.setSoTimeout(60000);
-            bis = new BufferedInputStream(socket.getInputStream());
-            int justRead = bis.read(messageBuffer);
+        byte[] messageBuffer = new byte[MAX_BUFFER_LENGTH];
+        int justRead = 0;
+        while (true) {
+            try {
+                bis = new BufferedInputStream(socket.getInputStream());
+                justRead = bis.read(messageBuffer);
 
-            int inBuffer = justRead;
-            while (justRead > 0 && !MessageMarshaller.isMessageComplete(messageBuffer, inBuffer)) {
-                LOG.info("input hasn't reached EndOfStream, keep reading...");
-                justRead = bis.read(messageBuffer, inBuffer, messageBuffer.length - inBuffer);
-                if (justRead > 0)
-                    inBuffer += justRead;
+                if (justRead < 0)
+                    return null;
+
+                byte[] res = Arrays.copyOfRange(messageBuffer, 0, justRead);
+
+                LOG.info("RECEIVE \t<"
+                        + socket.getInetAddress().getHostAddress() + ":"
+                        + socket.getPort() + ">: '"
+                        + res.length + " bytes'");
+
+                return res;
+
+            } catch (EOFException e) {
+                LOG.error("CATCH EOFException", e);
+            } catch (IOException e) {
+                LOG.error(e);
             }
-            LOG.info("received " + inBuffer + " bytes from server");
-
-        } catch (SocketTimeoutException ste) {
-            LogUtils.printLogError(LOG, ste, "'receive' timeout. Client will disconnect from server.");
-            disconnect();
-        } catch (IOException e) {
-            LogUtils.printLogError(LOG, e, "Could't connect to the server. Disconnecting...");
-            disconnect();
         }
-        return messageBuffer;
     }
 
     @Override
@@ -322,8 +345,8 @@ public class Client implements IClient {
         if (isBatch)
             toSend.setBatchData();
 
-        send(MessageMarshaller.marshall(toSend));
-        IMessage response = MessageMarshaller.unmarshall(receive());
+        send(MessageSerializer.serialize(toSend));
+        IMessage response = MessageSerializer.deserialize(receive());
         if (response == null)
             LOG.info("Received from server: null");
         else
@@ -345,8 +368,8 @@ public class Client implements IClient {
         byte[] valueBytes = value.getBytes(StandardCharsets.US_ASCII);
         IMessage toSend = new Message(Status.PUT, new K(keyBytes), new V(valueBytes));
         if (isBatch) toSend.setBatchData();
-        send(MessageMarshaller.marshall(toSend));
-        IMessage response = MessageMarshaller.unmarshall(receive());
+        send(MessageSerializer.serialize(toSend));
+        IMessage response = MessageSerializer.deserialize(receive());
         if (response == null)
             LOG.info("Received from server: null");
         else
@@ -364,8 +387,8 @@ public class Client implements IClient {
 
     public void getMetadata() throws IOException {
         IMessage toSend = new Message(Status.GET_METADATA);
-        send(MessageMarshaller.marshall(toSend));
-        IMessage resp = MessageMarshaller.unmarshall(receive());
+        send(MessageSerializer.serialize(toSend));
+        IMessage resp = MessageSerializer.deserialize(receive());
         updateMetadata(resp.getMetadata());
     }
 

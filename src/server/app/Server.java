@@ -284,6 +284,8 @@ public class Server extends Thread implements IExternalConfigurationService {
                             "Connected to " + client.getInetAddress().getHostName() + " on servicePort " + kvSocket.getLocalPort());
                 } catch (IOException e) {
                     LOG.error("Error! " + "Unable to establish connection. \n", e);
+                    if(kvSocket.isClosed())
+                        break;
                 }
             }
         }

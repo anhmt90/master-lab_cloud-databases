@@ -15,7 +15,7 @@ public class MessageSerializer {
      * @param message the {@link T}-typed message to be converted
      * @return byte array of the {@link T}-type message
      */
-    public static <T> byte[] serialize(T message) throws IOException {
+    public static <T> byte[] serialize(T message) {
         if (message == null) {
             return null;
         }
@@ -25,7 +25,10 @@ public class MessageSerializer {
 
             output.writeObject(message);
             return byteArrayOS.toByteArray();
+        } catch (IOException e) {
+            LOG.error(e);
         }
+        return null;
     }
 
     /**
@@ -35,7 +38,7 @@ public class MessageSerializer {
      * @return the {@link ConfigMessage} corresponding to the byte array msgBytes
      */
     @SuppressWarnings("unchecked")
-    public static <T> T deserialize(byte[] msgBytes) throws IOException {
+    public static <T> T deserialize(byte[] msgBytes) {
         if (msgBytes == null) {
             return null;
         }
@@ -46,6 +49,8 @@ public class MessageSerializer {
             } catch (ClassNotFoundException e) {
                 LOG.error("Error when casting Object to Message: " + e);
             }
+        } catch (IOException e) {
+            LOG.error(e);
         }
         return null;
     }

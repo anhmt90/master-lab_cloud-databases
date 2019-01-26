@@ -36,7 +36,8 @@ import static util.FileUtils.USER_DIR;
         InteractionTest.class,
         KeyRangeTest.class,
         MarshallingTest.class,
-        PersistenceTest.class})
+        PersistenceTest.class
+})
 public class AllTests {
     public static final String TEST_LOG = "tests";
     public static final String DB_DIR = "test_db";
@@ -48,7 +49,7 @@ public class AllTests {
     public static void startECS() {
         try {
             ecs = new ExternalConfigurationService(ECS_CONFIG_PATH);
-            ecs.initService(1, 100, "FIFO");
+            ecs.initService(4, 100, "FIFO");
             ecs.startService();
         } catch (Exception e) {
             LOG.error(e);

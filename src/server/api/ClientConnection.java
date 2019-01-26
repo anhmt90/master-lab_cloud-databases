@@ -1,5 +1,6 @@
 package server.api;
 
+import management.MessageSerializer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import protocol.kv.*;
@@ -11,12 +12,14 @@ import util.LogUtils;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
+import static protocol.Constants.MAX_BUFFER_LENGTH;
 import static protocol.Constants.MAX_KV_MESSAGE_LENGTH;
 
 
@@ -153,7 +156,7 @@ public class ClientConnection implements Runnable {
                     LOG.info("Server is write-locked");
                     return new Message(Status.SERVER_WRITE_LOCK);
                 }
-                if(server.getReadRange().contains(key.getString()) && message.isBatchData()) {
+                if (server.getReadRange().contains(key.getString()) && message.isBatchData()) {
                     LOG.info("Message is replicated on the server");
                     return handlePUT(key, val);
                 }
@@ -164,8 +167,8 @@ public class ClientConnection implements Runnable {
                 }
                 return handlePUT(key, val);
             case GET_METADATA:
-                    LOG.info("Sending following metadata to client: " + server.getMetadata());
-                    return new Message(Status.METADATA, server.getMetadata());
+                LOG.info("Sending following metadata to client: " + server.getMetadata());
+                return new Message(Status.METADATA, server.getMetadata());
 
             default:
                 throw LogUtils.printLogError(LOG, new IllegalArgumentException("Unknown Request Type " + message.getStatus()));
@@ -229,7 +232,7 @@ public class ClientConnection implements Runnable {
      * @throws IOException
      */
     public void send(IMessage message) throws IOException {
-        byte[] toSend = MessageMarshaller.marshall(message);
+        byte[] toSend = MessageSerializer.serialize(message);
         bos = new BufferedOutputStream(clientSocket.getOutputStream());
         bos.write(toSend);
         bos.flush();
@@ -246,25 +249,30 @@ public class ClientConnection implements Runnable {
      * @return the received message
      * @throws IOException
      */
-    private IMessage receive() throws IOException {
-        byte[] messageBuffer = new byte[MAX_KV_MESSAGE_LENGTH];
-        bis = new BufferedInputStream(clientSocket.getInputStream());
-        int justRead = bis.read(messageBuffer);
+    private IMessage receive() {
+        byte[] messageBuffer = new byte[MAX_BUFFER_LENGTH];
+        int justRead = 0;
+        byte[] res = null;
+        try {
+            bis = new BufferedInputStream(clientSocket.getInputStream());
+            justRead = bis.read(messageBuffer);
 
-        int inBuffer = justRead;
-        while (justRead > 0 && !MessageMarshaller.isMessageComplete(messageBuffer, inBuffer)) {
-            LOG.info("bis hasn't reached EndOfStream, keep reading...");
-            justRead = bis.read(messageBuffer, inBuffer, messageBuffer.length - inBuffer);
-            if (justRead > 0)
-                inBuffer += justRead;
+            if (justRead < 0)
+                return null;
+
+            res = Arrays.copyOfRange(messageBuffer, 0, justRead);
+
+            LOG.info("RECEIVE \t<"
+                    + clientSocket.getInetAddress().getHostAddress() + ":"
+                    + clientSocket.getPort() + ">: '"
+                    + res.length + " bytes'");
+        } catch (EOFException e) {
+            LOG.error("CATCH EOFException", e);
+        } catch (IOException e) {
+            LOG.error(e);
         }
 
-        if (inBuffer == -1) {
-            LOG.warn("RECEIVE -1 bytes (EOS), returning null.");
-            return null;
-        }
-        LOG.info("received " + inBuffer + " bytes from server");
-        IMessage message = MessageMarshaller.unmarshall(messageBuffer);
+        IMessage message = MessageSerializer.deserialize(res);
 
         LOG.info("RECEIVE \t<"
                 + clientSocket.getInetAddress().getHostAddress() + ":"

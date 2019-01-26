@@ -31,7 +31,7 @@ public interface IClient {
      * @return The byte array received from the connected server
      * @throws SocketTimeoutException
      */
-    byte[] receive() throws SocketTimeoutException;
+    byte[] receive() throws SocketTimeoutException, IOException;
 
     /**
      * Check if the socket is closed or not

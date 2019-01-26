@@ -2,6 +2,7 @@ package server.api;
 
 import ecs.KeyHashRange;
 import ecs.NodeInfo;
+import management.MessageSerializer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import protocol.kv.*;
@@ -12,6 +13,7 @@ import util.StringUtils;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -24,6 +26,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static protocol.Constants.MAX_BUFFER_LENGTH;
 import static protocol.Constants.MAX_KV_MESSAGE_LENGTH;
 import static util.FileUtils.SEP;
 
@@ -349,7 +352,7 @@ public class BatchDataTransferProcessor {
         V val = new V(FileUtils.getValueBytes(file));
         Message message = new Message(IMessage.Status.PUT, key, val);
         message.setBatchData();
-        byte[] toSend = MessageMarshaller.marshall(message);
+        byte[] toSend = MessageSerializer.serialize(message);
 
         try {
             bos = new BufferedOutputStream(moveDataSocket.getOutputStream());
@@ -361,7 +364,7 @@ public class BatchDataTransferProcessor {
             LOG.error("Could't connect to the server. Disconnecting...\n" + e);
             return false;
         }
-        IMessage response = MessageMarshaller.unmarshall(receive());
+        IMessage response = MessageSerializer.deserialize(receive());
         if (response == null) {
             LOG.info("Received from server: null");
             return false;
@@ -381,29 +384,28 @@ public class BatchDataTransferProcessor {
      * @return the received byte array
      */
     private byte[] receive() {
-        byte[] messageBuffer = new byte[MAX_KV_MESSAGE_LENGTH];
+        byte[] messageBuffer = new byte[MAX_BUFFER_LENGTH];
+        int justRead = 0;
+        byte[] res = null;
         try {
-            moveDataSocket.setSoTimeout(5000);
             bis = new BufferedInputStream(moveDataSocket.getInputStream());
-            int justRead = bis.read(messageBuffer);
+            justRead = bis.read(messageBuffer);
 
-            int inBuffer = justRead;
-            while (justRead > 0 && !MessageMarshaller.isMessageComplete(messageBuffer, inBuffer)) {
-                LOG.info("input hasn't reached EndOfStream, keep reading...");
-                justRead = bis.read(messageBuffer, inBuffer, messageBuffer.length - inBuffer);
-                if (justRead > 0)
-                    inBuffer += justRead;
-            }
-            LOG.info("received " + inBuffer + " bytes from server");
+            if (justRead < 0)
+                return null;
 
-        } catch (SocketTimeoutException ste) {
-            LOG.error("'receive' timeout. Client will disconnect from server.\n" + ste);
-            disconnect();
+            res = Arrays.copyOfRange(messageBuffer, 0, justRead);
+
+            LOG.info("RECEIVE \t<"
+                    + moveDataSocket.getInetAddress().getHostAddress() + ":"
+                    + moveDataSocket.getPort() + ">: '"
+                    + res.length + " bytes'");
+        } catch (EOFException e) {
+            LOG.error("CATCH EOFException", e);
         } catch (IOException e) {
-            LOG.error("Could't connect to the server. Disconnecting... \n" + e);
-            disconnect();
+            LOG.error(e);
         }
-        return messageBuffer;
+        return res;
     }
 
     /**

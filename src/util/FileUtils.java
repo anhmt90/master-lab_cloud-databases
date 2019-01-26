@@ -10,8 +10,8 @@ import java.util.HashMap;
 
 public class FileUtils {
     public static final String SEP = "/";
-    public static final String WORKING_DIR = getWorkingDir();
     public static final String USER_DIR = System.getProperty("user.dir");
+    public static final String WORKING_DIR = getWorkingDir();
 
     private static HashMap filesBeingCreated = new HashMap();
 
@@ -20,11 +20,15 @@ public class FileUtils {
 //        String path = FileUtils.class.getClassLoader().getResource("util").getPath();
         try {
             String path = new File(FileUtils.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getPath();
-            char separator = (System.getProperty("os.name").toLowerCase().indexOf("win") >= 0) ? '\\' : '/';
-            return path.substring(0, path.lastIndexOf(separator));
+            char separator = isWindows() ? '\\' : '/';
+            return isWindows()? path.substring(0, path.lastIndexOf(separator)): USER_DIR;
         } catch (URISyntaxException e) {
             throw new IllegalArgumentException(e);
         }
+    }
+
+    private static boolean isWindows() {
+        return System.getProperty("os.name").toLowerCase().indexOf("win") >= 0;
     }
 
 

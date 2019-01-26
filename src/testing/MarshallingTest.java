@@ -1,5 +1,6 @@
 package testing;
 
+import management.MessageSerializer;
 import protocol.kv.*;
 import protocol.kv.IMessage.Status;
 
@@ -19,7 +20,7 @@ public class MarshallingTest {
 	private static Logger LOG = LogManager.getLogger(AllTests.TEST_LOG);
 
 	@Test
-    public void testMetadataMarshalling() {
+    public void testMetadataserializeing() {
 		Metadata metadata = new Metadata();
 		String name1 = "node1";
 		String name2 = "node2";
@@ -37,44 +38,44 @@ public class MarshallingTest {
 		metadata.add(name2, host2, port2, hashKey2, hashKey3);
 		metadata.add(name3, host3, port3, hashKey3, hashKey1);
         Message message = new Message(Status.SERVER_NOT_RESPONSIBLE, metadata);
-        byte[] marshalledMessage = MessageMarshaller.marshall(message);
-        IMessage unmarshalledMessage = MessageMarshaller.unmarshall(marshalledMessage);
-        assertEquals(Status.SERVER_NOT_RESPONSIBLE, unmarshalledMessage.getStatus());
+        byte[] serializeedMessage = MessageSerializer.serialize(message);
+        IMessage deserializeedMessage = MessageSerializer.deserialize(serializeedMessage);
+        assertEquals(Status.SERVER_NOT_RESPONSIBLE, deserializeedMessage.getStatus());
         for(int i = 0; i < metadata.getLength(); i++) {
-        	assertEquals(message.getMetadata().get(i).getHost(), unmarshalledMessage.getMetadata().get(i).getHost());
-        	assertEquals(message.getMetadata().get(i).getPort(), unmarshalledMessage.getMetadata().get(i).getPort());
-        	assertEquals(message.getMetadata().get(i).getWriteRange().getStart(), unmarshalledMessage.getMetadata().get(i).getWriteRange().getStart());
-        	assertEquals(message.getMetadata().get(i).getWriteRange().getEnd(), unmarshalledMessage.getMetadata().get(i).getWriteRange().getEnd());
+        	assertEquals(message.getMetadata().get(i).getHost(), deserializeedMessage.getMetadata().get(i).getHost());
+        	assertEquals(message.getMetadata().get(i).getPort(), deserializeedMessage.getMetadata().get(i).getPort());
+        	assertEquals(message.getMetadata().get(i).getWriteRange().getStart(), deserializeedMessage.getMetadata().get(i).getWriteRange().getStart());
+        	assertEquals(message.getMetadata().get(i).getWriteRange().getEnd(), deserializeedMessage.getMetadata().get(i).getWriteRange().getEnd());
         }
     }
 
 	@Test
-    public void testNormalMarshall() {
+    public void testNormalserialize() {
 		byte[] keyBytes = HashUtils.digest("thiskey");
 		byte[] valueBytes = "thisvalue".getBytes(StandardCharsets.US_ASCII);
 		IMessage message = new Message(Status.GET, new K(keyBytes), new V(valueBytes));
-		byte[] marshalledMessage = MessageMarshaller.marshall(message);
-		IMessage unmarshalledMessage = MessageMarshaller.unmarshall(marshalledMessage);
-		assertTrue(message.getStatus().equals(unmarshalledMessage.getStatus()));
-		assertEquals(message.getK().getString(), unmarshalledMessage.getK().getString());
-		assertEquals(message.getV().getString(), unmarshalledMessage.getV().getString());
+		byte[] serializeedMessage = MessageSerializer.serialize(message);
+		IMessage deserializeedMessage = MessageSerializer.deserialize(serializeedMessage);
+		assertTrue(message.getStatus().equals(deserializeedMessage.getStatus()));
+		assertEquals(message.getK().getString(), deserializeedMessage.getK().getString());
+		assertEquals(message.getV().getString(), deserializeedMessage.getV().getString());
          }
 
 	@Test
-    public void testNoKVMarshall() {
+    public void testNoKVserialize() {
 		IMessage message = new Message(Status.SERVER_STOPPED);
-		byte[] marshalledMessage = MessageMarshaller.marshall(message);
-		IMessage unmarshalledMessage = MessageMarshaller.unmarshall(marshalledMessage);
-		assertTrue(message.getStatus().equals(unmarshalledMessage.getStatus()));
+		byte[] serializeedMessage = MessageSerializer.serialize(message);
+		IMessage deserializeedMessage = MessageSerializer.deserialize(serializeedMessage);
+		assertTrue(message.getStatus().equals(deserializeedMessage.getStatus()));
     }
 
     @Test
-    public void testKeyMarshall() {
+    public void testKeyserialize() {
 		byte[] keyBytes = HashUtils.digest("thiskey");
 		IMessage message = new Message(Status.GET, new K(keyBytes));
-		byte[] marshalledMessage = MessageMarshaller.marshall(message);
-		IMessage unmarshalledMessage = MessageMarshaller.unmarshall(marshalledMessage);
-		assertTrue(message.getStatus().equals(unmarshalledMessage.getStatus()));
-		assertEquals(message.getK().getString(), unmarshalledMessage.getK().getString());
+		byte[] serializeedMessage = MessageSerializer.serialize(message);
+		IMessage deserializeedMessage = MessageSerializer.deserialize(serializeedMessage);
+		assertTrue(message.getStatus().equals(deserializeedMessage.getStatus()));
+		assertEquals(message.getK().getString(), deserializeedMessage.getK().getString());
     }
 }
