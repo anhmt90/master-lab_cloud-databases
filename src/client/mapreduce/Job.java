@@ -1,20 +1,19 @@
 package client.mapreduce;
 
 import mapreduce.common.ApplicationID;
-import mapreduce.common.TaskType;
+import util.StringUtils;
 
-import java.time.Instant;
 import java.util.HashSet;
 
 public class Job {
     private Step step;
-    private String token;
+    private String jobId;
     private final ApplicationID applicationID;
     HashSet<String> input;
 
     public Job(ApplicationID applicationID, HashSet<String> input) {
         step = Step.MAP;
-        token = String.valueOf(System.currentTimeMillis());
+        jobId = String.valueOf(System.nanoTime());
         this.applicationID = applicationID;
         this.input = input;
     }
@@ -27,12 +26,8 @@ public class Job {
         this.step = step;
     }
 
-    public String getToken() {
-        return token;
-    }
-
-    public void setToken(String token) {
-        this.token = token;
+    public String getJobId() {
+        return jobId;
     }
 
     public ApplicationID getApplicationID() {
@@ -45,5 +40,10 @@ public class Job {
 
     public void setInput(HashSet<String> input) {
         this.input = input;
+    }
+
+    public String finalizeJobId() {
+        return jobId += StringUtils.getRandomString();
+
     }
 }

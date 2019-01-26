@@ -20,7 +20,6 @@ import java.util.HashSet;
 import java.util.Set;
 
 import static protocol.Constants.MAX_BUFFER_LENGTH;
-import static protocol.Constants.MAX_KV_MESSAGE_LENGTH;
 
 
 /**
@@ -82,7 +81,8 @@ public class ClientConnection implements Runnable {
                     eofCounter = 0;
 
                     if (SUCCESS_STATUS.contains(response.getStatus()))
-                        replicate(response, request.isBatchData());
+                        replicate(response, request.isInternal());
+
                 } catch (IOException ioe) {
                     LOG.error("Error! Connection lost!", ioe);
                     LOG.warn("Setting isOpen to false");
@@ -146,22 +146,22 @@ public class ClientConnection implements Runnable {
 
         switch (message.getStatus()) {
             case GET:
-                if (!server.getReadRange().contains(key.getString())) {
-                    LOG.info("Server not responsible! Server hash range is " + server.getWriteRange() + ", key is " + key.getString());
+                if (!server.getReadRange().contains(key.getHashed())) {
+                    LOG.info("Server not responsible! Server hash range is " + server.getWriteRange() + ", key is " + key.getHashed());
                     return new Message(Status.SERVER_NOT_RESPONSIBLE, server.getMetadata());
                 }
                 return handleGET(message);
             case PUT:
-                if (server.isWriteLocked() && !message.isBatchData()) {
+                if (server.isWriteLocked() && !message.isInternal()) {
                     LOG.info("Server is write-locked");
                     return new Message(Status.SERVER_WRITE_LOCK);
                 }
-                if (server.getReadRange().contains(key.getString()) && message.isBatchData()) {
+                if (server.getReadRange().contains(key.getHashed()) && message.isInternal()) {
                     LOG.info("Message is replicated on the server");
                     return handlePUT(key, val);
                 }
-                if (!server.getWriteRange().contains(key.getString())) {
-                    LOG.info("Server not responsible! Server hash range is " + server.getWriteRange() + ", key is " + key.getString());
+                if (!server.getWriteRange().contains(key.getHashed())) {
+                    LOG.info("Server not responsible! Server hash range is " + server.getWriteRange() + ", key is " + key.getHashed());
                     LOG.info("Sending following metadata to client: " + server.getMetadata());
                     return new Message(Status.SERVER_NOT_RESPONSIBLE, server.getMetadata());
                 }
@@ -175,9 +175,9 @@ public class ClientConnection implements Runnable {
         }
     }
 
-    private void replicate(IMessage message, boolean isRequestBatchData) {
-        if (!isRequestBatchData) {
-            message.setBatchData();
+    private void replicate(IMessage message, boolean isRequestInternal) {
+        if (!isRequestInternal) {
+            message.setInternal();
             server.getReplicator1().setMessage(message);
             new Thread(server.getReplicator1()).start();
 

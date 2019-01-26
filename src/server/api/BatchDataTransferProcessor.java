@@ -27,7 +27,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static protocol.Constants.MAX_BUFFER_LENGTH;
-import static protocol.Constants.MAX_KV_MESSAGE_LENGTH;
 import static util.FileUtils.SEP;
 
 /**
@@ -351,7 +350,7 @@ public class BatchDataTransferProcessor {
         K key = new K(HashUtils.getHashBytesOf(getHashedKeyFromFileName(Paths.get(file))));
         V val = new V(FileUtils.getValueBytes(file));
         Message message = new Message(IMessage.Status.PUT, key, val);
-        message.setBatchData();
+        message.setInternal();
         byte[] toSend = MessageSerializer.serialize(message);
 
         try {

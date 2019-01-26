@@ -7,10 +7,12 @@ public class Message implements IMessage {
 	private K key;
 	private V value;
 	private Metadata metadata;
+
+	private String mrjobId;
 	/**
 	 * flag indicating if this message is of move data process when adding/removing servers
 	 */
-	boolean isBatchData = false;
+	boolean isInternal = false;
 
 	public Message(Status status) {
 		this.status = status;
@@ -43,13 +45,13 @@ public class Message implements IMessage {
 	}
 	
 	@Override
-	public String getKey() {
-		return key.getString();
+	public String getKeyHashed() {
+		return key.getHashed();
 	}
 
 	@Override
 	public String getValue() {
-		return value.getString();
+		return value.get();
 	}
 
 	public K getK() {
@@ -71,18 +73,34 @@ public class Message implements IMessage {
 	}
 
 	@Override
-	public boolean isBatchData() {
-		return isBatchData;
+	public boolean isInternal() {
+		return isInternal;
 	}
 
 	@Override
-	public void setBatchData() {
-		this.isBatchData = true;
+	public String getMrjobId() {
+		return mrjobId;
+	}
+
+	@Override
+	public void setMrjobId(String mrjobId) {
+		this.mrjobId = mrjobId;
+	}
+
+	@Override
+	public void setInternal() {
+		this.isInternal = true;
 	}
 
 	@Override
 	public String toString() {
-		String keyString = key == null ? "metadata" : getKey();
+		String keyString = key == null ? "metadata" : getKeyHashed();
 		return status.name() + "<" + keyString + '>';
+	}
+
+	public static IMessage createPUTMessage(String key, String value) {
+		if (value == null)
+			return new Message(Status.PUT, new K(key));
+		return new Message(Status.PUT, new K(key), new V(value));
 	}
 }

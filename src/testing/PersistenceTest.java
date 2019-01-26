@@ -26,15 +26,15 @@ public class PersistenceTest {
 
     @Test
     public void test1CreateFile() {
-        PUTStatus status = persistenceManager.write(key.getString(), value.get());
+        PUTStatus status = persistenceManager.write(key.getHashed(), value.get());
         assertThat(status, is(PUTStatus.CREATE_SUCCESS));
-        Path filePath = persistenceManager.getFilePath(key.getString());
+        Path filePath = persistenceManager.getFilePath(key.getHashed());
         assertThat(FileUtils.exists(filePath) && !FileUtils.isDir(filePath), equalTo(Boolean.TRUE));
     }
 
     @Test
     public void test2ReadFile() {
-        byte[] get = persistenceManager.read(key.getString());
+        byte[] get = persistenceManager.read(key.getHashed());
         assertThat(get, equalTo(value.get()));
     }
 
@@ -43,21 +43,21 @@ public class PersistenceTest {
         //Update
         String newString = "New\"Val=10";
         V newValue = new V(newString.getBytes());
-        PUTStatus status = persistenceManager.write(key.getString(), newValue.get());
+        PUTStatus status = persistenceManager.write(key.getHashed(), newValue.get());
         assertThat(status, is(PUTStatus.UPDATE_SUCCESS));
 
         //Read
-        byte[] get = persistenceManager.read(key.getString());
+        byte[] get = persistenceManager.read(key.getHashed());
         assertThat(get, equalTo(newValue.get()));
 
     }
 
     @Test
     public void test4DeleteFile() {
-        PUTStatus status = persistenceManager.delete(key.getString());
+        PUTStatus status = persistenceManager.delete(key.getHashed());
         assertThat(status, is(PUTStatus.DELETE_SUCCESS));
 
-        Path filePath = persistenceManager.getFilePath(key.getString());
+        Path filePath = persistenceManager.getFilePath(key.getHashed());
         assertThat(!FileUtils.exists(filePath) && !FileUtils.isDir(filePath), equalTo(Boolean.TRUE));
     }
 

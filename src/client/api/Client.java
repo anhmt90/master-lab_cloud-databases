@@ -11,9 +11,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import protocol.kv.*;
 import protocol.kv.IMessage.Status;
-import protocol.mapreduce.OutputMessage;
 import util.HashUtils;
 import util.LogUtils;
+import util.StringUtils;
 import util.Validate;
 
 import java.io.BufferedInputStream;
@@ -24,12 +24,10 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashSet;
 
 import static protocol.Constants.MAX_BUFFER_LENGTH;
-import static protocol.Constants.MAX_KV_MESSAGE_LENGTH;
 
 public class Client implements IClient {
     public static final String CLIENT_LOG = "kvClient";
@@ -215,30 +213,20 @@ public class Client implements IClient {
 
     @Override
     public IMessage put(String key, String value) throws IOException {
-        String keyHashed = HashUtils.hash(key);
-        String val = (value == null || value.toLowerCase().equals("null")) ? "val=NULL" : "";
-        LOG.info("PUT key=" + keyHashed + val);
-
-        return performPUT(keyHashed, value, false);
+        value = StringUtils.isBlank(value);
+        LOG.info("PUT key=" + key + ", value=" + ((value == null) ? "null" : value));
+        IMessage message = Message.createPUTMessage(key, value);
+        return put(message);
     }
 
-    public IMessage performPUT(String keyHashed, String value, boolean isBatch) throws IOException {
+    public IMessage put(IMessage message) throws IOException {
         IMessage serverResponse = null;
+        V value = message.getV();
         while (true) {
-            selectServerPUT(keyHashed);
-            if (value != null && value.equals("null"))
-                value = null;
-
-            if (value != null) {
-                serverResponse = storeToServer(keyHashed, value, isBatch);
-                if (serverResponse == null)
-                    return new Message(Status.PUT_ERROR);
-
-            } else {
-                serverResponse = removeOnServer(keyHashed, isBatch);
-                if (serverResponse == null)
-                    return new Message(Status.DELETE_ERROR);
-            }
+            selectWriteServer(message.getKeyHashed());
+            serverResponse = submit(message);
+            if (serverResponse == null)
+                return new Message((value == null) ? Status.DELETE_ERROR : Status.PUT_ERROR);
 
             if (serverResponse.getStatus() == Status.SERVER_NOT_RESPONSIBLE) {
                 updateMetadata(serverResponse.getMetadata());
@@ -248,13 +236,8 @@ public class Client implements IClient {
         }
     }
 
-    private void selectServerPUT(String keyHashed) throws IOException {
-        KeyHashRange connectedRange = getConnectedRange();
-        if (connectedRange == null && metadata == null)  // the very first request
-            return;
-
-        if (connectedRange != null && connectedRange.contains(keyHashed))
-            return;
+    private void selectWriteServer(String keyHashed) throws IOException {
+        if (isWithinConnectedRange(keyHashed)) return;
 
         LOG.info("Selecting an appropriate server to send PUT-request to");
         NodeInfo coordinator = metadata.getCoordinator(keyHashed);
@@ -266,18 +249,20 @@ public class Client implements IClient {
         reroute();
     }
 
-    private void selectServerGET(String keyHashed) throws IOException {
-        KeyHashRange connectedRange = getConnectedRange();
-        if (connectedRange == null && metadata == null)  // the very first request
-            return;
-
-        if (connectedRange != null && connectedRange.contains(keyHashed))
-            return;
+    private void selectReadServer(String keyHashed) throws IOException {
+        if (isWithinConnectedRange(keyHashed)) return;
 
         LOG.info("Selecting an appropriate server to send GET-request to");
         NodeInfo nodeForGET = metadata.getNodeToReadFrom(keyHashed);
         setConnectedNode(nodeForGET);
         reroute();
+    }
+
+    private boolean isWithinConnectedRange(String keyHashed) {
+        KeyHashRange connectedRange = getConnectedRange();
+        if (connectedRange != null && connectedRange.contains(keyHashed))
+            return true;
+        return false;
     }
 
     private KeyHashRange getConnectedRange() {
@@ -302,27 +287,16 @@ public class Client implements IClient {
         this.metadata = metadata;
     }
 
-    /**
-     * Intermediary method for deletion of key-value pairs on server
-     *
-     * @param keyHashed hashed key for the value that is supposed to be deleted
-     * @param isBatch
-     * @return the server response
-     * @throws IOException
-     */
-    private IMessage removeOnServer(String keyHashed, boolean isBatch) throws IOException {
-        return sendWithoutValue(keyHashed, Status.PUT, isBatch);
-    }
-
     @Override
     public IMessage get(String key) throws IOException {
         String keyHashed = HashUtils.hash(key);
         while (true) {
-            selectServerGET(keyHashed);
-            IMessage serverResponse = sendWithoutValue(keyHashed, Status.GET, false);
+            selectReadServer(keyHashed);
+            IMessage toSend = new Message(Status.GET, new K(key));
+            IMessage serverResponse = submit(toSend);
             if (serverResponse == null)
                 return new Message(Status.GET_ERROR);
-            if (serverResponse.getStatus() == Status.SERVER_NOT_RESPONSIBLE) {
+            else if (serverResponse.getStatus() == Status.SERVER_NOT_RESPONSIBLE) {
                 updateMetadata(serverResponse.getMetadata());
                 continue;
             }
@@ -333,19 +307,12 @@ public class Client implements IClient {
     /**
      * Handles delivering of Messages without a value. For GET and DELETE operations
      *
-     * @param keyHashed key for the value that is accessed
-     * @param status    message specification
-     * @param isBatch
+     * @param message the message to send
      * @return the server response
      * @throws IOException
      */
-    private IMessage sendWithoutValue(String keyHashed, Status status, boolean isBatch) throws IOException {
-        byte[] keyBytes = HashUtils.getHashBytesOf(keyHashed);
-        IMessage toSend = new Message(status, new K(keyBytes));
-        if (isBatch)
-            toSend.setBatchData();
-
-        send(MessageSerializer.serialize(toSend));
+    private IMessage submit(IMessage message) throws IOException {
+        send(MessageSerializer.serialize(message));
         IMessage response = MessageSerializer.deserialize(receive());
         if (response == null)
             LOG.info("Received from server: null");
@@ -354,31 +321,9 @@ public class Client implements IClient {
         return response;
     }
 
-    /**
-     * Handles delivery of PUT messages to storage. For CREATE and UPDATE
-     *
-     * @param keyHashed hashed key in the key-value pair represented as MD5-hash
-     * @param value     value for the keyHashed-value pair
-     * @param isBatch
-     * @return the server response
-     * @throws IOException
-     */
-    private IMessage storeToServer(String keyHashed, String value, boolean isBatch) throws IOException {
-        byte[] keyBytes = HashUtils.getHashBytesOf(keyHashed);
-        byte[] valueBytes = value.getBytes(StandardCharsets.US_ASCII);
-        IMessage toSend = new Message(Status.PUT, new K(keyBytes), new V(valueBytes));
-        if (isBatch) toSend.setBatchData();
-        send(MessageSerializer.serialize(toSend));
-        IMessage response = MessageSerializer.deserialize(receive());
-        if (response == null)
-            LOG.info("Received from server: null");
-        else
-            LOG.info("Received from server: " + response.toString());
-        return response;
-    }
 
-    public void handleMRJob(ApplicationID appId, HashSet<String> input){
-        if(metadata == null || metadata.get().isEmpty()) {
+    public void handleMRJob(ApplicationID appId, HashSet<String> input) {
+        if (metadata == null || metadata.get().isEmpty()) {
             // TODO Add a method to request metadata from the node that client is currently connected to
         }
         driver = new Driver(metadata);

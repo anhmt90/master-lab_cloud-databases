@@ -58,7 +58,7 @@ public class Driver {
     private void map() {
         outputs = new ConcurrentHashMap<>();
         startOutputCollector();
-        Task mapTask = new Task(TaskType.MAP, job.getApplicationID(), job.getInput());
+        Task mapTask = new Task(TaskType.MAP, job);
         broadcast(mapTask);
         waitForCompletetion();
 
@@ -69,7 +69,7 @@ public class Driver {
     private void reduce() {
         outputs = new ConcurrentHashMap<>();
         startOutputCollector();
-        Task reduceTask = new Task(TaskType.REDUCE, job.getApplicationID(), job.getInput());
+        Task reduceTask = new Task(TaskType.REDUCE, job);
         broadcast(reduceTask);
         waitForCompletetion();
     }

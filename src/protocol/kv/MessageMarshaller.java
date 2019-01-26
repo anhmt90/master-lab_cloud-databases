@@ -46,7 +46,7 @@ public class MessageMarshaller {
         ByteBuffer valueLengthBuffer = ByteBuffer.allocate(BUFFER_CAPACITY).putInt(valueBytes.length);
 
         output[0] = status.getCode();
-        output[1] = (byte) (message.isBatchData() ? 1 : 0);
+        output[1] = (byte) (message.isInternal() ? 1 : 0);
 
         System.arraycopy(valueLengthBuffer.array(), 1, output, 1 + 1, VAL_LENGTH_NUM_BYTES);
         System.arraycopy(keyBytes, 0, output, 1 + 1 + VAL_LENGTH_NUM_BYTES, keyBytes.length);
@@ -92,7 +92,7 @@ public class MessageMarshaller {
                 : getFullMessage(status, keyBytes, valBytes);
 
         if (isBatchData)
-            message.setBatchData();
+            message.setInternal();
         return message;
     }
 

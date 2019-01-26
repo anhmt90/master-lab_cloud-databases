@@ -85,7 +85,7 @@ public class CacheManager implements IStorageCRUD {
 //            new Thread(new CacheUpdater(this, key, val)).start();
             return val;
         }
-        byte[] res = pm.read(key.getString());
+        byte[] res = pm.read(key.getHashed());
         if (res == null)
             return null;
         val = new V(res);
@@ -105,7 +105,7 @@ public class CacheManager implements IStorageCRUD {
      */
     @Override
     public PUTStatus put(K key, V val) {
-        PUTStatus status = (val != null) ? pm.write(key.getString(), val.get()) : pm.delete(key.getString());
+        PUTStatus status = (val != null) ? pm.write(key.getHashed(), val.get()) : pm.delete(key.getHashed());
         if (status.name().contains(ERROR))
             return status;
         updateCache(key, val);
@@ -129,7 +129,7 @@ public class CacheManager implements IStorageCRUD {
     }
 
     private void updateCacheForDeleteOp(K key) {
-        Validate.isTrue(cacheTracker.containsKey(key), key.getString() + " is not in cache. Cache and its tracker are out of sync");
+        Validate.isTrue(cacheTracker.containsKey(key), key.getHashed() + " is not in cache. Cache and its tracker are out of sync");
         cache.remove(key);
         cacheTracker.unregister(key);
     }

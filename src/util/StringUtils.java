@@ -1,6 +1,6 @@
 package util;
 
-import java.util.Arrays;
+import java.util.UUID;
 
 public class StringUtils {
 
@@ -110,6 +110,22 @@ public class StringUtils {
      */
     public static boolean isEmpty(String string) {
         return string == null || string.equals(EMPTY_STRING);
+    }
+
+    public static String getRandomString() {
+        String full = UUID.randomUUID().toString().replaceAll("-", EMPTY_STRING);
+        return full.substring(0, getRandomNumberInRange(5, full.length()));
+    }
+
+    private static int getRandomNumberInRange(int lower, int upper) {
+        Validate.isTrue(upper > lower, "upper bound is less than lower bound");
+        return (int) (Math.random() * ((upper - lower) + 1)) + lower;
+    }
+
+    public static String isBlank(String s) {
+        if(s== null || s.toLowerCase().trim().equals("null") || s.trim().equals(StringUtils.EMPTY_STRING))
+            return null;
+        return s;
     }
 
 }

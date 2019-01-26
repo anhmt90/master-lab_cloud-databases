@@ -44,7 +44,6 @@ public class TaskHandler implements Runnable {
         this.taskPacket = taskPacket;
         this.server = server;
 
-
     }
 
     @Override

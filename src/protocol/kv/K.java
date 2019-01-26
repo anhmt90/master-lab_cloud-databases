@@ -1,40 +1,47 @@
 package protocol.kv;
 
 import util.HashUtils;
+import util.StringUtils;
 
 import java.io.Serializable;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 public class K implements Serializable {
-    private final byte[] key;
+    private final String key;
 
-    public K(byte[] key) {
+    public K(String key) {
         this.key = key;
     }
 
-    public byte[] get() {
+    public String get() {
         return key;
     }
 
-    public String getString() {
-        return HashUtils.getHashStringOf(key);
+    public String getHashed() {
+        return HashUtils.hash(key);
+    }
+
+    public byte[] getBytes() {
+        return key.getBytes(StandardCharsets.US_ASCII);
     }
 
     @Override
     public String toString() {
-        return Arrays.toString(key);
+        return key;
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
+        if (this.equals(o)) return true;
         if (o == null || getClass() != o.getClass()) return false;
         K k = (K) o;
-        return Arrays.equals(key, k.key);
+        return key.equals(k.get());
     }
 
     @Override
     public int hashCode() {
-        return Arrays.hashCode(key);
+        return key.hashCode();
     }
 }

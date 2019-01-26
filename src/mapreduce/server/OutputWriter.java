@@ -2,16 +2,9 @@ package mapreduce.server;
 
 import client.api.Client;
 import ecs.NodeInfo;
-import protocol.kv.K;
-import protocol.kv.V;
-import util.FileUtils;
-import util.HashUtils;
 
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.util.Map;
-
-import static server.api.BatchDataTransferProcessor.getHashedKeyFromFileName;
 
 public class OutputWriter<KT, VT> {
     private Map<KT, VT> output;

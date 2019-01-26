@@ -50,7 +50,7 @@ public interface IMessage extends Serializable {
      * @return the key as String that is associated with this message,
      * null if not key is associated.
      */
-    public String getKey();
+    public String getKeyHashed();
 
     /**
      * @return the value as String that is associated with this message,
@@ -81,8 +81,12 @@ public interface IMessage extends Serializable {
      */
     public Metadata getMetadata();
 
-    public boolean isBatchData();
+    public boolean isInternal();
 
-    public void setBatchData();
+    String getMrjobId();
+
+    void setMrjobId(String mrjobId);
+
+    public void setInternal();
 
 }
