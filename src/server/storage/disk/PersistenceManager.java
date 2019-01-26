@@ -26,7 +26,7 @@ public class PersistenceManager implements IPersistenceManager {
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
     private final ConcurrentMap<String, Object> fileLocks = new ConcurrentHashMap<>();
 
-    private String db_path = WORKING_DIR + "/db" + SEP;
+    private static String db_path = WORKING_DIR + "/db" + SEP;
 
     public PersistenceManager(String serverId) {
         db_path += serverId + SEP;

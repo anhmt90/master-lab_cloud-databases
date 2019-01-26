@@ -1,25 +1,34 @@
 package mapreduce.server;
 
-import management.FailureReportMessage;
+import client.api.Client;
+import ecs.KeyHashRange;
+import ecs.NodeInfo;
 import management.MessageSerializer;
 import mapreduce.common.Task;
-import mapreduce.common.TaskType;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import protocol.kv.IMessage;
+import protocol.kv.K;
+import protocol.kv.Message;
+import protocol.kv.V;
 import protocol.mapreduce.CallbackInfo;
 import protocol.mapreduce.OutputMessage;
 import protocol.mapreduce.TaskMessage;
 import server.app.Server;
+import util.FileUtils;
+import util.HashUtils;
 import util.LogUtils;
 import util.Validate;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.net.*;
-import java.util.HashMap;
+import java.nio.file.Paths;
+import java.util.Map;
 
 import static protocol.Constants.MAX_TASK_MESSAGE_LENGTH;
 import static protocol.Constants.MR_TASK_HANDLER_PORT_DISTANCE;
+import static server.api.BatchDataTransferProcessor.getHashedKeyFromFileName;
 
 public class TaskHandler implements Runnable {
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
@@ -27,10 +36,15 @@ public class TaskHandler implements Runnable {
     private Socket outputOutboundSocket;
     private BufferedOutputStream bos;
     private Server server;
+    private String dbPath;
+    private KeyHashRange appliedRange;
+
 
     public TaskHandler(DatagramPacket taskPacket, Server server) {
         this.taskPacket = taskPacket;
         this.server = server;
+
+
     }
 
     @Override
@@ -40,18 +54,58 @@ public class TaskHandler implements Runnable {
             TaskMessage taskMessage = MessageSerializer.deserialize(taskPacket.getData());
             connect(taskMessage.getCallback());
             Task task = taskMessage.getTask();
-            //TODO handling the task here
+            setPathAndRange(task.getAppliedRange());
 
-            HashMap<String, String> hm = new HashMap<>();
-            hm.put("foo", "bar");
+            switch (task.getTaskType()) {
+                case MAP:
+                    startMapper(task);
+                    break;
+                case REDUCE:
+                    break;
+                default:
+                    throw new IllegalArgumentException("Undefined task type!");
+            }
 
-            send(new OutputMessage(TaskType.MAP, hm));
+//            HashMap<String, String> hm = new HashMap<>();
+//            hm.put("foo", "bar");
+//            send(new OutputMessage(TaskType.MAP, hm));
 
             outputOutboundSocket.close();
         } catch (IOException e) {
             LOG.error(e);
         }
 
+    }
+
+    private void setPathAndRange(KeyHashRange taskRange) {
+        dbPath = server.getCacheManager().getPersistenceManager().getDbPath();
+        appliedRange = (taskRange != null) ? server.getWriteRange() : taskRange;
+    }
+
+    private void startMapper(Task task) {
+        try {
+            switch (task.getAppId()) {
+                case WORD_COUNT:
+                    startWordCountMapping();
+                    break;
+                default:
+                    throw new IllegalArgumentException("Undefined Application ID!");
+            }
+        } catch (IOException e) {
+            LOG.error(e);
+        }
+    }
+
+    private void startWordCountMapping() throws IOException {
+        WordCountMapper wcMapper = new WordCountMapper(dbPath, appliedRange);
+        wcMapper.map();
+
+        OutputWriter<String, Integer> writer = new OutputWriter<>(wcMapper.getOutput(), getFirstNodeFromMetadata());
+        writer.write();
+    }
+
+    private NodeInfo getFirstNodeFromMetadata() {
+        return server.getMetadata().get(0);
     }
 
 
@@ -92,4 +146,5 @@ public class TaskHandler implements Runnable {
             throw e;
         }
     }
+
 }

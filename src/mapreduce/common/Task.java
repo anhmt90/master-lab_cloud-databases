@@ -1,5 +1,7 @@
 package mapreduce.common;
 
+import ecs.KeyHashRange;
+
 import java.io.Serializable;
 import java.util.HashSet;
 
@@ -7,6 +9,8 @@ public class Task implements Serializable {
     TaskType taskType;
     ApplicationID appId;
     HashSet<String> input;
+
+    KeyHashRange appliedRange;
 
     public Task(TaskType taskType, ApplicationID appId, HashSet<String> input) {
         this.taskType = taskType;
@@ -24,6 +28,10 @@ public class Task implements Serializable {
 
     public HashSet<String> getInput() {
         return input;
+    }
+
+    public KeyHashRange getAppliedRange() {
+        return appliedRange;
     }
 
     @Override

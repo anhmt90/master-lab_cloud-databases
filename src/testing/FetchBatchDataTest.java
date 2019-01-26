@@ -2,7 +2,6 @@ package testing;
 
 import ecs.KeyHashRange;
 import ecs.NodeInfo;
-import junit.framework.TestCase;
 import org.junit.Test;
 import server.api.BatchDataTransferProcessor;
 import server.storage.disk.PersistenceManager;
@@ -112,7 +111,7 @@ public class FetchBatchDataTest {
     }
 
     private void setIndexRelevantDataFilesMethod(BatchDataTransferProcessor batchProcessor) throws NoSuchMethodException {
-        indexRelevantDataFiles = batchProcessor.getClass().getDeclaredMethod("indexRelevantData", KeyHashRange.class);
+        indexRelevantDataFiles = batchProcessor.getClass().getDeclaredMethod("indexData", KeyHashRange.class);
         indexRelevantDataFiles.setAccessible(true);
     }
 

@@ -59,6 +59,11 @@ public class BatchDataTransferProcessor {
         this.dbPath = dbPath;
     }
 
+    public BatchDataTransferProcessor(String dbPath) {
+        this.target = null;
+        this.dbPath = dbPath;
+    }
+
     /**
      * starts transferring data to {@see target} server
      *
@@ -73,7 +78,7 @@ public class BatchDataTransferProcessor {
                 Files.createDirectories(Paths.get(DATA_TRANSFER_INDEX_FOLDER));
             }
 
-            indexFiles = indexRelevantData(range);
+            indexFiles = indexData(range);
             LOG.info("Finish indexing, start transferring");
             return transfer(indexFiles);
         } catch (IOException ioe) {
@@ -116,17 +121,17 @@ public class BatchDataTransferProcessor {
     }
 
     /**
-     * indexes all the data files in the given range by storing the paths to them in index files
+     * indexes all the data files in the given range by storing the paths to them in index files located in folder dti/
      *
      * @param range the range of data files which should be transferred
      * @return a list of paths to index files, based on which the relevant key-value files can be found for transferring
      */
-    public String[] indexRelevantData(KeyHashRange range) {
+    public String[] indexData(KeyHashRange range) {
         LOG.info("Indexing relevant data of range " + range);
         if (range.isWrappedAround()) {
             KeyHashRange leftRange = new KeyHashRange(range.getStart(), new String(new char[8]).replace("\0", "ffff"));
             KeyHashRange rightRange = new KeyHashRange(new String(new char[8]).replace("\0", "0000"), range.getEnd());
-            return Stream.concat(Arrays.stream(indexRelevantData(leftRange)), Arrays.stream(indexRelevantData(rightRange)))
+            return Stream.concat(Arrays.stream(indexData(leftRange)), Arrays.stream(indexData(rightRange)))
                     .toArray(String[]::new);
         }
         String[] start = StringUtils.splitEvery(range.getStart(), 2);
@@ -267,7 +272,7 @@ public class BatchDataTransferProcessor {
     private String[] getSortedChildDirs(String currDir) throws IOException {
         String[] directChildDirs = Files.list(Paths.get(dbPath + currDir))
                 .filter(Files::isDirectory)
-                .map(path -> path.getFileName().toString())
+                .map(path -> getHashedKeyFromFileName(path))
                 .toArray(String[]::new);
         Arrays.sort(directChildDirs);
 
@@ -340,8 +345,8 @@ public class BatchDataTransferProcessor {
      * @return boolean value indicating whether the PUT-request ended successfully or not
      */
     private boolean send(String file) throws IOException {
-        K key = new K(HashUtils.getHashBytesOf(Paths.get(file).getFileName().toString()));
-        V val = new V(Files.readAllBytes(Paths.get(file)));
+        K key = new K(HashUtils.getHashBytesOf(getHashedKeyFromFileName(Paths.get(file))));
+        V val = new V(FileUtils.getValueBytes(file));
         Message message = new Message(IMessage.Status.PUT, key, val);
         message.setBatchData();
         byte[] toSend = MessageMarshaller.marshall(message);
@@ -363,6 +368,11 @@ public class BatchDataTransferProcessor {
         } else
             LOG.info("Received from server: " + response.toString());
         return true;
+    }
+
+
+    public static String getHashedKeyFromFileName(Path path) {
+        return path.getFileName().toString();
     }
 
     /**

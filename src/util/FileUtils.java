@@ -1,7 +1,9 @@
 package util;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -87,4 +89,11 @@ public class FileUtils {
         return filesBeingCreated.containsKey(fileName);
     }
 
+    public static byte[] getValueBytes(String file) throws IOException {
+        return Files.readAllBytes(Paths.get(file));
+    }
+
+    public static String getValue(String file) throws IOException {
+        return new String(Files.readAllBytes(Paths.get(file)));
+    }
 }
