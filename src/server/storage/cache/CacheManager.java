@@ -15,6 +15,8 @@ import util.Validate;
 import java.nio.file.Path;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static protocol.mapreduce.Utils.NODEID_KEYBYTES_SEP;
+
 /**
  * Manages the cache and plays as an coordinator between {@link server.api.ClientConnection} and {@link PersistenceManager}.
  * This class handles client's put and get requests by maintaning a {@link this.cache} for quick access. In case the requested key
@@ -28,7 +30,7 @@ public class CacheManager implements IStorageCRUD {
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
 
     public static final String ERROR = "ERROR";
-    public static final String MR_KEYBYTES_SEP = ".";
+
     /**
      * Keeps track of the order in which the elements in {@link this.cache} should be replaced
      */
@@ -86,16 +88,16 @@ public class CacheManager implements IStorageCRUD {
      * @return a value associated with the {@link this.key}.
      */
     @Override
-    public V get(K key, String MRJobId) {
+    public V get(K key, String MRToken) {
         V val;
-        if (StringUtils.isEmpty(MRJobId) && cache.containsKey(key)) {
+        if (StringUtils.isEmpty(MRToken) && cache.containsKey(key)) {
             val = cache.get(key);
             updateCache(key, val);
 //            new Thread(new CacheUpdater(this, key, val)).start();
             return val;
         }
 
-        Path filePath = constructFilePath(MRJobId, key);
+        Path filePath = constructFilePath(MRToken, key);
 
         byte[] res = pm.read(filePath);
         if (res == null)
@@ -116,8 +118,8 @@ public class CacheManager implements IStorageCRUD {
      * @return {@link PUTStatus} as exit code of the function. This will be used to send an appropriate response back to the client.
      */
     @Override
-    public PUTStatus put(K key, V val, String MRJobId) {
-        Path filePath = constructFilePath(MRJobId, key);
+    public PUTStatus put(K key, V val, String MRToken) {
+        Path filePath = constructFilePath(MRToken, key);
 
         PUTStatus status = (val != null) ? pm.write(filePath, val.getBytes()) : pm.delete(filePath);
         if (status.name().contains(ERROR))
@@ -127,8 +129,8 @@ public class CacheManager implements IStorageCRUD {
         return status;
     }
 
-    private Path constructFilePath(String MRJobId, K key) {
-        String fileName = StringUtils.isEmpty(MRJobId) ? StringUtils.EMPTY_STRING : MRJobId + MR_KEYBYTES_SEP;
+    private Path constructFilePath(String MRToken, K key) {
+        String fileName = StringUtils.isEmpty(MRToken) ? StringUtils.EMPTY_STRING : MRToken + NODEID_KEYBYTES_SEP;
         fileName += key.getByteString();
         Path filePath = FileUtils.buildPath(pm.getDbPath(), key.getHashed(), fileName);
         LOG.info(filePath.toString() + " constructed" );

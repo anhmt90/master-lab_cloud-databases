@@ -1,17 +1,20 @@
 package client.mapreduce;
 
 import mapreduce.common.ApplicationID;
+import protocol.mapreduce.Utils;
 import util.StringUtils;
 
-import java.util.HashSet;
+import java.util.TreeSet;
+
+import static protocol.mapreduce.Utils.WITHIN_JOBID_SEP;
 
 public class Job {
     private Step step;
     private String jobId;
     private final ApplicationID applicationID;
-    HashSet<String> input;
+    private TreeSet<String> input;
 
-    public Job(ApplicationID applicationID, HashSet<String> input) {
+    public Job(ApplicationID applicationID, TreeSet<String> input) {
         step = Step.MAP;
         jobId = String.valueOf(System.nanoTime());
         this.applicationID = applicationID;
@@ -34,16 +37,26 @@ public class Job {
         return applicationID;
     }
 
-    public HashSet<String> getInput() {
+    public TreeSet<String> getInput() {
         return input;
     }
 
-    public void setInput(HashSet<String> input) {
+    public void setInput(TreeSet<String> input) {
         this.input = input;
     }
 
-    public String finalizeJobId() {
-        jobId = applicationID.getId() + "_" + jobId + StringUtils.EMPTY_STRING + StringUtils.getRandomString();
+    public String setJobIdBeforeMap() {
+        jobId = applicationID.getId() + WITHIN_JOBID_SEP + jobId +  StringUtils.getRandomString();
+        return jobId;
+    }
+
+    public String setJobIdAfterMap() {
+        jobId = Utils.updateJobIdAfterMap(jobId);
+        return jobId;
+    }
+
+    public String setJobIdAfterReduce() {
+        jobId = Utils.updateJobIdAfterReduce(jobId);
         return jobId;
     }
 }

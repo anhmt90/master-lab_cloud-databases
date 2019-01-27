@@ -7,9 +7,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import protocol.kv.*;
 import server.app.Server;
-import server.storage.cache.CacheManager;
 import util.FileUtils;
 import util.StringUtils;
+import util.Validate;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -27,7 +27,10 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static protocol.Constants.MAX_BUFFER_LENGTH;
+import static protocol.mapreduce.Utils.NODEID_KEYBYTES_SEP;
 import static util.FileUtils.SEP;
+import static util.StringUtils.EMPTY_STRING;
+import static util.StringUtils.isEmpty;
 
 /**
  * handles the batch data transfer process when adding or removing nodes takes places in the ring
@@ -56,14 +59,32 @@ public class BatchDataTransferProcessor {
      */
     String dbPath;
 
+    /**
+     * distinguishes the original file from the MR output having the same hashed key.
+     * has the following format '[Job_Id].[Node_Id].' The 2 dots are mandatory.
+     */
+    String prefix = EMPTY_STRING;
+
     public BatchDataTransferProcessor(NodeInfo target, String dbPath) {
         this.target = target;
         this.dbPath = dbPath;
     }
 
+    public BatchDataTransferProcessor(String dbPath, String prefix) {
+        this(dbPath);
+        setPrefix(prefix);
+    }
+
     public BatchDataTransferProcessor(String dbPath) {
         this.target = null;
         this.dbPath = dbPath;
+    }
+
+
+
+    public void setPrefix(String prefix) {
+        Validate.isTrue(prefix.lastIndexOf(NODEID_KEYBYTES_SEP) == prefix.length() - 1, "Invalid prefix format");
+        this.prefix = prefix;
     }
 
     /**
@@ -144,7 +165,7 @@ public class BatchDataTransferProcessor {
         String endDir = end[commonPrefix.length() / 2];
 
         String commonParent = commonPrefix.length() / 2 == 0 ?
-                StringUtils.EMPTY_STRING :
+                EMPTY_STRING :
                 StringUtils.joinSeparated(Arrays.copyOfRange(start, 0, commonPrefix.length() / 2 - 1), SEP);
 
         String[] firstDiffDirs = new String[0];
@@ -165,8 +186,8 @@ public class BatchDataTransferProcessor {
 
         } catch (IOException e) {
             LOG.error(e);
+            throw new RuntimeException(e);
         }
-        return null;
     }
 
     /**
@@ -184,7 +205,7 @@ public class BatchDataTransferProcessor {
                            int lowerBound,
                            List<String> indexFiles) throws IOException {
         LOG.info("walk start");
-        String currDir = StringUtils.EMPTY_STRING;
+        String currDir = EMPTY_STRING;
         int i = commonPrefix.length() / 2 + 1;
         String[] directChildren = Arrays.copyOfRange(firstDiffDirs, 0, firstDiffDirs.length);
         while (lowerBound >= 0) {
@@ -218,7 +239,7 @@ public class BatchDataTransferProcessor {
                          int upperBound,
                          List<String> indexFiles) throws IOException {
         LOG.info("walk end");
-        String currDir = StringUtils.EMPTY_STRING;
+        String currDir = EMPTY_STRING;
         int i = commonPrefix.length() / 2 + 1;
         String[] directChildren = Arrays.copyOfRange(firstDiffDirs, 0, firstDiffDirs.length);
         while (upperBound >= 0) {
@@ -303,7 +324,8 @@ public class BatchDataTransferProcessor {
                     @Override
                     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                         if (!FileUtils.isDir(file)) {
-                            Files.write(indexFile, (file.toString() + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
+                            if (prefix.equals(EMPTY_STRING) || file.getFileName().toString().contains(prefix))
+                                index(file, indexFile);
                         }
                         return FileVisitResult.CONTINUE;
                     }
@@ -315,6 +337,10 @@ public class BatchDataTransferProcessor {
             }
         }
         return indexFiles;
+    }
+
+    private void index(Path file, Path indexFile) throws IOException {
+        Files.write(indexFile, (file.toString() + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
     }
 
     /**
@@ -349,10 +375,10 @@ public class BatchDataTransferProcessor {
      */
     private boolean send(String file) throws IOException {
         String fileName = Paths.get(file).getFileName().toString();
-        String MRJobId = StringUtils.EMPTY_STRING;
-        String k = StringUtils.EMPTY_STRING;
-        if(fileName.indexOf(CacheManager.MR_KEYBYTES_SEP) >= 0) {
-            String[] nameParts = fileName.split(CacheManager.MR_KEYBYTES_SEP);
+        String MRJobId = EMPTY_STRING;
+        String k = EMPTY_STRING;
+        if (fileName.indexOf(NODEID_KEYBYTES_SEP) >= 0) {
+            String[] nameParts = fileName.split(NODEID_KEYBYTES_SEP);
             MRJobId = nameParts[0];
             k = nameParts[1];
         } else {
@@ -387,10 +413,10 @@ public class BatchDataTransferProcessor {
     }
 
     private void finalizeMessage(String MRJobId, Message message) {
-        if (MRJobId.equals(StringUtils.EMPTY_STRING)) {
+        if (MRJobId.equals(EMPTY_STRING)) {
             message.setInternal();
         } else {
-            message.setMrjobId(MRJobId);
+            message.setMRToken(MRJobId);
         }
     }
 

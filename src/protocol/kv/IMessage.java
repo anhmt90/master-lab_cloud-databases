@@ -83,9 +83,9 @@ public interface IMessage extends Serializable {
 
     public boolean isInternal();
 
-    String getMrjobId();
+    String getMRToken();
 
-    void setMrjobId(String mrjobId);
+    void setMRToken(String mrjobId);
 
     public void setInternal();
 

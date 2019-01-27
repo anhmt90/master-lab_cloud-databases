@@ -1,49 +1,78 @@
 package mapreduce.server;
 
-import client.api.Client;
 import ecs.KeyHashRange;
 import ecs.NodeInfo;
 import management.MessageSerializer;
 import mapreduce.common.Task;
+import mapreduce.common.TaskType;
+import mapreduce.server.word_count.WordCountMapper;
+import mapreduce.server.word_count.WordCountReducer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import protocol.kv.IMessage;
-import protocol.kv.K;
-import protocol.kv.Message;
-import protocol.kv.V;
 import protocol.mapreduce.CallbackInfo;
-import protocol.mapreduce.OutputMessage;
+import protocol.mapreduce.StatusMessage;
 import protocol.mapreduce.TaskMessage;
+import protocol.mapreduce.Utils;
 import server.app.Server;
-import util.FileUtils;
-import util.HashUtils;
 import util.LogUtils;
 import util.Validate;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.net.*;
-import java.nio.file.Paths;
-import java.util.Map;
 
 import static protocol.Constants.MAX_TASK_MESSAGE_LENGTH;
 import static protocol.Constants.MR_TASK_HANDLER_PORT_DISTANCE;
-import static server.api.BatchDataTransferProcessor.getHashedKeyFromFileName;
 
 public class TaskHandler implements Runnable {
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
     private DatagramPacket taskPacket;
+    private Task task;
+    private String currJobId;
+
     private Socket outputOutboundSocket;
     private BufferedOutputStream bos;
     private Server server;
     private String dbPath;
     private KeyHashRange appliedRange;
 
+    private Reducer reducer;
+    private Mapper mapper;
+    private OutputWriter outputWriter;
+
 
     public TaskHandler(DatagramPacket taskPacket, Server server) {
         this.taskPacket = taskPacket;
         this.server = server;
+    }
 
+    public String getCurrJobId() {
+        return currJobId;
+    }
+
+    public Task getTask() {
+        return task;
+    }
+
+    public TaskType getTaskType() {
+        return task.getTaskType();
+    }
+
+    public String getNodeId() {
+        return server.getServerId();
+    }
+
+    NodeInfo getFirstNodeFromMetadata() {
+        return server.getMetadata().get(0);
+    }
+
+    private void setPathAndRange(KeyHashRange taskRange) {
+        dbPath = server.getCacheManager().getPersistenceManager().getDbPath();
+        appliedRange = (taskRange != null) ? server.getWriteRange() : taskRange;
+    }
+
+    public void setCurrJobId(String currJobId) {
+        this.currJobId = currJobId;
     }
 
     @Override
@@ -52,23 +81,35 @@ public class TaskHandler implements Runnable {
         try {
             TaskMessage taskMessage = MessageSerializer.deserialize(taskPacket.getData());
             connect(taskMessage.getCallback());
-            Task task = taskMessage.getTask();
+            task = taskMessage.getTask();
             setPathAndRange(task.getAppliedRange());
+            LOG.info("Current Path:" + dbPath);
+            setCurrJobId(task.getJobId());
+            LOG.info("Current JobId: " + currJobId);
 
-            switch (task.getTaskType()) {
-                case MAP:
-                    startMapper(task);
-                    break;
-                case REDUCE:
-                    break;
-                default:
-                    throw new IllegalArgumentException("Undefined task type!");
+            boolean success = true;
+            try {
+                switch (getTaskType()) {
+                    case MAP:
+                        startMapper();
+                        currJobId = Utils.updateJobIdAfterMap(currJobId);
+                        startWriter(mapper);
+                        break;
+                    case REDUCE:
+                        startReducer();
+                        currJobId = Utils.updateJobIdAfterReduce(currJobId);
+                        startWriter(reducer);
+                        break;
+                    default:
+                        throw new IllegalArgumentException("Undefined task type!");
+                }
+            } catch (RuntimeException e){
+                LOG.error(e);
+                success = false;
             }
+            StatusMessage statusMessage = new StatusMessage<String>(getTaskType(), success, reducer.getKeySet());
 
-//            HashMap<String, String> hm = new HashMap<>();
-//            hm.put("foo", "bar");
-//            send(new OutputMessage(TaskType.MAP, hm));
-
+            send(statusMessage);
             outputOutboundSocket.close();
         } catch (IOException e) {
             LOG.error(e);
@@ -76,37 +117,40 @@ public class TaskHandler implements Runnable {
 
     }
 
-    private void setPathAndRange(KeyHashRange taskRange) {
-        dbPath = server.getCacheManager().getPersistenceManager().getDbPath();
-        appliedRange = (taskRange != null) ? server.getWriteRange() : taskRange;
-    }
-
-    private void startMapper(Task task) {
-        try {
-            switch (task.getAppId()) {
-                case WORD_COUNT:
-                    startWordCountMapping();
-                    break;
-                default:
-                    throw new IllegalArgumentException("Undefined Application ID!");
-            }
-        } catch (IOException e) {
-            LOG.error(e);
+    private void startMapper() {
+        switch (task.getAppId()) {
+            case WORD_COUNT:
+                startWordCountMapper();
+                break;
+            default:
+                throw new IllegalArgumentException("Undefined Application ID!");
         }
     }
 
-    private void startWordCountMapping() throws IOException {
-        WordCountMapper wcMapper = new WordCountMapper(dbPath, appliedRange);
-        wcMapper.map();
-
-        OutputWriter<String, Integer> writer = new OutputWriter<>(wcMapper.getOutput(), getFirstNodeFromMetadata());
-        writer.write();
+    private void startReducer() {
+        switch (task.getAppId()) {
+            case WORD_COUNT:
+                startWordCountReducer();
+                break;
+            default:
+                throw new IllegalArgumentException("Undefined Application ID!");
+        }
     }
 
-    private NodeInfo getFirstNodeFromMetadata() {
-        return server.getMetadata().get(0);
+    private void startWordCountMapper() {
+        mapper = new WordCountMapper(dbPath, appliedRange);
+        mapper.map();
     }
 
+    private void startWriter(MapReduce mapperReducer) {
+        outputWriter =  new OutputWriter<>(mapper, this);
+        outputWriter.write();
+    }
+
+    private void startWordCountReducer() {
+        reducer = new WordCountReducer(dbPath, appliedRange, currJobId);
+        reducer.reduce();
+    }
 
     public void connect(CallbackInfo callback) throws IOException {
         try {
@@ -128,7 +172,7 @@ public class TaskHandler implements Runnable {
      * @param message the report message that needs to be sent
      * @throws IOException
      */
-    public void send(OutputMessage message) throws IOException {
+    public void send(StatusMessage message) throws IOException {
         try {
             bos = new BufferedOutputStream(outputOutboundSocket.getOutputStream());
             byte[] bytes = MessageSerializer.serialize(message);

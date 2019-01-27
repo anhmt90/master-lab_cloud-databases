@@ -166,7 +166,7 @@ public class ClientConnection implements Runnable {
                     LOG.info("Sending following metadata to client: " + server.getMetadata());
                     return new Message(Status.SERVER_NOT_RESPONSIBLE, server.getMetadata());
                 }
-                if(message.getMrjobId() != null) {
+                if(message.getMRToken() != null) {
                     LOG.info("Server got a MapReduce message");
                 }
                 return handlePUT(message);
@@ -201,7 +201,7 @@ public class ClientConnection implements Runnable {
         K key = message.getK();
         V val = message.getV();
 
-        PUTStatus status = cm.put(key, val, message.getMrjobId());
+        PUTStatus status = cm.put(key, val, message.getMRToken());
         switch (status) {
             case CREATE_SUCCESS:
                 return new Message(Status.PUT_SUCCESS, key, val);
@@ -227,7 +227,7 @@ public class ClientConnection implements Runnable {
      * @return server response to client request
      */
     private IMessage handleGET(IMessage message) {
-        V val = cm.get(message.getK(), message.getMrjobId());
+        V val = cm.get(message.getK(), message.getMRToken());
         return (val == null) ? new Message(Status.GET_ERROR, message.getK())
                 : new Message(Status.GET_SUCCESS, message.getK(), val);
     }

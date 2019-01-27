@@ -26,6 +26,7 @@ import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.TreeSet;
 
 import static protocol.Constants.MAX_BUFFER_LENGTH;
 
@@ -79,13 +80,21 @@ public class Client implements IClient {
 
     }
 
+    private KeyHashRange getConnectedRange() {
+        return connectedNode.getWriteRange();
+    }
+
+    public Metadata getMetadata() {
+        return metadata;
+    }
+
     @Override
     public void connect() throws IOException {
         try {
             socket = new Socket();
             socket.connect(new InetSocketAddress(address, port), 5000);
             if(metadata == null)
-                getMetadata();
+                requestMetadata();
         } catch (UnknownHostException uhe) {
             throw LogUtils.printLogError(LOG, uhe, "Unknown host");
         } catch (SocketTimeoutException ste) {
@@ -272,10 +281,6 @@ public class Client implements IClient {
         return false;
     }
 
-    private KeyHashRange getConnectedRange() {
-        return connectedNode.getWriteRange();
-    }
-
     private void setConnectedNode(NodeInfo connectedNode) {
         this.connectedNode = connectedNode;
     }
@@ -329,20 +334,20 @@ public class Client implements IClient {
     }
 
 
-    public void handleMRJob(ApplicationID appId, HashSet<String> input) {
-        if (metadata == null || metadata.get().isEmpty()) {
-            // TODO Add a method to request metadata from the node that client is currently connected to
-        }
-        driver = new Driver(metadata);
+    public void handleMRJob(ApplicationID appId, TreeSet<String> input) {
+        Validate.isTrue(metadata != null, "Metadata is null");
+        driver = new Driver(this);
         driver.exec(new Job(appId, input));
     }
 
-    public void getMetadata() throws IOException {
+    public void requestMetadata() throws IOException {
         IMessage toSend = new Message(Status.GET_METADATA);
         send(MessageSerializer.serialize(toSend));
         IMessage resp = MessageSerializer.deserialize(receive());
         updateMetadata(resp.getMetadata());
     }
+
+
 
 
 }

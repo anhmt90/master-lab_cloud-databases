@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.TreeSet;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -11,7 +12,7 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public class Metadata implements Serializable {
     List<NodeInfo> meta = new ArrayList<>();
-
+    TreeSet<NodeInfo> orderedMeta = new TreeSet<>();
     /**
      * Adds an element to the metadata list
      *
@@ -25,10 +26,12 @@ public class Metadata implements Serializable {
 //        System.out.println(String.format("add RANGE %s %s", start, end));
         NodeInfo nodeInfo = new NodeInfo(nodeName, host, port, start, end);
         meta.add(nodeInfo);
+        orderedMeta.add(nodeInfo);
     }
 
     public void add(NodeInfo nodeInfo) {
         meta.add(nodeInfo);
+        orderedMeta.add(nodeInfo);
     }
 
     /**
@@ -170,6 +173,10 @@ public class Metadata implements Serializable {
 
     public List<NodeInfo> get() {
         return meta;
+    }
+
+    public TreeSet<NodeInfo> getOrdered() {
+        return orderedMeta;
     }
 
     @Override

@@ -8,7 +8,7 @@ public class Message implements IMessage {
 	private V value;
 	private Metadata metadata;
 
-	private String mrjobId;
+	private String MRToken;
 	/**
 	 * flag indicating if this message is of move data process when adding/removing servers
 	 */
@@ -78,13 +78,13 @@ public class Message implements IMessage {
 	}
 
 	@Override
-	public String getMrjobId() {
-		return mrjobId;
+	public String getMRToken() {
+		return MRToken;
 	}
 
 	@Override
-	public void setMrjobId(String mrjobId) {
-		this.mrjobId = mrjobId;
+	public void setMRToken(String mrjobId) {
+		this.MRToken = mrjobId;
 		setInternal();
 	}
 

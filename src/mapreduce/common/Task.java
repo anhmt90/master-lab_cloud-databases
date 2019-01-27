@@ -18,8 +18,6 @@ public class Task implements Serializable {
         this.taskType = taskType;
         this.appId = job.getApplicationID();
         this.input = job.getInput();
-        this.jobId = job.finalizeJobId();
-
     }
 
     public TaskType getTaskType() {

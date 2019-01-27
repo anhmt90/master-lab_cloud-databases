@@ -1,5 +1,7 @@
 package util;
 
+import protocol.mapreduce.Utils;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -7,6 +9,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
+
+import static protocol.mapreduce.Utils.NODEID_KEYBYTES_SEP;
 
 public class FileUtils {
     public static final String SEP = "/";
@@ -122,5 +126,12 @@ public class FileUtils {
     public static Path buildPath(String dbPath, String keyHashed, String fileName) {
         String path = dbPath + SEP + StringUtils.insertCharEvery(keyHashed, '/', 2) + fileName;
         return Paths.get(path);
+    }
+
+    public static String getKeyFromStringPath(String path) {
+        String fileName = Paths.get(path).getFileName().toString();
+        String[] components = fileName.split(NODEID_KEYBYTES_SEP);
+        Validate.isTrue(components.length == 3, "Invalid MR file name format");
+        return StringUtils.decode(components[2]);
     }
 }

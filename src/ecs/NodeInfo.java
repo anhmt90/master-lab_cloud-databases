@@ -5,7 +5,7 @@ import java.io.Serializable;
 /**
  * Metadata of a particular server such as server id, address, port and write range
  */
-public class NodeInfo implements Serializable {
+public class NodeInfo implements Serializable, Comparable {
     /**
      * Unique id to identify the node from other nodes
      */
@@ -63,5 +63,13 @@ public class NodeInfo implements Serializable {
                 ", port=" + port +
                 ", writeRange=" + writeRange +
                 "}\n";
+    }
+
+    @Override
+    public int compareTo(Object o) {
+        if(!(o instanceof NodeInfo))
+            return 0;
+        NodeInfo otherNode = (NodeInfo) o;
+        return getId().compareTo(otherNode.getId());
     }
 }
