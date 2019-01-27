@@ -1,8 +1,16 @@
 package client.app;
 
+import static util.FileUtils.SEP;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 
 import client.api.Client;
 import mapreduce.common.ApplicationID;
@@ -19,6 +27,7 @@ import util.StringUtils;
  */
 public class CommandLineApp {
 
+	private static final String MAPFILE_PATH = System.getProperty("user.dir") + SEP + "mapreduceResults" + SEP;
     private static final String WHITESPACE = StringUtils.WHITE_SPACE;
     static Logger LOG = LogManager.getLogger(Client.CLIENT_LOG);
 
@@ -336,6 +345,87 @@ public class CommandLineApp {
 
         kvClient = new Client(address, port);
         kvClient.connect();
+    }
+    
+    /**
+     * Takes a ConcurrentHashMap containing key value pairs and handles output onto console and a separate file for persistent storage
+     * 
+     * @param map the hashmap containing the kV pairs
+     * @param input a scanner handling input
+     * @param searchWord the value that was searched for for the query
+     */
+    private static void handleHashmapPrint(ConcurrentHashMap<String, String> map, Scanner input) {
+    	
+    	if(map == null) {
+    		print("Map is null.");
+    		return;
+    	}
+    	
+    	if(map.isEmpty()) {
+    		print("Map is empty.");
+    		return;
+    	}
+    	
+    	String date = new SimpleDateFormat("dd-MM-yyyy").format(new Date());
+    	BufferedWriter writer = null;
+    	try {
+    	    File resultsFile=new File(MAPFILE_PATH + date);
+    	    resultsFile.getParentFile().mkdirs();
+    	    resultsFile.createNewFile();
+
+    	    writer = new BufferedWriter(new FileWriter(resultsFile));
+    	    
+    	   for (Entry<String, String> entry : map.entrySet()) {
+    	    	writer.newLine();
+        	    writer.newLine();
+    	        String key = entry.getKey();
+    	        String value = entry.getValue();
+    	        writer.write("key: " + key);
+    	        writer.newLine();
+    	        writer.write(value);
+    	     }
+    	    print("HashMap Results were written to file: " + resultsFile.getCanonicalPath());
+    	    
+    	} catch(Exception e) {
+    	    LOG.error("Error trying to write Hashmap to file.");
+    	} finally {
+            try {
+                writer.close();
+            } catch (Exception e) {
+            	LOG.error("Failed trying to close the FileWriter");
+            }
+        }
+    	
+    	
+    	Set<Entry<String, String>> entrySet = map.entrySet();
+        Iterator<Entry<String, String>> iterator = entrySet.iterator();
+        
+    	while(iterator.hasNext()){
+    		print("Type <next> to display the next 10 entries in the hashmap. Any other input will return you to the application.");
+    		String userInput = input.nextLine();
+            LOG.info("User input: " + userInput);
+            switch(userInput) {
+            	case "next":
+            		for(int i = 0; i < 10; i++) {
+            			if(iterator.hasNext()) {
+	            			Entry<String, String> entry = iterator.next();
+		            		String key = entry.getKey();
+		            		String value = entry.getValue();
+		            		String[] valueSplit = value.split("\n");
+		            		System.out.printf("%-40s %-60s\n", key, valueSplit[0]);
+		            		for(int j = 1; j < valueSplit.length; j++) {
+		            			System.out.printf("%-40s %-60s\n", " ", valueSplit[j]);
+		            		}
+            			}
+            			else {
+            				print("Reached end of HashMap.");
+            				return;
+            			}
+            		}
+            	default:
+            		return;
+            }
+    	}
     }
 
     /**
