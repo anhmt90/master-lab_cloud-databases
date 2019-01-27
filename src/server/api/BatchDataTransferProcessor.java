@@ -274,7 +274,7 @@ public class BatchDataTransferProcessor {
     private String[] getSortedChildDirs(String currDir) throws IOException {
         String[] directChildDirs = Files.list(Paths.get(dbPath + currDir))
                 .filter(Files::isDirectory)
-                .map(path -> getHashedKeyFromFileName(path))
+                .map(path -> path.getFileName().toString())
                 .toArray(String[]::new);
         Arrays.sort(directChildDirs);
 

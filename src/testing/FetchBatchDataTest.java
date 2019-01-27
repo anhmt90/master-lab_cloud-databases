@@ -9,6 +9,7 @@ import util.FileUtils;
 import util.HashUtils;
 import util.StringUtils;
 
+import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -17,6 +18,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 
 import static org.hamcrest.CoreMatchers.*;
@@ -80,7 +82,7 @@ public class FetchBatchDataTest {
             assertThat(keySet2_toMove.contains(fileName), is(true));
         }
 
-        deleteIndexFolder(batchProcessor, indexFiles);
+        deleteIndexFolder(batchProcessor);
     }
 
     @Test
@@ -109,7 +111,7 @@ public class FetchBatchDataTest {
             String fileName = Paths.get(file).getFileName().toString();
             assertThat(keySet1_toMove.contains(fileName), is(true));
         }
-        deleteIndexFolder(batchProcessor, indexFiles);
+        deleteIndexFolder(batchProcessor);
 
     }
 
@@ -123,11 +125,16 @@ public class FetchBatchDataTest {
         cleanUp.setAccessible(true);
     }
 
-    private void deleteIndexFolder(BatchDataTransferProcessor batchProcessor, String[] indexFiles) throws IOException {
-        for (String file : indexFiles) {
-            Files.deleteIfExists(Paths.get(file));
-        }
-        Files.deleteIfExists(Paths.get(batchProcessor.getDataTransferIndexFolder()));
+    private void deleteIndexFolder(BatchDataTransferProcessor batchProcessor) throws IOException {
+        Path dirToDel = Paths.get(batchProcessor.getDataTransferIndexFolder());
+
+        Files.walk(dirToDel)
+                .sorted(Comparator.reverseOrder())
+                .filter(Files::isRegularFile)
+                .map(Path::toFile)
+                .forEach(File::delete);
+
+        Files.deleteIfExists(dirToDel);
     }
 
 
@@ -144,7 +151,8 @@ public class FetchBatchDataTest {
         };
         Path filePath = null;
         for (String key : keySet1){
-            filePath = FileUtils.buildPath(pm1.getDbPath(), HashUtils.hash(key), StringUtils.encode(key));
+//            filePath = FileUtils.buildPath(pm1.getDbPath(), HashUtils.hash(key), StringUtils.encode(key));
+            filePath = getFilePath(pm1.getDbPath(), key);
             pm1.write(filePath, key.getBytes());
         }
 
@@ -159,7 +167,7 @@ public class FetchBatchDataTest {
                 "8" + HashUtils.hash("key16").substring(1)
         };
         for (String key : keySet2){
-            filePath = FileUtils.buildPath(pm2.getDbPath(), HashUtils.hash(key), StringUtils.encode(key));
+            filePath = getFilePath(pm2.getDbPath(), key);
             pm2.write(filePath, key.getBytes());
         }
 
@@ -174,8 +182,21 @@ public class FetchBatchDataTest {
                 "d" + HashUtils.hash("key24").substring(1)
         };
         for (String key : keySet3) {
-            filePath = FileUtils.buildPath(pm2.getDbPath(), HashUtils.hash(key), StringUtils.encode(key));
+            filePath = getFilePath(pm3.getDbPath(), key);
             pm3.write(filePath, key.getBytes());
         }
     }
+
+    /**
+     * constructs a directory path for a key
+     * The key will be the file name and each of its characters will be a folder in the path to the file
+     *
+     * @param key key from which the path is constructed
+     * @return a directory path corresponding to the key
+     */
+    private static Path getFilePath(String dbPath, String key) {
+        String path = dbPath + SEP + StringUtils.insertCharEvery(key, '/', 2) + key;
+        return Paths.get(path);
+    }
+
 }

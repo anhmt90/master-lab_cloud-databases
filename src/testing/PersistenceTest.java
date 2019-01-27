@@ -34,8 +34,8 @@ public class PersistenceTest {
 
     @Test
     public void test2ReadFile() {
-        byte[] get = persistenceManager.read(filePath);
-        assertThat(get, equalTo(value.get()));
+        String got = new String (persistenceManager.read(filePath));
+        assertThat(got, equalTo(value.get()));
     }
 
     @Test
@@ -47,8 +47,8 @@ public class PersistenceTest {
         assertThat(status, is(PUTStatus.UPDATE_SUCCESS));
 
         //Read
-        byte[] get = persistenceManager.read(filePath);
-        assertThat(get, equalTo(newValue.get()));
+        String got = new String(persistenceManager.read(filePath));
+        assertThat(got, equalTo(newValue.get()));
 
     }
 

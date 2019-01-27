@@ -58,11 +58,13 @@ public class PersistenceManager implements IPersistenceManager {
     @Override
     public PUTStatus write(Path file, byte[] value) {
         try {
-            if (!FileUtils.dirExists(file.getParent()))
+            LOG.info("Writing file path " + file);
+            if (!FileUtils.dirExists(file.getParent())) {
+                LOG.info("Parent dirs " + file.getParent() + " not exist. Creating parent dirs");
                 Files.createDirectories(file.getParent());
+            }
             return createOrUpdate(file, value);
         } catch (FileAlreadyExistsException faee) {
-            faee.printStackTrace();
             LOG.error(faee);
         } catch (IOException e) {
             LOG.error(e);
@@ -70,8 +72,6 @@ public class PersistenceManager implements IPersistenceManager {
         }
         return FileUtils.exists(file) ? PUTStatus.UPDATE_ERROR : PUTStatus.CREATE_ERROR;
     }
-
-
 
 
     /**
@@ -83,6 +83,7 @@ public class PersistenceManager implements IPersistenceManager {
      * @return Status if operation was successful or failed
      */
     private synchronized PUTStatus createOrUpdate(Path file, byte[] fileContent) {
+        LOG.info("Performing write");
         try {
             String fileName = file.getFileName().toString();
             Object lock = fileLocks.get(fileName);
@@ -103,7 +104,6 @@ public class PersistenceManager implements IPersistenceManager {
             }
         } catch (IOException e) {
             LOG.error(e);
-            e.printStackTrace();
         }
         return (FileUtils.exists(file)) ? PUTStatus.UPDATE_ERROR : PUTStatus.CREATE_ERROR;
     }

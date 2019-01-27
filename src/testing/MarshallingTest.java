@@ -76,7 +76,9 @@ public class MarshallingTest {
         IMessage deserializedMessage = MessageSerializer.deserialize(serializedMessage);
         assertTrue(message.getStatus().equals(deserializedMessage.getStatus()));
         assertEquals(message.getK().getHashed(), deserializedMessage.getK().getHashed());
-        assertEquals(message.getV().get(), deserializedMessage.getV().get());
-
+        if (message.getV() == null)
+            assertEquals(deserializedMessage.getV(), null);
+        else
+            assertEquals(message.getV().get(), deserializedMessage.getV().get());
     }
 }

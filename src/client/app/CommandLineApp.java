@@ -336,9 +336,6 @@ public class CommandLineApp {
 
         kvClient = new Client(address, port);
         kvClient.connect();
-
-        kvClient.getMetadata();
-
     }
 
     /**

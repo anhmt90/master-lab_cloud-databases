@@ -21,7 +21,8 @@ public class FileUtils {
         try {
             String path = new File(FileUtils.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getPath();
             char separator = isWindows() ? '\\' : '/';
-            return isWindows()? path.substring(0, path.lastIndexOf(separator)): USER_DIR;
+//            return isWindows()? path.substring(0, path.lastIndexOf(separator)): USER_DIR;
+            return path.substring(0, path.lastIndexOf(separator));
         } catch (URISyntaxException e) {
             throw new IllegalArgumentException(e);
         }

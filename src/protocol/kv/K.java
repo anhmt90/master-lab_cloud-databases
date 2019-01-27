@@ -28,7 +28,7 @@ public class K implements Serializable {
     }
 
     public String getByteString(){
-        return Arrays.toString(getBytes()).replaceAll("[^a-z ]", "").trim();
+        return StringUtils.encode(key);
     }
 
     @Override
@@ -38,10 +38,11 @@ public class K implements Serializable {
 
     @Override
     public boolean equals(Object o) {
-        if (this.equals(o)) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        K k = (K) o;
-        return key.equals(k.get());
+        if(o instanceof K) {
+            K other = (K) o;
+            return key.equals(other.get());
+        }
+        return false;
     }
 
     @Override

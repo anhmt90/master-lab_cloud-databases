@@ -49,7 +49,7 @@ public class AllTests {
     public static void startECS() {
         try {
             ecs = new ExternalConfigurationService(ECS_CONFIG_PATH);
-            ecs.initService(4, 100, "FIFO");
+            ecs.initService(3, 100, "FIFO");
             ecs.startService();
         } catch (Exception e) {
             LOG.error(e);

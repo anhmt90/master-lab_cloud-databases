@@ -1,7 +1,10 @@
 package server.storage.cache;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import protocol.kv.K;
 import protocol.kv.V;
+import server.app.Server;
 import server.storage.IStorageCRUD;
 import server.storage.PUTStatus;
 import server.storage.disk.PersistenceManager;
@@ -22,6 +25,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * by the {@link this.cacheTracker}
  */
 public class CacheManager implements IStorageCRUD {
+    private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
+
     public static final String ERROR = "ERROR";
     public static final String MR_KEYBYTES_SEP = ".";
     /**
@@ -125,7 +130,9 @@ public class CacheManager implements IStorageCRUD {
     private Path constructFilePath(String MRJobId, K key) {
         String fileName = StringUtils.isEmpty(MRJobId) ? StringUtils.EMPTY_STRING : MRJobId + MR_KEYBYTES_SEP;
         fileName += key.getByteString();
-        return FileUtils.buildPath(pm.getDbPath(), key.getHashed(), fileName);
+        Path filePath = FileUtils.buildPath(pm.getDbPath(), key.getHashed(), fileName);
+        LOG.info(filePath.toString() + " constructed" );
+        return filePath;
     }
 
     /**

@@ -84,6 +84,8 @@ public class Client implements IClient {
         try {
             socket = new Socket();
             socket.connect(new InetSocketAddress(address, port), 5000);
+            if(metadata == null)
+                getMetadata();
         } catch (UnknownHostException uhe) {
             throw LogUtils.printLogError(LOG, uhe, "Unknown host");
         } catch (SocketTimeoutException ste) {
@@ -194,6 +196,11 @@ public class Client implements IClient {
      * Reconnects to the correct server for the key on server miss
      */
     private void reroute() throws IOException {
+        if(socket == null && bos == null && bis == null){
+            LOG.warn("Client is disconnected");
+            return;
+        }
+
         disconnect();
         this.address = connectedNode.getHost();
         this.port = connectedNode.getPort();
