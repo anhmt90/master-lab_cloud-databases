@@ -163,11 +163,11 @@ public class CommandLineApp {
 
     private static void printResultsMR() {
         String fiveTabs = "                    ";
-        System.out.println(fiveTabs + "KEY" + fiveTabs + "VALUES" + fiveTabs);
+        System.out.println(fiveTabs + "TO LOOKUP" + fiveTabs + "RESULTS" + fiveTabs);
         System.out.println("_______________________________________________________________________________________");
         for (Entry entry : resultsMR.entrySet()) {
             String val = entry.getValue().toString();
-            val.replaceAll("\n", StringUtils.WHITE_SPACE);
+            val = val.replaceAll("\n", "; ");
 
             System.out.print(fiveTabs);
             System.out.print(entry.getKey());
@@ -506,7 +506,7 @@ public class CommandLineApp {
      */
     public static void printHelp() {
         print("This application works as an storage client. The command set is as follows:\n" + getUsage(CONNECT)
-                + getUsage(DISCONNECT) + getUsage(PUT) + getUsage(GET) + getUsage(COUNT) + getUsage(LOG_LEVEL) + getUsage(HELP)
+                + getUsage(DISCONNECT) + getUsage(PUT) + getUsage(GET) + getUsage(COUNT) + getUsage(SEARCH)+ getUsage(LOG_LEVEL) + getUsage(HELP)
                 + getUsage(QUIT)
 
         );
@@ -527,11 +527,13 @@ public class CommandLineApp {
             case PUT:
                 return "'put <key> <value>' - store a key-value pair on the server. " +
                         "Leaving the value field empty will delete the value stored on the server corresponding to the given key. " +
-                        "Attention: 'key' cannot contain whitespace and 'value' can contain whitespace only if it is quoted, e.g. \"this is value\" \n";
+                        "Attention: 'key' cannot contain whitespace and 'value' can contain whitespace if is enclosed by quotation marks, e.g. \"this is value\" \n";
             case GET:
                 return "'get <key>' - retrieve value for the given key from the storage server\n";
             case COUNT:
                 return "'wordcount' - counts occurence number of each word stored in the distributed storage system\n";
+            case SEARCH:
+                return "'search <search_terms>' - search for files that contain the <search_term>. <search_term> can contain whitespace if is enclosed by quotation marks\n";
             case LOG_LEVEL:
                 return "'logLevel <level>' - set logger to specified level\n";
             case HELP:
