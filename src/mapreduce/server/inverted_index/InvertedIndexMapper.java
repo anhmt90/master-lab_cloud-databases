@@ -6,6 +6,7 @@ import util.FileUtils;
 import util.StringUtils;
 
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.TreeSet;
@@ -22,9 +23,13 @@ public class InvertedIndexMapper extends Mapper<String, String> {
     @Override
     public void map() {
         for (String file : files) {
+            LOG.info("file: " + file);
             try {
-                String key = getKeyFromStringPath(file);
+                String key = StringUtils.decode(Paths.get(file).getFileName().toString());
+                LOG.info("key: " + key);
+
                 String val = FileUtils.getValue(file);
+                LOG.info("val: " + val);
 
                 String bestMatch = StringUtils.EMPTY_STRING;
                 for(String input : getInput()) {

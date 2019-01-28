@@ -130,7 +130,7 @@ public class CommandLineApp {
             return;
         }
         if (!kvClient.isClosed()) {
-            String searchTerm = hasWhiteSpace(cmdComponents[1]) ? stripQuotionMark(cmdComponents[1]) : cmdComponents[1];
+            String searchTerm = cmdComponents[1].contains(StringUtils.WHITE_SPACE) ? stripQuotionMark(cmdComponents[1]) : cmdComponents[1];
             List<String> searchTerms = extractSearchTerms(searchTerm);
 
             LOG.info("Invert Indexing " + searchTerm);
@@ -166,10 +166,13 @@ public class CommandLineApp {
         System.out.println(fiveTabs + "KEY" + fiveTabs + "VALUES" + fiveTabs);
         System.out.println("_______________________________________________________________________________________");
         for (Entry entry : resultsMR.entrySet()) {
+            String val = entry.getValue().toString();
+            val.replaceAll("\n", StringUtils.WHITE_SPACE);
+
             System.out.print(fiveTabs);
             System.out.print(entry.getKey());
             System.out.print(fiveTabs);
-            System.out.print(entry.getValue());
+            System.out.print(val);
             System.out.print(fiveTabs);
             System.out.println();
         }
@@ -649,7 +652,7 @@ public class CommandLineApp {
                     return handleInvalidArgs(command, cmdComponents);
 
                 String searchTerm = cmdComponents[1];
-                if (hasWhiteSpace(searchTerm) && !isQuoted(searchTerm)) {
+                if (searchTerm.contains(StringUtils.WHITE_SPACE) && !isQuoted(searchTerm)) {
                     print("Search term with whitespace is not properly quoted. ");
                     return handleInvalidArgs(command, cmdComponents);
                 }
