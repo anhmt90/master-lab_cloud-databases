@@ -17,14 +17,12 @@ import protocol.mapreduce.StatusMessage;
 import protocol.mapreduce.TaskMessage;
 import protocol.mapreduce.Utils;
 import server.app.Server;
-import util.LogUtils;
 import util.Validate;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.net.*;
 import java.util.HashSet;
-import java.util.Set;
 
 import static protocol.Constants.MAX_TASK_MESSAGE_LENGTH;
 import static protocol.Constants.MR_TASK_HANDLER_PORT_DISTANCE;
@@ -173,8 +171,9 @@ public class TaskHandler implements Runnable {
         switch (task.getAppId()) {
             case WORD_COUNT:
                 startWordCountReducer();
+                break;
             case INVERTED_INDEX:
-                startInvertedIndexreducer();
+                startInvertedIndexReducer();
                 break;
             default:
                 throw new IllegalArgumentException("Undefined Application ID!");
@@ -186,17 +185,17 @@ public class TaskHandler implements Runnable {
         mapper.map();
     }
 
-    private void startInvertedIndexMapper() {
-        mapper = new InvertedIndexMapper(dbPath, appliedRange, task.getInput());
-        mapper.map();
-    }
-
     private void startWordCountReducer() {
         reducer = new WordCountReducer(dbPath, appliedRange, currJobId);
         reducer.reduce();
     }
 
-    private void startInvertedIndexreducer() {
+    private void startInvertedIndexMapper() {
+        mapper = new InvertedIndexMapper(dbPath, appliedRange, task.getInput());
+        mapper.map();
+    }
+
+    private void startInvertedIndexReducer() {
         reducer = new InvertedIndexReducer(dbPath, appliedRange, currJobId);
         reducer.reduce();
     }
