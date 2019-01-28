@@ -1,15 +1,15 @@
 package mapreduce.common;
 
-import client.mapreduce.Job;
+import mapreduce.client.Job;
 import ecs.KeyHashRange;
 
 import java.io.Serializable;
-import java.util.HashSet;
+import java.util.TreeSet;
 
 public class Task implements Serializable {
     private TaskType taskType;
     private ApplicationID appId;
-    private HashSet<String> input;
+    private TreeSet<String> input;
     private String jobId;
 
     KeyHashRange appliedRange;
@@ -18,6 +18,7 @@ public class Task implements Serializable {
         this.taskType = taskType;
         this.appId = job.getApplicationID();
         this.input = job.getInput();
+        this.jobId = job.getJobId();
     }
 
     public TaskType getTaskType() {
@@ -28,7 +29,7 @@ public class Task implements Serializable {
         return appId;
     }
 
-    public HashSet<String> getInput() {
+    public TreeSet<String> getInput() {
         return input;
     }
 

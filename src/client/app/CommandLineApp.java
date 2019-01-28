@@ -41,9 +41,9 @@ public class CommandLineApp {
     private static final String QUIT = "quit";
     private static final String GET = "get";
 
-    private static final String COUNT = "count";
+    private static final String COUNT = "wordcount";
 
-
+    private static TreeMap<String, String> resultsMR;
 
     /**
      * The StorageClient as an instance of {@link Client} to communicate with the
@@ -109,15 +109,27 @@ public class CommandLineApp {
         if (!isValidArgs(COUNT, cmdComponents)) {
             return;
         }
-        String keyword = cmdComponents[1];
-
         if (!kvClient.isClosed()) {
-            LOG.info("Counting occurences of " + keyword);
-
-            kvClient.handleMRJob(ApplicationID.WORD_COUNT, new HashSet<>(Arrays.asList(new String[]{keyword})));
-//            handleServerResponse(serverResponse, key);
+            LOG.info("Counting occurences of all words");
+            resultsMR = kvClient.handleMRJob(ApplicationID.WORD_COUNT, new TreeSet<>());
+            printResultsMR();
         } else {
             print("No connection currently established. Please establish a connection before retrieving a value");
+        }
+    }
+
+
+    private static void printResultsMR() {
+        String fiveTabs = "                    ";
+        System.out.println(fiveTabs + "KEY" + fiveTabs + "VALUES" + fiveTabs);
+        System.out.println("_______________________________________________________________________________________");
+        for (Entry entry : resultsMR.entrySet()) {
+            System.out.print(fiveTabs);
+            System.out.print(entry.getKey());
+            System.out.print(fiveTabs);
+            System.out.print(entry.getValue());
+            System.out.print(fiveTabs);
+            System.out.println();
         }
     }
 
@@ -173,7 +185,7 @@ public class CommandLineApp {
         String[] keyAndValue = cmdComponents[1].split(StringUtils.WHITE_SPACE, 2);
         String key = keyAndValue[0];
         if (key.length() < 1) {
-            print("Key needs to be at least one non whitespace character.");
+            print("Key needs to be at least one non-whitespace character.");
             LOG.info("Invalid key. " + cmdComponents);
             return;
         }
@@ -188,7 +200,7 @@ public class CommandLineApp {
             return;
         }
 
-        String value = keyAndValue[1];
+        String value = keyAndValue[1].trim().substring(1, keyAndValue[1].length() - 1);
         if (value.length() > MAX_VALUE_SIZE) {
             String msg = "Value exceeds maximum loadedDataSize";
             print(msg);
@@ -255,55 +267,55 @@ public class CommandLineApp {
 
     /**
      * Prints out the appropriate response to a server response and logs info
-     * 
+     *
      * @param serverResponse responser from server to a request
      * @param key key belonging to the request
      */
     private static void handleServerResponse(IMessage serverResponse, String key) {
     	switch (serverResponse.getStatus()) {
 	    	case PUT_ERROR:
-	            print("Fail to store key-value pair.");
+                println("Fail to store key-value pair.");
 	            LOG.info("Storage failure");
 	            break;
 	        case PUT_SUCCESS:
-	            print("Key-value pair stored successfully.");
+	            println("Key-value pair stored successfully.");
 	            LOG.info("Storage success");
 	            break;
 	        case PUT_UPDATE:
-	        	print("Value for " + key + "was updated.");
+                println("Value for '" + key + "' was updated.");
 	        	LOG.info("Update success");
 	        	break;
 	        case GET_ERROR:
-	            print("Retrieving value was unsuccesful. There might be no value saved on the server corresponding to the given key: "
+                println("Retrieving value was unsuccesful. There might be no value saved on the server corresponding to the given key: "
 	                    + key);
 	            LOG.info("Get failure");
 	            break;
 	        case GET_SUCCESS:
-	            print("Value stored on server for key '" + key + "' is: " + serverResponse.getValue());
+                println("Value stored on server for key '" + key + "' is: " + serverResponse.getValue());
 	            LOG.info("Get success");
 	            break;
 	        case DELETE_ERROR:
-                print("Fail to remove entry. No value for key " + key + " found on server.");
+                println("Fail to remove entry. No value for key " + key + " found on server.");
                 LOG.info("Deletion failure");
                 break;
             case DELETE_SUCCESS:
-                print("Value stored on server for key " + key + " was deleted.");
+                println("Value stored on server for key " + key + " was deleted.");
                 LOG.info("Deletion success");
                 break;
             case SERVER_STOPPED:
-            	print("Storage server is currently stopped and does not accept client requests.");
+                println("Storage server is currently stopped and does not accept client requests.");
             	LOG.info("Server stopped");
             	break;
             case SERVER_WRITE_LOCK:
-            	print("Storage server does not currently accept put requests.");
+                println("Storage server does not currently accept put requests.");
             	LOG.info("Server locked");
             	break;
 	        default:
-	            print("Unknown server response. Please try again");
+                println("Unknown server response. Please try again");
 	            LOG.info("Incompatible server response", serverResponse);
 	    }
     }
-    
+
     /**
      * Disconnects the connection to StorageServer
      */
@@ -346,26 +358,25 @@ public class CommandLineApp {
         kvClient = new Client(address, port);
         kvClient.connect();
     }
-    
+
     /**
      * Takes a ConcurrentHashMap containing key value pairs and handles output onto console and a separate file for persistent storage
-     * 
+     *
      * @param map the hashmap containing the kV pairs
      * @param input a scanner handling input
-     * @param searchWord the value that was searched for for the query
      */
     private static void handleHashmapPrint(ConcurrentHashMap<String, String> map, Scanner input) {
-    	
+
     	if(map == null) {
     		print("Map is null.");
     		return;
     	}
-    	
+
     	if(map.isEmpty()) {
     		print("Map is empty.");
     		return;
     	}
-    	
+
     	String date = new SimpleDateFormat("dd-MM-yyyy").format(new Date());
     	BufferedWriter writer = null;
     	try {
@@ -374,7 +385,7 @@ public class CommandLineApp {
     	    resultsFile.createNewFile();
 
     	    writer = new BufferedWriter(new FileWriter(resultsFile));
-    	    
+
     	   for (Entry<String, String> entry : map.entrySet()) {
     	    	writer.newLine();
         	    writer.newLine();
@@ -385,7 +396,7 @@ public class CommandLineApp {
     	        writer.write(value);
     	     }
     	    print("HashMap Results were written to file: " + resultsFile.getCanonicalPath());
-    	    
+
     	} catch(Exception e) {
     	    LOG.error("Error trying to write Hashmap to file.");
     	} finally {
@@ -395,11 +406,11 @@ public class CommandLineApp {
             	LOG.error("Failed trying to close the FileWriter");
             }
         }
-    	
-    	
+
+
     	Set<Entry<String, String>> entrySet = map.entrySet();
         Iterator<Entry<String, String>> iterator = entrySet.iterator();
-        
+
     	while(iterator.hasNext()){
     		print("Type <next> to display the next 10 entries in the hashmap. Any other input will return you to the application.");
     		String userInput = input.nextLine();
@@ -447,7 +458,7 @@ public class CommandLineApp {
      */
     public static void printHelp() {
         print("This application works as an storage client. The command set is as follows:\n" + getUsage(CONNECT)
-                + getUsage(DISCONNECT) + getUsage(PUT) + getUsage(GET) + getUsage(LOG_LEVEL) + getUsage(HELP)
+                + getUsage(DISCONNECT) + getUsage(PUT) + getUsage(GET) + getUsage(COUNT) + getUsage(LOG_LEVEL) + getUsage(HELP)
                 + getUsage(QUIT)
 
         );
@@ -466,9 +477,13 @@ public class CommandLineApp {
             case DISCONNECT:
                 return "'disconnect' - disconnect from currently connected server\n";
             case PUT:
-                return "'put <key> <value>' - store a key-value pair on the server. Leaving the value field empty will delete the value stored on the server corresponding to the given key\n";
+                return "'put <key> <value>' - store a key-value pair on the server. " +
+                        "Leaving the value field empty will delete the value stored on the server corresponding to the given key. " +
+                        "Attention: 'key' cannot contain whitespace and 'value' can contain whitespace only if it is quoted, e.g. \"this is value\" \n";
             case GET:
                 return "'get <key>' - retrieve value for the given key from the storage server\n";
+            case COUNT:
+                return "'wordcount' - counts occurence number of each word stored in the distributed storage system\n";
             case LOG_LEVEL:
                 return "'logLevel <level>' - set logger to specified level\n";
             case HELP:
@@ -484,7 +499,7 @@ public class CommandLineApp {
      * @param commandName The name of the command to print the usage for
      */
     private static void printUsage(String commandName) {
-        System.out.print("\nUsage: " + getUsage(commandName));
+        System.out.print("\nUSAGE: " + getUsage(commandName));
     }
 
     /**
@@ -501,6 +516,15 @@ public class CommandLineApp {
      */
     private static void print(String output) {
         System.out.print(output);
+    }
+
+    /**
+     * Prints an output string to System.out with newline at the end
+     *
+     * @param output The output string to print to System.out
+     */
+    private static void println(String output) {
+        System.out.println(output);
     }
 
     /**
@@ -538,47 +562,72 @@ public class CommandLineApp {
     }
 
     /**
-     * Checks whether the command arguments of a specified {@param commandName} are
+     * Checks whether the command arguments of a specified {@param command} are
      * valid
      *
-     * @param commandName   The command name
+     * @param command   The command name
      * @param cmdComponents User input separated by the first whitespace. The
      *                      command name is the first component and the remaining as
      *                      the second.
      * @return boolean value indicating the arguments associating with the
-     * {@see commandName} are valid or not
+     * {@see command} are valid or not
      */
-    private static boolean isValidArgs(String commandName, String[] cmdComponents) {
-        switch (commandName) {
+    private static boolean isValidArgs(String command, String[] cmdComponents) {
+        switch (command) {
             case CONNECT:
             case LOG_LEVEL:
                 if (cmdComponents.length != 2)
-                    return handleInvalidArgs(commandName, cmdComponents);
+                    return handleInvalidArgs(command, cmdComponents);
                 break;
             case PUT:
-                if (cmdComponents.length != 2 || cmdComponents[1].split(WHITESPACE).length > 2)
-                    return handleInvalidArgs(commandName, cmdComponents);
+                if (cmdComponents.length != 2)
+                    return handleInvalidArgs(command, cmdComponents);
+                String[] args = cmdComponents[1].split(WHITESPACE, 2);
+                if (hasWhiteSpace(args[0])) {
+                    return handleInvalidArgs(command, cmdComponents);
+                }
+
+                if(args[1].contains(StringUtils.WHITE_SPACE) && !isQuoted(args[1])) {
+                    print("Value is not quoted properly. ");
+                    return handleInvalidArgs(command, cmdComponents);
+                }
                 break;
             case GET:
-                if (cmdComponents.length != 2 || cmdComponents[1].split(WHITESPACE).length > 1)
-                    return handleInvalidArgs(commandName, cmdComponents);
+                if (cmdComponents.length != 2)
+                    return handleInvalidArgs(command, cmdComponents);
+                if (hasWhiteSpace(cmdComponents[1]))
+                    return handleInvalidArgs(command, cmdComponents);
                 break;
         }
         return true;
     }
 
+    private static boolean hasWhiteSpace(String key) {
+        if(key.contains(StringUtils.WHITE_SPACE)){
+            print("Key cannot contain whitespace. ");
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean isQuoted(String quotedString) {
+        String s = quotedString.trim();
+        return (s.indexOf(StringUtils.QUOTE) == 0 && s.lastIndexOf(StringUtils.QUOTE) == s.length() - 1)
+                || (s.indexOf(StringUtils.TICK) == 0 && s.lastIndexOf(StringUtils.TICK) == s.length() - 1);
+    }
+
     /**
      * prints to console and log if user provided illegal arguments
-     * 
-     * @param commandName    name of the command for which the user
+     *
+     * @param command    name of the command for which the user
      *                      provided wrong arguments
      * @param cmdComponents String array containing the user arguments
      * @return false
      */
-    private static boolean handleInvalidArgs(String commandName, String[] cmdComponents) {
-        print("Invalid argument for '" + commandName + "' command");
-        LOG.info("Invalid argument. " + cmdComponents);
-        printUsage(commandName);
+    private static boolean handleInvalidArgs(String command, String[] cmdComponents) {
+        print("Invalid argument for '" + command + "' command");
+        LOG.info("Invalid argument. " + Arrays.toString(cmdComponents));
+        printUsage(command);
         return false;
     }
 }

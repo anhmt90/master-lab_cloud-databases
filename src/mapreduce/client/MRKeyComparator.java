@@ -4,9 +4,10 @@ import ecs.Metadata;
 import ecs.NodeInfo;
 import util.HashUtils;
 
+import java.io.Serializable;
 import java.util.Comparator;
 
-public class MRKeyComparator implements Comparator<String> {
+public class MRKeyComparator implements Comparator<String>, Serializable {
     private Metadata metadata;
 
     public MRKeyComparator(Metadata metadata) {

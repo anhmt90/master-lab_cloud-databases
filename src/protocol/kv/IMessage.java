@@ -88,5 +88,6 @@ public interface IMessage extends Serializable {
     void setMRToken(String mrjobId);
 
     public void setInternal();
+    boolean hasMRToken();
 
 }

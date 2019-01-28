@@ -6,6 +6,7 @@ import management.MessageSerializer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import protocol.kv.*;
+import protocol.mapreduce.Utils;
 import server.app.Server;
 import util.FileUtils;
 import util.StringUtils;
@@ -83,7 +84,7 @@ public class BatchDataTransferProcessor {
 
 
     public void setPrefix(String prefix) {
-        Validate.isTrue(prefix.lastIndexOf(NODEID_KEYBYTES_SEP) == prefix.length() - 1, "Invalid prefix format");
+//        Validate.isTrue(prefix.lastIndexOf(NODEID_KEYBYTES_SEP) == prefix.length() - 1, "Invalid prefix format. Prefix is " + prefix);
         this.prefix = prefix;
     }
 
@@ -182,12 +183,18 @@ public class BatchDataTransferProcessor {
 
             walkStart(start, commonPrefix, firstDiffDirs, lowerBound, indexFiles);
             walkEnd(end, commonPrefix, firstDiffDirs, upperBound, indexFiles);
-            return indexFiles.toArray(new String[indexFiles.size()]);
+
+            String[] indexFileLocations = indexFiles.toArray(new String[indexFiles.size()]);
+            LOG.info("Data indexed successfully with " + indexFileLocations.length + " index files");
+            return indexFileLocations;
 
         } catch (IOException e) {
             LOG.error(e);
+        } catch (RuntimeException e) {
+            LOG.error(e);
             throw new RuntimeException(e);
         }
+        return null;
     }
 
     /**
@@ -324,7 +331,9 @@ public class BatchDataTransferProcessor {
                     @Override
                     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                         if (!FileUtils.isDir(file)) {
-                            if (prefix.equals(EMPTY_STRING) || file.getFileName().toString().contains(prefix))
+                            String fileName = file.getFileName().toString();
+                            boolean emptyPrefix = StringUtils.isEmpty(prefix);
+                            if ((emptyPrefix && !fileName.contains(NODEID_KEYBYTES_SEP)) || (!emptyPrefix && fileName.startsWith(prefix)) )
                                 index(file, indexFile);
                         }
                         return FileVisitResult.CONTINUE;

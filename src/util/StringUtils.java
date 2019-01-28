@@ -7,6 +7,8 @@ public class StringUtils {
 
     public static final char LINE_FEED = 0x0A;
     public static final char RETURN = 0x0D;
+    public static final char QUOTE = '"';
+    public static final char TICK = '\'';
     public static final String EMPTY_STRING = "";
     public static final String WHITE_SPACE = " ";
 
@@ -142,7 +144,7 @@ public class StringUtils {
 
     public static String decode(String byteString) {
         Validate.isTrue(byteString.length() % 3 == 0, "Invalid byteString");
-        String[] byteStrings = splitEvery(byteString, 3);
+        String[] byteStrings = byteString.split("(?<=\\G...)");
         byte[] bytes = new byte[byteStrings.length];
 
         for (byte i = 0; i < byteStrings.length; i++)

@@ -1,6 +1,6 @@
-package client.mapreduce;
+package mapreduce.client;
 
-import mapreduce.client.WorkerConnection;
+import ecs.NodeInfo;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import protocol.mapreduce.CallbackInfo;
@@ -10,8 +10,7 @@ import java.io.IOException;
 import java.net.BindException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -33,10 +32,10 @@ public class StatusReceiver implements Runnable {
 
     private Driver driver;
 
-    public StatusReceiver(Driver driver) {
+    public StatusReceiver(Driver driver, List<NodeInfo> nodes) {
         this.driver = driver;
-        expectedConnections = driver.getMetadata().get().stream().map(node -> "/"+node.getHost()+":"+ (node.getPort() + MR_TASK_HANDLER_PORT_DISTANCE)).collect(Collectors.toSet());
-        openCallbackSocket();
+        expectedConnections = nodes.stream().map(node -> "/"+node.getHost()+":"+ (node.getPort() + MR_TASK_HANDLER_PORT_DISTANCE)).collect(Collectors.toSet());
+        running = openCallbackSocket();
     }
 
     private int getRandomPort() {
@@ -65,13 +64,13 @@ public class StatusReceiver implements Runnable {
         Validate.isTrue(!expectedConnections.isEmpty(), "expectedConnections is empty");
         workerConnections = new HashSet<>(expectedConnections.size());
 
-        running = openCallbackSocket();
+        LOG.info("expectedConnections " + Arrays.toString(expectedConnections.toArray()));
         LOG.info("Is running? " + running);
-
         while (running) {
             if (expectedConnections.size() <= 0)
                 break;
             try {
+                LOG.info("Waiting for worker connection");
                 Socket worker = callbackSocket.accept();
                 boolean isRemoved = expectedConnections.remove(worker.getRemoteSocketAddress().toString());
                 if (!isRemoved) {
@@ -92,6 +91,13 @@ public class StatusReceiver implements Runnable {
         }
         LOG.info("No expected connections left. StatusReceiver stopped listening to connections. StatusReceiver is now wating for all WorkerConnections to finish.");
         waitWorkerConnections();
+        try {
+            callbackSocket.close();
+            callbackSocket = null;
+            LOG.info("Callback socket closed.");
+        } catch (IOException e) {
+            LOG.error(e);
+        }
     }
 
     private void waitWorkerConnections() {
@@ -104,6 +110,7 @@ public class StatusReceiver implements Runnable {
                 LOG.error(e);
             }
         }
+        LOG.info("Clearing all worker connections");
         workerConnections.clear();
     }
 

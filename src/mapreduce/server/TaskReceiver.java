@@ -10,7 +10,6 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 
 import static protocol.Constants.MAX_TASK_MESSAGE_LENGTH;
-import static protocol.Constants.MR_TASK_HANDLER_PORT_DISTANCE;
 
 public class TaskReceiver implements Runnable {
     private static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);

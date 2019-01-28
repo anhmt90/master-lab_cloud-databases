@@ -97,7 +97,7 @@ public class CacheManager implements IStorageCRUD {
             return val;
         }
 
-        Path filePath = constructFilePath(MRToken, key);
+        Path filePath = buildPath(key.getHashed(), buildPUTFileName(MRToken, key));
 
         byte[] res = pm.read(filePath);
         if (res == null)
@@ -119,7 +119,7 @@ public class CacheManager implements IStorageCRUD {
      */
     @Override
     public PUTStatus put(K key, V val, String MRToken) {
-        Path filePath = constructFilePath(MRToken, key);
+        Path filePath = buildPath(key.getHashed(), buildPUTFileName(MRToken, key));
 
         PUTStatus status = (val != null) ? pm.write(filePath, val.getBytes()) : pm.delete(filePath);
         if (status.name().contains(ERROR))
@@ -129,13 +129,25 @@ public class CacheManager implements IStorageCRUD {
         return status;
     }
 
-    private Path constructFilePath(String MRToken, K key) {
+
+    private String buildPUTFileName(String MRToken, K key) {
         String fileName = StringUtils.isEmpty(MRToken) ? StringUtils.EMPTY_STRING : MRToken + NODEID_KEYBYTES_SEP;
         fileName += key.getByteString();
-        Path filePath = FileUtils.buildPath(pm.getDbPath(), key.getHashed(), fileName);
+        return fileName;
+    }
+
+    private String buildGETFileName(String MRToken, K key) {
+        String fileName = StringUtils.isEmpty(MRToken) ? StringUtils.EMPTY_STRING : MRToken + NODEID_KEYBYTES_SEP;
+        fileName += key.getByteString();
+        return fileName;
+    }
+
+    private Path buildPath(String keyHashed, String fileName) {
+        Path filePath = FileUtils.buildPath(pm.getDbPath(), keyHashed, fileName);
         LOG.info(filePath.toString() + " constructed" );
         return filePath;
     }
+
 
     /**
      * Updates the {@link this.cache} with the given <K,V> pair. A cache displacement can happen if the cache reaches

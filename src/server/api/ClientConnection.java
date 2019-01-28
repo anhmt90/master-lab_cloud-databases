@@ -9,6 +9,7 @@ import server.app.Server;
 import server.storage.PUTStatus;
 import server.storage.cache.CacheManager;
 import util.LogUtils;
+import util.StringUtils;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -80,8 +81,9 @@ public class ClientConnection implements Runnable {
                     send(response);
                     eofCounter = 0;
 
-                    if (SUCCESS_STATUS.contains(response.getStatus()))
-                        replicate(response, request.isInternal());
+                    LOG.debug("REQ is internal: " + request.isInternal());
+                    if (SUCCESS_STATUS.contains(response.getStatus()) && !request.isInternal())
+                        replicate(request);
 
                 } catch (IOException ioe) {
                     LOG.error("Error! Connection lost!", ioe);
@@ -137,17 +139,17 @@ public class ClientConnection implements Runnable {
      */
     private IMessage handleRequest(IMessage message) {
         if (server.isStopped()) {
-            LOG.info("Server is stopped");
+            LOG.info("Server is in STOP STATE");
             return new Message(Status.SERVER_STOPPED);
         }
 
         K key = message.getK();
-        V val = message.getV();
+        String keyHashed = key == null ? StringUtils.EMPTY_STRING : key.getHashed();
 
         switch (message.getStatus()) {
             case GET:
-                if (!server.getReadRange().contains(key.getHashed())) {
-                    LOG.info("Server not responsible! Server hash range is " + server.getWriteRange() + ", key is " + key.getHashed());
+                if (!server.getReadRange().contains(keyHashed)) {
+                    LOG.info("Server not responsible! Server hash range is " + server.getWriteRange() + ", key is " + keyHashed);
                     return new Message(Status.SERVER_NOT_RESPONSIBLE, server.getMetadata());
                 }
                 return handleGET(message);
@@ -157,16 +159,16 @@ public class ClientConnection implements Runnable {
                     LOG.info("Server is write-locked");
                     return new Message(Status.SERVER_WRITE_LOCK);
                 }
-                if (server.getReadRange().contains(key.getHashed()) && message.isInternal()) {
+                if (server.getReadRange().contains(keyHashed) && message.isInternal() && StringUtils.isEmpty(message.getMRToken())) {
                     LOG.info("Message is replicated on the server");
                     return handlePUT(message);
                 }
-                if (!server.getWriteRange().contains(key.getHashed())) {
-                    LOG.info("Server not responsible! Server hash range is " + server.getWriteRange() + ", key is " + key.getHashed());
+                if (!server.getWriteRange().contains(keyHashed)) {
+                    LOG.info("Server not responsible! Server hash range is " + server.getWriteRange() + ", key is " + keyHashed);
                     LOG.info("Sending following metadata to client: " + server.getMetadata());
                     return new Message(Status.SERVER_NOT_RESPONSIBLE, server.getMetadata());
                 }
-                if(message.getMRToken() != null) {
+                if (message.getMRToken() != null) {
                     LOG.info("Server got a MapReduce message");
                 }
                 return handlePUT(message);
@@ -180,15 +182,13 @@ public class ClientConnection implements Runnable {
         }
     }
 
-    private void replicate(IMessage message, boolean isRequestInternal) {
-        if (!isRequestInternal) {
-            message.setInternal();
-            server.getReplicator1().setMessage(message);
-            new Thread(server.getReplicator1()).start();
+    private void replicate(IMessage message) {
+        message.setInternal();
+        server.getReplicator1().setMessage(message);
+        new Thread(server.getReplicator1()).start();
 
-            server.getReplicator2().setMessage(message);
-            new Thread(server.getReplicator2()).start();
-        }
+        server.getReplicator2().setMessage(message);
+        new Thread(server.getReplicator2()).start();
     }
 
 

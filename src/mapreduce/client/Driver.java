@@ -1,11 +1,9 @@
-package client.mapreduce;
+package mapreduce.client;
 
 import client.api.Client;
 import ecs.Metadata;
 import ecs.NodeInfo;
 import management.MessageSerializer;
-import mapreduce.client.MRKeyComparator;
-import mapreduce.client.OutputCollector;
 import mapreduce.common.Task;
 import mapreduce.common.TaskType;
 import org.apache.logging.log4j.LogManager;
@@ -50,8 +48,8 @@ public class Driver {
         initTaskDeliverySocket();
     }
 
-    public Job getJob() {
-        return job;
+    String getJobId(){
+        return job.getJobId();
     }
 
     public Metadata getMetadata() {
@@ -62,57 +60,63 @@ public class Driver {
         return outputs;
     }
 
+    public void setOutputs(ConcurrentHashMap<String, String> outputs) {
+        this.outputs = outputs;
+    }
 
     public void exec(Job job) {
         this.job = job;
         map();
         reduce();
-        collectOutput();
+        collect();
 
         Validate.notNull(outputs, "Output is null");
-        System.out.println(outputs.entrySet());
     }
 
 
     private void map() {
         outputs = new ConcurrentHashMap<>();
-        startStatusReceiver();
+        startStatusReceiver(getMetadata().get());
 
-        job.setJobIdBeforeMap();
+        job.updateJobIdBeforeMap();
+        LOG.info("Current JobId: " + getJobId());
 
         Task mapTask = new Task(TaskType.MAP, job);
         broadcast(mapTask);
         waitForCompletetion();
 
         job.setStep(Step.REDUCE);
-        job.setJobIdAfterMap();
+        job.updateJobIdAfterMap();
+        LOG.info("JobId updated: " + getJobId());
     }
 
 
     private void reduce() {
+        Set<NodeInfo> nodes = getMulticastNodes();
         outputs = new ConcurrentHashMap<>();
-        startStatusReceiver();
+
+        startStatusReceiver(new ArrayList<>(nodes));
+        LOG.info("Current JobId: " + getJobId());
 
         Task reduceTask = new Task(TaskType.REDUCE, job);
-        multicast(reduceTask, getMulticastNodes());
+        multicast(reduceTask, nodes);
         waitForCompletetion();
 
         job.setStep(Step.COLLECT);
-        job.setJobIdAfterReduce();
+        job.updateJobIdAfterReduce();
+        LOG.info("JobId updated: " + getJobId());
     }
 
-    private void collectOutput() {
-        outputs = new ConcurrentHashMap<>();
+    private void collect() {
         // startOuputCollector();
 
-        Set<NodeInfo> nodes = getMulticastNodes();
-        OutputCollector outputCollector = new OutputCollector(client);
+        OutputCollector outputCollector = new OutputCollector(client, this);
         outputCollector.collect();
     }
 
 
-    private void startStatusReceiver() {
-        statusReceiver = new StatusReceiver(this);
+    private void startStatusReceiver(List<NodeInfo> expectedConnections) {
+        statusReceiver = new StatusReceiver(this, expectedConnections);
         statusReceiverThread = new Thread(statusReceiver);
         statusReceiverThread.start();
     }
@@ -143,6 +147,7 @@ public class Driver {
     private void multicast(Task task, Set<NodeInfo> nodes) {
         Validate.notNull(statusReceiver.getCallbackInfo(), "callbackInfo is null");
         Validate.notNull(task, "task is null");
+        LOG.info("Target nodes: " + Arrays.toString(nodes.toArray()));
 
         for (NodeInfo node : nodes) {
             try {
@@ -158,16 +163,13 @@ public class Driver {
                 LOG.error(e);
             }
         }
-
     }
 
     private Set<NodeInfo> getMulticastNodes() {
         HashSet<NodeInfo> nodes = new HashSet<>();
-
-        TreeSet<String> inputs = new TreeSet<>(new MRKeyComparator(getMetadata()));
-        inputs.addAll(outputs.keySet());
-        Iterator<String> iter = inputs.iterator();
         NodeInfo currNode = null;
+        LOG.info("Current output key set: " + Arrays.toString(getKeys().toArray()));
+        Iterator<String> iter = getKeys().iterator();
         while (iter.hasNext()) {
             String key = iter.next();
             String hashed = HashUtils.hash(key);
@@ -177,6 +179,14 @@ public class Driver {
             nodes.add(currNode);
         }
         return nodes;
+    }
+
+    ArrayList<String> getKeys() {
+//        TreeSet<String> keySet = new TreeSet<>(new MRKeyComparator(getMetadata()));
+        ArrayList<String> keys = new ArrayList<>();
+        keys.addAll(outputs.keySet());
+        keys.sort(new MRKeyComparator(getMetadata()));
+        return keys;
     }
 
 }

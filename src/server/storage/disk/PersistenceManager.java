@@ -58,9 +58,9 @@ public class PersistenceManager implements IPersistenceManager {
     @Override
     public PUTStatus write(Path file, byte[] value) {
         try {
-            LOG.info("Writing file path " + file);
+            LOG.debug("Writing file path " + file);
             if (!FileUtils.dirExists(file.getParent())) {
-                LOG.info("Parent dirs " + file.getParent() + " not exist. Creating parent dirs");
+                LOG.debug("Parent dirs " + file.getParent() + " not exist. Creating parent dirs");
                 Files.createDirectories(file.getParent());
             }
             return createOrUpdate(file, value);

@@ -1,8 +1,6 @@
 package mapreduce.common;
 
-import java.io.Serializable;
-
-public enum TaskType implements Serializable {
+public enum TaskType {
     MAP,
     REDUCE
 }

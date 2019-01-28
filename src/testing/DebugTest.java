@@ -2,16 +2,19 @@ package testing;
 
 import org.junit.Test;
 import server.app.Server;
+import util.StringUtils;
 import util.Validate;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Random;
 
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 
+import static protocol.mapreduce.Utils.NODEID_KEYBYTES_SEP;
 import static util.StringUtils.splitEvery;
 
 public class DebugTest {
@@ -70,5 +73,24 @@ public class DebugTest {
             bytes[i] = Byte.valueOf(byteStrings[i]);
 
         return new String(bytes);
+    }
+
+    @Test
+    public void testSplitString(){
+        String path = "/mnt/Dante/Workspace/uni-project/cloud-databases/cloud-db/db/node3/37/b5/1d/19/4a/75/13/e4/5b/56/f6/52/4f/2d/51/f2/iwc_165072061944941fbf972bde34c4396956725162.node2.098097114";
+        String fileName = Paths.get(path).getFileName().toString();
+        String[] components = fileName.split("\\" + NODEID_KEYBYTES_SEP);
+        Validate.isTrue(components.length == 3, "Invalid MR file name format");
+
+        String byteString = components[2];
+        Validate.isTrue(byteString.length() % 3 == 0, "Invalid byteString");
+        String[] byteStrings = byteString.split("(?<=\\G...)");
+        byte[] bytes = new byte[byteStrings.length];
+
+        for (byte i = 0; i < byteStrings.length; i++)
+            bytes[i] = Byte.valueOf(byteStrings[i]);
+
+        System.out.println(new String(bytes));
+
     }
 }

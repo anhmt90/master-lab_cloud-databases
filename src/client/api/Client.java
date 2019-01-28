@@ -1,7 +1,7 @@
 package client.api;
 
-import client.mapreduce.Driver;
-import client.mapreduce.Job;
+import mapreduce.client.Driver;
+import mapreduce.client.Job;
 import ecs.KeyHashRange;
 import ecs.Metadata;
 import ecs.NodeInfo;
@@ -25,7 +25,8 @@ import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.Arrays;
-import java.util.HashSet;
+import java.util.HashMap;
+import java.util.TreeMap;
 import java.util.TreeSet;
 
 import static protocol.Constants.MAX_BUFFER_LENGTH;
@@ -93,7 +94,7 @@ public class Client implements IClient {
         try {
             socket = new Socket();
             socket.connect(new InetSocketAddress(address, port), 5000);
-            if(metadata == null)
+            if (connectedNode == null && metadata == null)
                 requestMetadata();
         } catch (UnknownHostException uhe) {
             throw LogUtils.printLogError(LOG, uhe, "Unknown host");
@@ -205,7 +206,7 @@ public class Client implements IClient {
      * Reconnects to the correct server for the key on server miss
      */
     private void reroute() throws IOException {
-        if(socket == null && bos == null && bis == null){
+        if (socket == null && bos == null && bis == null) {
             LOG.warn("Client is disconnected");
             return;
         }
@@ -253,7 +254,7 @@ public class Client implements IClient {
     }
 
     private void selectWriteServer(String keyHashed) throws IOException {
-        if (isWithinConnectedRange(keyHashed)) return;
+        if (checkBeforeSelectingServer(keyHashed)) return;
 
         LOG.info("Selecting an appropriate server to send PUT-request to");
         NodeInfo coordinator = metadata.getCoordinator(keyHashed);
@@ -266,12 +267,16 @@ public class Client implements IClient {
     }
 
     private void selectReadServer(String keyHashed) throws IOException {
-        if (isWithinConnectedRange(keyHashed)) return;
+        if (checkBeforeSelectingServer(keyHashed)) return;
 
         LOG.info("Selecting an appropriate server to send GET-request to");
         NodeInfo nodeForGET = metadata.getNodeToReadFrom(keyHashed);
         setConnectedNode(nodeForGET);
         reroute();
+    }
+
+    private boolean checkBeforeSelectingServer(String keyHashed) {
+        return (isWithinConnectedRange(keyHashed) || metadata == null);
     }
 
     private boolean isWithinConnectedRange(String keyHashed) {
@@ -281,8 +286,12 @@ public class Client implements IClient {
         return false;
     }
 
-    private void setConnectedNode(NodeInfo connectedNode) {
+    public void setConnectedNode(NodeInfo connectedNode) {
         this.connectedNode = connectedNode;
+    }
+
+    public void setMetadata(Metadata metadata) {
+        this.metadata = metadata;
     }
 
     /**
@@ -301,11 +310,18 @@ public class Client implements IClient {
 
     @Override
     public IMessage get(String key) throws IOException {
-        String keyHashed = HashUtils.hash(key);
+        IMessage message = new Message(Status.GET, new K(key));
+        return get(message);
+    }
+
+    public IMessage get(IMessage message) throws IOException {
+        String keyHashed = HashUtils.hash(message.getK().get());
         while (true) {
-            selectReadServer(keyHashed);
-            IMessage toSend = new Message(Status.GET, new K(key));
-            IMessage serverResponse = submit(toSend);
+            if(message.hasMRToken())
+                selectWriteServer(keyHashed);
+            else
+                selectReadServer(keyHashed);
+            IMessage serverResponse = submit(message);
             if (serverResponse == null)
                 return new Message(Status.GET_ERROR);
             else if (serverResponse.getStatus() == Status.SERVER_NOT_RESPONSIBLE) {
@@ -334,20 +350,37 @@ public class Client implements IClient {
     }
 
 
-    public void handleMRJob(ApplicationID appId, TreeSet<String> input) {
-        Validate.isTrue(metadata != null, "Metadata is null");
-        driver = new Driver(this);
-        driver.exec(new Job(appId, input));
+    public TreeMap<String, String> handleMRJob(ApplicationID appId, TreeSet<String> input) {
+        if (metadata == null)
+            requestMetadata();
+
+        TreeMap<String, String> results = new TreeMap<>();
+        if (metadata != null) {
+            driver = new Driver(this);
+            driver.exec(new Job(appId, input));
+            results.putAll(driver.getOutputs());
+            return results;
+        }
+        LOG.warn("Metadata is null, return empty results");
+        return results;
     }
 
-    public void requestMetadata() throws IOException {
-        IMessage toSend = new Message(Status.GET_METADATA);
-        send(MessageSerializer.serialize(toSend));
-        IMessage resp = MessageSerializer.deserialize(receive());
-        updateMetadata(resp.getMetadata());
+    public boolean requestMetadata() {
+        try {
+            IMessage toSend = new Message(Status.GET_METADATA);
+            send(MessageSerializer.serialize(toSend));
+            IMessage resp = MessageSerializer.deserialize(receive());
+            if (!resp.getStatus().equals(Status.METADATA)) {
+                LOG.warn("Couldn't get METADATA. Server responses " + resp.getStatus());
+                return false;
+            }
+            updateMetadata(resp.getMetadata());
+            return true;
+        } catch (IOException e) {
+            LOG.error(e);
+            return false;
+        }
     }
-
-
 
 
 }

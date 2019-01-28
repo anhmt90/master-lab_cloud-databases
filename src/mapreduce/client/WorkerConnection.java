@@ -1,7 +1,5 @@
 package mapreduce.client;
 
-import client.mapreduce.Driver;
-import client.mapreduce.StatusReceiver;
 import management.MessageSerializer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -15,6 +13,7 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static protocol.Constants.MAX_ALLOWED_EOF;
@@ -58,7 +57,7 @@ public class WorkerConnection implements Runnable {
                 for(Object keyObj : resp.getKeySet()){
                     Validate.isTrue(keyObj instanceof String, "keyObj is not String");
                     String key = String.valueOf(keyObj);
-                    outputHashMap.put(key, null);
+                    outputHashMap.put(key, StringUtils.EMPTY_STRING);
                 }
                 break;
             } catch (IOException e) {

@@ -1,4 +1,4 @@
-package client.mapreduce;
+package mapreduce.client;
 
 public enum Step {
     MAP,

@@ -18,4 +18,12 @@ public class CallbackInfo implements Serializable {
     public int getResponsePort() {
         return responsePort;
     }
+
+    @Override
+    public String toString() {
+        return "CallbackInfo{" +
+                "responseAddress='" + responseAddress + '\'' +
+                ", responsePort=" + responsePort +
+                '}';
+    }
 }

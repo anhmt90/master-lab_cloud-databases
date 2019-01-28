@@ -2,6 +2,7 @@ package mapreduce.server;
 
 import client.api.Client;
 import ecs.NodeInfo;
+import mapreduce.common.TaskType;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import protocol.kv.IMessage;
@@ -26,28 +27,37 @@ public class OutputWriter<KT, VT> {
         this.taskHandler = taskHandler;
         NodeInfo defaultKnownNode = taskHandler.getFirstNodeFromMetadata();
         client = new Client(defaultKnownNode.getHost(), defaultKnownNode.getPort());
+        client.setMetadata(taskHandler.getMetadata());
     }
 
     public void write() {
         try {
             for (Map.Entry<KT, VT> entry : output.entrySet()) {
-                String key = String.valueOf(entry.getKey());
-                String val = String.valueOf(entry.getValue());
+                String word = String.valueOf(entry.getKey());
+                String number = String.valueOf(entry.getValue());
 
                 if (!client.isConnected()) {
                     client.connect();
                 }
-                IMessage message = Message.createPUTMessage(key, val);
+                IMessage message = Message.createPUTMessage(word, number);
                 message.setMRToken(createToken());
+
+                LOG.info("Writing MR output: " + message);
                 client.put(message);
             }
         } catch (IOException e) {
             LOG.error(e);
+        } catch (RuntimeException e) {
+            LOG.error(e);
             throw new RuntimeException(e);
         }
+        LOG.info("Writing MR output ended successfully");
     }
 
     private String createToken() {
-        return taskHandler.getCurrJobId() + Utils.JOBID_NODEID_SEP + taskHandler.getNodeId();
+        String token = taskHandler.getCurrJobId();
+        if (taskHandler.getTaskType().equals(TaskType.MAP))
+            token += Utils.JOBID_NODEID_SEP + taskHandler.getNodeId();
+        return token;
     }
 }

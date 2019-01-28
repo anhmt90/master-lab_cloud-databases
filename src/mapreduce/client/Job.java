@@ -1,4 +1,4 @@
-package client.mapreduce;
+package mapreduce.client;
 
 import mapreduce.common.ApplicationID;
 import protocol.mapreduce.Utils;
@@ -45,17 +45,17 @@ public class Job {
         this.input = input;
     }
 
-    public String setJobIdBeforeMap() {
+    public String updateJobIdBeforeMap() {
         jobId = applicationID.getId() + WITHIN_JOBID_SEP + jobId +  StringUtils.getRandomString();
         return jobId;
     }
 
-    public String setJobIdAfterMap() {
+    public String updateJobIdAfterMap() {
         jobId = Utils.updateJobIdAfterMap(jobId);
         return jobId;
     }
 
-    public String setJobIdAfterReduce() {
+    public String updateJobIdAfterReduce() {
         jobId = Utils.updateJobIdAfterReduce(jobId);
         return jobId;
     }

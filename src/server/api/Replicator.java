@@ -40,6 +40,7 @@ public class Replicator implements Runnable {
      */
     private void createClient() {
         client = new Client(replica.getHost(), replica.getPort());
+        client.setConnectedNode(replica);
     }
 
     /**

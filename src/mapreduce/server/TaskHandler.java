@@ -1,6 +1,7 @@
 package mapreduce.server;
 
 import ecs.KeyHashRange;
+import ecs.Metadata;
 import ecs.NodeInfo;
 import management.MessageSerializer;
 import mapreduce.common.Task;
@@ -20,6 +21,8 @@ import util.Validate;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.net.*;
+import java.util.HashSet;
+import java.util.Set;
 
 import static protocol.Constants.MAX_TASK_MESSAGE_LENGTH;
 import static protocol.Constants.MR_TASK_HANDLER_PORT_DISTANCE;
@@ -62,13 +65,18 @@ public class TaskHandler implements Runnable {
         return server.getServerId();
     }
 
+    public Metadata getMetadata() {
+        return server.getMetadata();
+    }
+
     NodeInfo getFirstNodeFromMetadata() {
         return server.getMetadata().get(0);
     }
 
+
     private void setPathAndRange(KeyHashRange taskRange) {
         dbPath = server.getCacheManager().getPersistenceManager().getDbPath();
-        appliedRange = (taskRange != null) ? server.getWriteRange() : taskRange;
+        appliedRange = (taskRange == null) ? server.getWriteRange() : taskRange;
     }
 
     public void setCurrJobId(String currJobId) {
@@ -78,46 +86,73 @@ public class TaskHandler implements Runnable {
     @Override
     public void run() {
         Validate.isTrue(taskPacket.getLength() <= MAX_TASK_MESSAGE_LENGTH, "taskPacket's length is " + taskPacket.getLength());
-        try {
+        while (true) {
             TaskMessage taskMessage = MessageSerializer.deserialize(taskPacket.getData());
-            connect(taskMessage.getCallback());
-            task = taskMessage.getTask();
-            setPathAndRange(task.getAppliedRange());
-            LOG.info("Current Path:" + dbPath);
-            setCurrJobId(task.getJobId());
-            LOG.info("Current JobId: " + currJobId);
-
-            boolean success = true;
+            LOG.info("CallbackInfo: " + taskMessage.getCallback());
             try {
-                switch (getTaskType()) {
-                    case MAP:
-                        startMapper();
-                        currJobId = Utils.updateJobIdAfterMap(currJobId);
-                        startWriter(mapper);
-                        break;
-                    case REDUCE:
-                        startReducer();
-                        currJobId = Utils.updateJobIdAfterReduce(currJobId);
-                        startWriter(reducer);
-                        break;
-                    default:
-                        throw new IllegalArgumentException("Undefined task type!");
-                }
-            } catch (RuntimeException e){
+                connect(taskMessage.getCallback());
+            } catch (IOException e) {
                 LOG.error(e);
-                success = false;
+                if (e instanceof BindException) {
+                    try {
+                        Thread.sleep(3000);
+                    } catch (InterruptedException e1) {
+                        LOG.error(e1);
+                    }
+                    continue;
+                }
+                break;
             }
-            StatusMessage statusMessage = new StatusMessage<String>(getTaskType(), success, reducer.getKeySet());
+            try {
+                task = taskMessage.getTask();
+                setPathAndRange(task.getAppliedRange());
+                LOG.info("Current Path:" + dbPath);
+                setCurrJobId(task.getJobId());
+                LOG.info("Current JobId: " + currJobId);
 
-            send(statusMessage);
-            outputOutboundSocket.close();
-        } catch (IOException e) {
-            LOG.error(e);
+                HashSet<String> outputKeys = new HashSet<>();
+                boolean success = true;
+                try {
+                    switch (getTaskType()) {
+                        case MAP:
+                            startMapper();
+                            currJobId = Utils.updateJobIdAfterMap(currJobId);
+                            startWriter(mapper);
+                            outputKeys = mapper.getKeySet();
+                            break;
+                        case REDUCE:
+                            startReducer();
+                            currJobId = Utils.updateJobIdAfterReduce(currJobId);
+                            startWriter(reducer);
+                            outputKeys = reducer.getKeySet();
+                            break;
+                        default:
+                            throw new IllegalArgumentException("Undefined task type!");
+                    }
+                } catch (RuntimeException e) {
+                    LOG.error(e);
+                    success = false;
+                }
+                LOG.info("Preparing status message to send back");
+                StatusMessage statusMessage = new StatusMessage(getTaskType(), success, outputKeys);
+
+                if (!outputOutboundSocket.isConnected())
+                    connect(taskMessage.getCallback());
+
+                send(statusMessage);
+                outputOutboundSocket.close();
+            } catch (RuntimeException e) {
+                LOG.error(e);
+            } catch (IOException e) {
+                LOG.error(e);
+            }
+            break;
         }
-
+        LOG.info("TaskHandler terminates " + task.getTaskType() + " task");
     }
 
     private void startMapper() {
+        LOG.info("Starts " + task.getAppId() + " Mapper");
         switch (task.getAppId()) {
             case WORD_COUNT:
                 startWordCountMapper();
@@ -128,6 +163,7 @@ public class TaskHandler implements Runnable {
     }
 
     private void startReducer() {
+        LOG.info("Starts " + task.getAppId() + " Reducer");
         switch (task.getAppId()) {
             case WORD_COUNT:
                 startWordCountReducer();
@@ -143,7 +179,7 @@ public class TaskHandler implements Runnable {
     }
 
     private void startWriter(MapReduce mapperReducer) {
-        outputWriter =  new OutputWriter<>(mapper, this);
+        outputWriter = new OutputWriter<>(mapperReducer, this);
         outputWriter.write();
     }
 
@@ -155,14 +191,15 @@ public class TaskHandler implements Runnable {
     public void connect(CallbackInfo callback) throws IOException {
         try {
             outputOutboundSocket = new Socket();
+            outputOutboundSocket.setReuseAddress(true);
             outputOutboundSocket.bind(new InetSocketAddress(server.getServicePort() + MR_TASK_HANDLER_PORT_DISTANCE));
             outputOutboundSocket.connect(new InetSocketAddress(callback.getResponseAddress(), callback.getResponsePort()), 5000);
         } catch (UnknownHostException uhe) {
-            throw LogUtils.printLogError(LOG, uhe, "Unknown host");
+            LOG.error("Unknown host", uhe);
         } catch (SocketTimeoutException ste) {
-            throw LogUtils.printLogError(LOG, ste, "Could not connect to Coordinator. Connection timeout.");
+            LOG.error("Could not connect to Coordinator. Connection timeout.", ste);
         } catch (IOException ioe) {
-            throw LogUtils.printLogError(LOG, ioe, "Could not connect to Coordinator.");
+            LOG.error("Could not connect to Coordinator.", ioe);
         }
     }
 
