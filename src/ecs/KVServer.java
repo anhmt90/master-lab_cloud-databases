@@ -5,6 +5,7 @@ import management.ConfigStatus;
 import management.MessageSerializer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import util.FileUtils;
 import util.HashUtils;
 
 import java.io.*;
@@ -55,11 +56,11 @@ public class KVServer implements Comparable<KVServer> {
         this.servicePort = servicePort;
         this.address = address;
 
-//        String username = servicePort % 2 == 0 ? "anhmt90" : "lab";
+        String username = System.getProperty("user.name");
 
-        String[] cmds = {"ssh", "anhmt@" + getHost(),
-                "nohup java -jar /mnt/Dante/Workspace/uni-project/cloud-databases/cloud-db/ms5-server.jar " + this.serverId + " " + this.servicePort + " " + getAdminPort()
-                        + " > /mnt/Dante/Workspace/uni-project/cloud-databases/cloud-db/logs/" + this.serverId + ".log"
+        String[] cmds = {"ssh", username + "@" + getHost(),
+                "nohup java -jar " + FileUtils.WORKING_DIR + "/ms5-server.jar " + this.serverId + " " + this.servicePort + " " + getAdminPort()
+                        + " > "+ FileUtils.WORKING_DIR +"/logs/" + this.serverId + ".log"
                         + " &"
         };
         this.sshCMD = cmds;

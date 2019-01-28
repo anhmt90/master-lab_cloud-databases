@@ -6,6 +6,8 @@ import ecs.NodeInfo;
 import management.MessageSerializer;
 import mapreduce.common.Task;
 import mapreduce.common.TaskType;
+import mapreduce.server.inverted_index.InvertedIndexMapper;
+import mapreduce.server.inverted_index.InvertedIndexReducer;
 import mapreduce.server.word_count.WordCountMapper;
 import mapreduce.server.word_count.WordCountReducer;
 import org.apache.logging.log4j.LogManager;
@@ -157,16 +159,22 @@ public class TaskHandler implements Runnable {
             case WORD_COUNT:
                 startWordCountMapper();
                 break;
+            case INVERTED_INDEX:
+                startInvertedIndexMapper();
+                break;
             default:
                 throw new IllegalArgumentException("Undefined Application ID!");
         }
     }
+
 
     private void startReducer() {
         LOG.info("Starts " + task.getAppId() + " Reducer");
         switch (task.getAppId()) {
             case WORD_COUNT:
                 startWordCountReducer();
+            case INVERTED_INDEX:
+                startInvertedIndexreducer();
                 break;
             default:
                 throw new IllegalArgumentException("Undefined Application ID!");
@@ -178,14 +186,24 @@ public class TaskHandler implements Runnable {
         mapper.map();
     }
 
-    private void startWriter(MapReduce mapperReducer) {
-        outputWriter = new OutputWriter<>(mapperReducer, this);
-        outputWriter.write();
+    private void startInvertedIndexMapper() {
+        mapper = new InvertedIndexMapper(dbPath, appliedRange, task.getInput());
+        mapper.map();
     }
 
     private void startWordCountReducer() {
         reducer = new WordCountReducer(dbPath, appliedRange, currJobId);
         reducer.reduce();
+    }
+
+    private void startInvertedIndexreducer() {
+        reducer = new InvertedIndexReducer(dbPath, appliedRange, currJobId);
+        reducer.reduce();
+    }
+
+    private void startWriter(MapReduce mapperReducer) {
+        outputWriter = new OutputWriter<>(mapperReducer, this);
+        outputWriter.write();
     }
 
     public void connect(CallbackInfo callback) throws IOException {

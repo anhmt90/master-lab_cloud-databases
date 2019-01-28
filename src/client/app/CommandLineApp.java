@@ -27,7 +27,7 @@ import util.StringUtils;
  */
 public class CommandLineApp {
 
-	private static final String MAPFILE_PATH = System.getProperty("user.dir") + SEP + "mapreduceResults" + SEP;
+    private static final String MAPFILE_PATH = System.getProperty("user.dir") + SEP + "mapreduceResults" + SEP;
     private static final String WHITESPACE = StringUtils.WHITE_SPACE;
     static Logger LOG = LogManager.getLogger(Client.CLIENT_LOG);
 
@@ -42,6 +42,7 @@ public class CommandLineApp {
     private static final String GET = "get";
 
     private static final String COUNT = "wordcount";
+    private static final String SEARCH = "search";
 
     private static TreeMap<String, String> resultsMR;
 
@@ -62,7 +63,7 @@ public class CommandLineApp {
         while (true) {
             printCommandPrompt();
             String userInput = input.nextLine();
-            if(StringUtils.isEmpty(userInput))
+            if (StringUtils.isEmpty(userInput))
                 continue;
             LOG.info("User input: " + userInput);
             String[] cmdComponents = userInput.split(StringUtils.WHITE_SPACE, 2);
@@ -84,6 +85,9 @@ public class CommandLineApp {
 
                 case COUNT:
                     handleCount(cmdComponents);
+                    break;
+                case SEARCH:
+                    handleSearch(cmdComponents);
                     break;
 
                 case LOG_LEVEL:
@@ -116,6 +120,44 @@ public class CommandLineApp {
         } else {
             print("No connection currently established. Please establish a connection before retrieving a value");
         }
+    }
+
+    private static void handleSearch(String[] cmdComponents) throws IOException {
+        if (!isClientConnected())
+            return;
+
+        if (!isValidArgs(SEARCH, cmdComponents)) {
+            return;
+        }
+        if (!kvClient.isClosed()) {
+            String searchTerm = hasWhiteSpace(cmdComponents[1]) ? stripQuotionMark(cmdComponents[1]) : cmdComponents[1];
+            List<String> searchTerms = extractSearchTerms(searchTerm);
+
+            LOG.info("Invert Indexing " + searchTerm);
+            resultsMR = kvClient.handleMRJob(ApplicationID.INVERTED_INDEX, new TreeSet<>(searchTerms));
+            printResultsMR();
+        } else {
+            print("No connection currently established. Please establish a connection before retrieving a value");
+        }
+    }
+
+    private static List<String> extractSearchTerms(String searchTerm) {
+        String[] words = searchTerm.split("\\s+");
+        System.out.println(Arrays.toString(words));
+
+        List<String> res = new ArrayList<>();
+        for (int i = 0; i < words.length; i++) {
+            for (int j = i + 1; j <= words.length ; j++) {
+                String[] substrings = Arrays.copyOfRange(words, i, j);
+                StringBuilder sb = new StringBuilder();
+                for (String word : substrings) {
+                    sb.append(word + " ");
+                }
+                sb.setLength(sb.length() - 1);
+                res.add(sb.toString());
+            }
+        }
+        return res;
     }
 
 
@@ -200,7 +242,7 @@ public class CommandLineApp {
             return;
         }
 
-        String value = keyAndValue[1].trim().substring(1, keyAndValue[1].length() - 1);
+        String value = stripQuotionMark(keyAndValue[1]);
         if (value.length() > MAX_VALUE_SIZE) {
             String msg = "Value exceeds maximum loadedDataSize";
             print(msg);
@@ -216,6 +258,10 @@ public class CommandLineApp {
         } else {
             print("No connection currently established. Please establish a connection before storing a key-value pair.");
         }
+    }
+
+    private static String stripQuotionMark(String s) {
+        return s.trim().substring(1, s.length() - 1);
     }
 
     /**
@@ -269,32 +315,32 @@ public class CommandLineApp {
      * Prints out the appropriate response to a server response and logs info
      *
      * @param serverResponse responser from server to a request
-     * @param key key belonging to the request
+     * @param key            key belonging to the request
      */
     private static void handleServerResponse(IMessage serverResponse, String key) {
-    	switch (serverResponse.getStatus()) {
-	    	case PUT_ERROR:
+        switch (serverResponse.getStatus()) {
+            case PUT_ERROR:
                 println("Fail to store key-value pair.");
-	            LOG.info("Storage failure");
-	            break;
-	        case PUT_SUCCESS:
-	            println("Key-value pair stored successfully.");
-	            LOG.info("Storage success");
-	            break;
-	        case PUT_UPDATE:
+                LOG.info("Storage failure");
+                break;
+            case PUT_SUCCESS:
+                println("Key-value pair stored successfully.");
+                LOG.info("Storage success");
+                break;
+            case PUT_UPDATE:
                 println("Value for '" + key + "' was updated.");
-	        	LOG.info("Update success");
-	        	break;
-	        case GET_ERROR:
+                LOG.info("Update success");
+                break;
+            case GET_ERROR:
                 println("Retrieving value was unsuccesful. There might be no value saved on the server corresponding to the given key: "
-	                    + key);
-	            LOG.info("Get failure");
-	            break;
-	        case GET_SUCCESS:
+                        + key);
+                LOG.info("Get failure");
+                break;
+            case GET_SUCCESS:
                 println("Value stored on server for key '" + key + "' is: " + serverResponse.getValue());
-	            LOG.info("Get success");
-	            break;
-	        case DELETE_ERROR:
+                LOG.info("Get success");
+                break;
+            case DELETE_ERROR:
                 println("Fail to remove entry. No value for key " + key + " found on server.");
                 LOG.info("Deletion failure");
                 break;
@@ -304,16 +350,16 @@ public class CommandLineApp {
                 break;
             case SERVER_STOPPED:
                 println("Storage server is currently stopped and does not accept client requests.");
-            	LOG.info("Server stopped");
-            	break;
+                LOG.info("Server stopped");
+                break;
             case SERVER_WRITE_LOCK:
                 println("Storage server does not currently accept put requests.");
-            	LOG.info("Server locked");
-            	break;
-	        default:
+                LOG.info("Server locked");
+                break;
+            default:
                 println("Unknown server response. Please try again");
-	            LOG.info("Incompatible server response", serverResponse);
-	    }
+                LOG.info("Incompatible server response", serverResponse);
+        }
     }
 
     /**
@@ -362,81 +408,80 @@ public class CommandLineApp {
     /**
      * Takes a ConcurrentHashMap containing key value pairs and handles output onto console and a separate file for persistent storage
      *
-     * @param map the hashmap containing the kV pairs
+     * @param map   the hashmap containing the kV pairs
      * @param input a scanner handling input
      */
     private static void handleHashmapPrint(ConcurrentHashMap<String, String> map, Scanner input) {
 
-    	if(map == null) {
-    		print("Map is null.");
-    		return;
-    	}
+        if (map == null) {
+            print("Map is null.");
+            return;
+        }
 
-    	if(map.isEmpty()) {
-    		print("Map is empty.");
-    		return;
-    	}
+        if (map.isEmpty()) {
+            print("Map is empty.");
+            return;
+        }
 
-    	String date = new SimpleDateFormat("dd-MM-yyyy").format(new Date());
-    	BufferedWriter writer = null;
-    	try {
-    	    File resultsFile=new File(MAPFILE_PATH + date);
-    	    resultsFile.getParentFile().mkdirs();
-    	    resultsFile.createNewFile();
+        String date = new SimpleDateFormat("dd-MM-yyyy").format(new Date());
+        BufferedWriter writer = null;
+        try {
+            File resultsFile = new File(MAPFILE_PATH + date);
+            resultsFile.getParentFile().mkdirs();
+            resultsFile.createNewFile();
 
-    	    writer = new BufferedWriter(new FileWriter(resultsFile));
+            writer = new BufferedWriter(new FileWriter(resultsFile));
 
-    	   for (Entry<String, String> entry : map.entrySet()) {
-    	    	writer.newLine();
-        	    writer.newLine();
-    	        String key = entry.getKey();
-    	        String value = entry.getValue();
-    	        writer.write("key: " + key);
-    	        writer.newLine();
-    	        writer.write(value);
-    	     }
-    	    print("HashMap Results were written to file: " + resultsFile.getCanonicalPath());
+            for (Entry<String, String> entry : map.entrySet()) {
+                writer.newLine();
+                writer.newLine();
+                String key = entry.getKey();
+                String value = entry.getValue();
+                writer.write("key: " + key);
+                writer.newLine();
+                writer.write(value);
+            }
+            print("HashMap Results were written to file: " + resultsFile.getCanonicalPath());
 
-    	} catch(Exception e) {
-    	    LOG.error("Error trying to write Hashmap to file.");
-    	} finally {
+        } catch (Exception e) {
+            LOG.error("Error trying to write Hashmap to file.");
+        } finally {
             try {
                 writer.close();
             } catch (Exception e) {
-            	LOG.error("Failed trying to close the FileWriter");
+                LOG.error("Failed trying to close the FileWriter");
             }
         }
 
 
-    	Set<Entry<String, String>> entrySet = map.entrySet();
+        Set<Entry<String, String>> entrySet = map.entrySet();
         Iterator<Entry<String, String>> iterator = entrySet.iterator();
 
-    	while(iterator.hasNext()){
-    		print("Type <next> to display the next 10 entries in the hashmap. Any other input will return you to the application.");
-    		String userInput = input.nextLine();
+        while (iterator.hasNext()) {
+            print("Type <next> to display the next 10 entries in the hashmap. Any other input will return you to the application.");
+            String userInput = input.nextLine();
             LOG.info("User input: " + userInput);
-            switch(userInput) {
-            	case "next":
-            		for(int i = 0; i < 10; i++) {
-            			if(iterator.hasNext()) {
-	            			Entry<String, String> entry = iterator.next();
-		            		String key = entry.getKey();
-		            		String value = entry.getValue();
-		            		String[] valueSplit = value.split("\n");
-		            		System.out.printf("%-40s %-60s\n", key, valueSplit[0]);
-		            		for(int j = 1; j < valueSplit.length; j++) {
-		            			System.out.printf("%-40s %-60s\n", " ", valueSplit[j]);
-		            		}
-            			}
-            			else {
-            				print("Reached end of HashMap.");
-            				return;
-            			}
-            		}
-            	default:
-            		return;
+            switch (userInput) {
+                case "next":
+                    for (int i = 0; i < 10; i++) {
+                        if (iterator.hasNext()) {
+                            Entry<String, String> entry = iterator.next();
+                            String key = entry.getKey();
+                            String value = entry.getValue();
+                            String[] valueSplit = value.split("\n");
+                            System.out.printf("%-40s %-60s\n", key, valueSplit[0]);
+                            for (int j = 1; j < valueSplit.length; j++) {
+                                System.out.printf("%-40s %-60s\n", " ", valueSplit[j]);
+                            }
+                        } else {
+                            print("Reached end of HashMap.");
+                            return;
+                        }
+                    }
+                default:
+                    return;
             }
-    	}
+        }
     }
 
     /**
@@ -565,7 +610,7 @@ public class CommandLineApp {
      * Checks whether the command arguments of a specified {@param command} are
      * valid
      *
-     * @param command   The command name
+     * @param command       The command name
      * @param cmdComponents User input separated by the first whitespace. The
      *                      command name is the first component and the remaining as
      *                      the second.
@@ -573,6 +618,7 @@ public class CommandLineApp {
      * {@see command} are valid or not
      */
     private static boolean isValidArgs(String command, String[] cmdComponents) {
+        String[] args;
         switch (command) {
             case CONNECT:
             case LOG_LEVEL:
@@ -582,12 +628,12 @@ public class CommandLineApp {
             case PUT:
                 if (cmdComponents.length != 2)
                     return handleInvalidArgs(command, cmdComponents);
-                String[] args = cmdComponents[1].split(WHITESPACE, 2);
+                args = cmdComponents[1].split(WHITESPACE, 2);
                 if (hasWhiteSpace(args[0])) {
                     return handleInvalidArgs(command, cmdComponents);
                 }
 
-                if(args[1].contains(StringUtils.WHITE_SPACE) && !isQuoted(args[1])) {
+                if (args[1].contains(StringUtils.WHITE_SPACE) && !isQuoted(args[1])) {
                     print("Value is not quoted properly. ");
                     return handleInvalidArgs(command, cmdComponents);
                 }
@@ -598,12 +644,22 @@ public class CommandLineApp {
                 if (hasWhiteSpace(cmdComponents[1]))
                     return handleInvalidArgs(command, cmdComponents);
                 break;
+            case SEARCH:
+                if (cmdComponents.length != 2)
+                    return handleInvalidArgs(command, cmdComponents);
+
+                String searchTerm = cmdComponents[1];
+                if (hasWhiteSpace(searchTerm) && !isQuoted(searchTerm)) {
+                    print("Search term with whitespace is not properly quoted. ");
+                    return handleInvalidArgs(command, cmdComponents);
+                }
+                break;
         }
         return true;
     }
 
     private static boolean hasWhiteSpace(String key) {
-        if(key.contains(StringUtils.WHITE_SPACE)){
+        if (key.contains(StringUtils.WHITE_SPACE)) {
             print("Key cannot contain whitespace. ");
             return true;
         }
@@ -619,7 +675,7 @@ public class CommandLineApp {
     /**
      * prints to console and log if user provided illegal arguments
      *
-     * @param command    name of the command for which the user
+     * @param command       name of the command for which the user
      *                      provided wrong arguments
      * @param cmdComponents String array containing the user arguments
      * @return false

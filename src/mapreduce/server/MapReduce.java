@@ -14,20 +14,22 @@ import java.util.*;
 public abstract class MapReduce<KT, VT> {
     protected static Logger LOG = LogManager.getLogger(Server.SERVER_LOG);
     protected Map<KT, VT> output;
+    protected Set<KT> input;
     protected ArrayList<String> files;
 
     protected String prefix;
 
-    public HashSet<KT> getKeySet() {
-        return new HashSet<>(output.keySet());
-    }
-
     public MapReduce(String prefix) {
         files = new ArrayList<>();
         output = new TreeMap<>();
+        input = new TreeSet<>();
         this.prefix = prefix;
         if (prefix.equals(StringUtils.EMPTY_STRING))
             this.prefix += Utils.NODEID_KEYBYTES_SEP;
+    }
+
+    public HashSet<KT> getKeySet() {
+        return new HashSet<>(output.keySet());
     }
 
     public Map<KT, VT> getOutput() {
@@ -36,6 +38,14 @@ public abstract class MapReduce<KT, VT> {
 
     public ArrayList<String> getFiles() {
         return files;
+    }
+
+    public void setInput(Set<KT> input) {
+        this.input = input;
+    }
+
+    public Set<KT> getInput() {
+        return input;
     }
 
     protected void collectFiles(String[] indexFiles) {

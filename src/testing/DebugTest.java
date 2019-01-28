@@ -2,13 +2,16 @@ package testing;
 
 import org.junit.Test;
 import server.app.Server;
+import util.FileUtils;
 import util.StringUtils;
 import util.Validate;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
 
 import static org.hamcrest.CoreMatchers.*;
@@ -51,7 +54,7 @@ public class DebugTest {
     }
 
     @Test
-    public void testByteString(){
+    public void testByteString() {
         String testString = "test bytes     \n";
         String[] byteStrings = Arrays.toString(testString.getBytes()).replaceAll("[^0-9 ]", "").trim().split(" +");
         StringBuilder sb = new StringBuilder();
@@ -76,7 +79,7 @@ public class DebugTest {
     }
 
     @Test
-    public void testSplitString(){
+    public void testSplitString() {
         String path = "/mnt/Dante/Workspace/uni-project/cloud-databases/cloud-db/db/node3/37/b5/1d/19/4a/75/13/e4/5b/56/f6/52/4f/2d/51/f2/iwc_165072061944941fbf972bde34c4396956725162.node2.098097114";
         String fileName = Paths.get(path).getFileName().toString();
         String[] components = fileName.split("\\" + NODEID_KEYBYTES_SEP);
@@ -92,5 +95,34 @@ public class DebugTest {
 
         System.out.println(new String(bytes));
 
+    }
+
+    @Test
+    public void testGetUsername() {
+        System.out.println(System.getProperty("user.name"));
+        System.out.println(FileUtils.USER_DIR);
+        System.out.println(FileUtils.WORKING_DIR);
+    }
+
+    @Test
+    public void testSubstring() {
+        String searchTerm = "this is a string";
+        String[] words = searchTerm.split("\\s+");
+        System.out.println(Arrays.toString(words));
+
+        List<String> res = new ArrayList<>();
+        for (int i = 0; i < words.length; i++) {
+            for (int j = i + 1; j <= words.length ; j++) {
+                String[] substrings = Arrays.copyOfRange(words, i, j);
+                StringBuilder sb = new StringBuilder();
+                for (String word : substrings) {
+                    sb.append(word + " ");
+                }
+                sb.setLength(sb.length() - 1);
+                res.add(sb.toString());
+            }
+        }
+
+        System.out.println(Arrays.toString(res.toArray()));
     }
 }
