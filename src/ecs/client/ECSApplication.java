@@ -13,7 +13,7 @@ import static util.FileUtils.SEP;
 
 public class ECSApplication {
     static Logger LOG = LogManager.getLogger("ECS");
-    private static final String CONFIG_FILE = System.getProperty("user.dir") + SEP + "config" + SEP + "mr-server-info";
+    private static final String CONFIG_FILE = System.getProperty("user.dir") + SEP + "config" + SEP + "server-info";
 
     private static final String INIT = "init";
     private static final String START = "start";
