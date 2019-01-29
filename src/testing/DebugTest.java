@@ -9,10 +9,7 @@ import util.Validate;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -106,13 +103,13 @@ public class DebugTest {
 
     @Test
     public void testSubstring() {
-        String searchTerm = "this is a string";
+        String searchTerm = "bar bar foo";
         String[] words = searchTerm.split("\\s+");
         System.out.println(Arrays.toString(words));
 
         List<String> res = new ArrayList<>();
         for (int i = 0; i < words.length; i++) {
-            for (int j = i + 1; j <= words.length ; j++) {
+            for (int j = i + 1; j <= words.length; j++) {
                 String[] substrings = Arrays.copyOfRange(words, i, j);
                 StringBuilder sb = new StringBuilder();
                 for (String word : substrings) {
@@ -124,5 +121,34 @@ public class DebugTest {
         }
 
         System.out.println(Arrays.toString(res.toArray()));
+
+
+        HashMap<String, String> output = new HashMap<>();
+        HashMap<String, String> vals = new HashMap<>();
+        vals.put("foo", "bar bar bar foo foo foo foee");
+        vals.put("bar", "bar bar1 bar1 bar2 bar foo foo foo foe foe foo1");
+        List<String> bestMatches = new ArrayList<>();
+        int maxMatchingLength = 0;
+        for (Map.Entry<String, String> entry : vals.entrySet()) {
+            String key = entry.getKey();
+            String val = entry.getValue();
+
+            for (String input : res) {
+                int inputWords = input.split("\\s+").length;
+                if (val.contains(input)) {
+                    if (inputWords >= maxMatchingLength) {
+                        bestMatches.add(input);
+                        maxMatchingLength = inputWords;
+                        bestMatches.removeIf(bm -> bm.split("\\s+").length < inputWords);
+                    }
+                }
+            }
+            for (String match : bestMatches) {
+                output.put(match, output.containsKey(match) ? output.get(match) + "\n" + key : key);
+            }
+
+            System.out.println(Arrays.toString(output.entrySet().toArray()));
+
+        }
     }
 }

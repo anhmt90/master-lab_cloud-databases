@@ -7,9 +7,7 @@ import util.StringUtils;
 
 import java.io.IOException;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.Map;
-import java.util.TreeSet;
+import java.util.*;
 
 import static util.FileUtils.getKeyFromStringPath;
 
@@ -31,15 +29,21 @@ public class InvertedIndexMapper extends Mapper<String, String> {
                 String val = FileUtils.getValue(file);
                 LOG.info("val: " + val);
 
-                String bestMatch = StringUtils.EMPTY_STRING;
-                for(String input : getInput()) {
-                    if(val.contains(input)) {
-                        if(input.length() > bestMatch.length())
-                            bestMatch = input;
+                List<String> bestMatches = new ArrayList<>();
+                int maxMatchingLength = 0;
+                for (String input : getInput()) {
+                    int inputWords = input.split("\\s+").length;
+                    if (val.contains(input)) {
+                        if (inputWords >= maxMatchingLength) {
+                            bestMatches.add(input);
+                            maxMatchingLength = inputWords;
+                            bestMatches.removeIf(bm -> bm.split("\\s+").length < inputWords);
+                        }
                     }
                 }
-
-                output.put(bestMatch, output.containsKey(bestMatch) ? output.get(bestMatch) + "\n" + key: key);
+                for (String match : bestMatches) {
+                    output.put(match, output.containsKey(match) ? output.get(match) + "\n" + key : key);
+                }
             } catch (IOException e) {
                 LOG.error(e);
             } catch (RuntimeException e) {
